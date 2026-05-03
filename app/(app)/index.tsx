@@ -1,8 +1,11 @@
-import { ScrollView, View, StyleSheet } from 'react-native';
+import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import { Text, Surface, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { supabase } from '@/services/supabase';
+import { useAuthStore } from '@/stores/authStore';
+import { FONTS } from '@/constants/typography';
 import { useTodayActivity, useUpcomingReservations } from '@/hooks/useReservations';
 import { useLowStockAlerts } from '@/hooks/useInventory';
 import { ReservationCard } from '@/components/reservation/ReservationCard';
@@ -60,7 +63,23 @@ function TodayCard({
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { reset } = useAuthStore();
   const today = new Date().toISOString().slice(0, 10);
+
+  const handleLogout = () => {
+    Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Déconnexion',
+        style: 'destructive',
+        onPress: async () => {
+          try { await supabase.auth.signOut(); } catch (_) {}
+          reset();
+          router.replace('/(auth)/login');
+        },
+      },
+    ]);
+  };
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
   const { data: upcoming, isLoading: upcomingLoading } = useUpcomingReservations(3);
@@ -74,10 +93,21 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>ConciergePro</Text>
+            <Text style={styles.greeting}>KAZA</Text>
             <Text style={styles.date}>{formatDateLong(today)}</Text>
           </View>
-          <MaterialCommunityIcons name="home-city" size={32} color="#FFFFFF" />
+          <View style={styles.headerRight}>
+            <View style={styles.headerLogoContainer}>
+              <Image
+                source={require('@/assets/icon.png')}
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
+            </View>
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+              <MaterialCommunityIcons name="logout" size={20} color="rgba(255,255,255,0.85)" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {isLoading ? (
@@ -178,9 +208,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   greeting: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontFamily: FONTS.titleBold,
     color: '#FFFFFF',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerLogoContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 40,
+    height: 40,
+  },
+  logoutBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   date: {
     fontSize: 13,

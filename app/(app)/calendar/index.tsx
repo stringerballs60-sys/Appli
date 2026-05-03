@@ -9,6 +9,7 @@ import { useReservationsForMonth, useReservationsForDay } from '@/hooks/useReser
 import { useAppStore } from '@/stores/appStore';
 import { DayReservationSheet } from '@/components/calendar/DayReservationSheet';
 import { APP_COLORS } from '@/constants/colors';
+import { FONTS } from '@/constants/typography';
 import { getMonthRange, getDatesInRange, toISODateString } from '@/utils/dateHelpers';
 import { Reservation } from '@/types';
 
@@ -185,7 +186,7 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
   header: { backgroundColor: APP_COLORS.primary, paddingHorizontal: 20, paddingVertical: 16 },
-  title: { fontSize: 22, fontWeight: '700', color: '#FFFFFF' },
+  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
   filterRow: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, backgroundColor: '#FFFFFF' },
   chip: { borderRadius: 20 },
   calendar: { margin: 8, borderRadius: 12, elevation: 2 },

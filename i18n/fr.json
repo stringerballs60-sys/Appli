@@ -29,14 +29,27 @@
     "settings": "Paramètres"
   },
   "auth": {
-    "title": "ConciergePro",
+    "title": "KAZA",
     "subtitle": "Gestion de conciergerie",
     "email": "Email",
     "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "fullName": "Nom complet",
     "login": "Se connecter",
     "logout": "Déconnexion",
     "loginError": "Email ou mot de passe incorrect",
-    "fillAll": "Veuillez remplir tous les champs"
+    "fillAll": "Veuillez remplir tous les champs",
+    "rememberMe": "Rester connecté",
+    "noAccount": "Pas encore de compte ?",
+    "createAccount": "Créer un compte",
+    "alreadyHaveAccount": "Déjà un compte ?",
+    "goToLogin": "Se connecter",
+    "register": "Créer un compte",
+    "registerSubtitle": "Rejoignez KAZA",
+    "passwordMismatch": "Les mots de passe ne correspondent pas",
+    "registerError": "Erreur lors de la création du compte",
+    "registerSuccess": "Compte créé ! Vérifiez votre email pour confirmer.",
+    "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères"
   },
   "dashboard": {
     "title": "Tableau de bord",

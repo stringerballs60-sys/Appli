@@ -1,7 +1,21 @@
+// 8 families × 3 shades (light → mid → dark)
 export const PROPERTY_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-  '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
-  '#BB8FCE', '#85C1E9', '#82E0AA', '#F0B27A',
+  // Rouges
+  '#FFCDD2', '#F44336', '#B71C1C',
+  // Oranges
+  '#FFE0B2', '#FF9800', '#E65100',
+  // Jaunes
+  '#FFF9C4', '#FFEB3B', '#F57F17',
+  // Verts
+  '#C8E6C9', '#4CAF50', '#1B5E20',
+  // Teals
+  '#B2EBF2', '#00BCD4', '#006064',
+  // Bleus
+  '#BBDEFB', '#2196F3', '#0D47A1',
+  // Violets
+  '#E1BEE7', '#9C27B0', '#4A148C',
+  // Roses
+  '#FCE4EC', '#E91E63', '#880E4F',
 ];
 
 export const RESERVATION_STATUS_COLORS: Record<string, string> = {
@@ -20,11 +34,12 @@ export const PROPERTY_TYPE_COLORS: Record<string, string> = {
 };
 
 export const APP_COLORS = {
-  primary: '#1a56db',
+  primary: '#1A365D',
+  accent: '#D4AF37',
   background: '#F8F9FA',
   surface: '#FFFFFF',
   border: '#E5E7EB',
-  textPrimary: '#111827',
+  textPrimary: '#333333',
   textSecondary: '#6B7280',
   danger: '#EF4444',
   warning: '#F59E0B',

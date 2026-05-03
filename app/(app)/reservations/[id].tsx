@@ -77,6 +77,7 @@ export default function ReservationDetailScreen() {
           subtitle={property?.name}
           subtitleStyle={styles.appbarSubtitle}
         />
+        <Appbar.Action icon="pencil" iconColor="#FFFFFF" onPress={() => router.push(`/(app)/reservations/edit/${id}` as any)} />
         <Appbar.Action icon="delete" iconColor="#FFFFFF" onPress={handleDelete} />
       </Appbar.Header>
 

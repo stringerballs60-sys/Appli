@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ScrollView, View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
-import { Text, TextInput, Button, Snackbar, Appbar, HelperText } from 'react-native-paper';
-import { useRouter } from 'expo-router';
+import { Text, TextInput, Button, Snackbar, Appbar, ActivityIndicator } from 'react-native-paper';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
-import { useCreateReservation } from '@/hooks/useReservations';
+import { useReservations, useUpdateReservation } from '@/hooks/useReservations';
 import { useActiveProperties } from '@/hooks/useProperties';
 import { StepperInput } from '@/components/ui/StepperInput';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -15,81 +15,77 @@ import { PROPERTY_TYPE_DEFAULT_CATEGORY, RESERVATION_CATEGORY_LABELS, RESERVATIO
 import { APP_COLORS } from '@/constants/colors';
 import { suggestBedAllocation, calculateLinen } from '@/utils/linenCalculator';
 import { toISODateString, calcNights } from '@/utils/dateHelpers';
-import { reservationsService } from '@/services/reservations';
 
-const emptyForm = (): ReservationFormData => ({
-  property_id: '',
-  category: ReservationCategory.AIRBNB_SCI,
-  status: ReservationStatus.CONFIRMED,
-  guest_name: '',
-  guest_email: '',
-  guest_phone: '',
-  check_in: '',
-  check_out: '',
-  nb_couples: 0,
-  nb_solo_adults: 1,
-  nb_children: 0,
-  nb_babies: 0,
-  beds_double_used: 0,
-  beds_single_used: 0,
-  beds_sofa_used: 0,
-  beds_crib_used: 0,
-  notes: '',
-});
-
-export default function NewReservationScreen() {
+export default function EditReservationScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const router = useRouter();
-  const { mutateAsync: createReservation, isPending } = useCreateReservation();
+  const { mutateAsync: updateReservation, isPending } = useUpdateReservation();
+  const { data: reservations, isLoading: loadingRes } = useReservations();
   const { data: properties } = useActiveProperties();
 
-  const [form, setForm] = useState<ReservationFormData>(emptyForm());
+  const reservation = reservations?.find((r) => r.id === id);
+
+  const [form, setForm] = useState<ReservationFormData | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [datePickerTarget, setDatePickerTarget] = useState<'check_in' | 'check_out' | null>(null);
   const [error, setError] = useState('');
-  const [overlapWarning, setOverlapWarning] = useState(false);
+
+  useEffect(() => {
+    if (!reservation) return;
+    setForm({
+      property_id: reservation.property_id,
+      category: reservation.category,
+      status: reservation.status,
+      guest_name: reservation.guest_name,
+      guest_email: reservation.guest_email ?? '',
+      guest_phone: reservation.guest_phone ?? '',
+      check_in: reservation.check_in,
+      check_out: reservation.check_out,
+      nb_couples: reservation.nb_couples,
+      nb_solo_adults: reservation.nb_solo_adults,
+      nb_children: reservation.nb_children,
+      nb_babies: reservation.nb_babies,
+      beds_double_used: reservation.beds_double_used,
+      beds_single_used: reservation.beds_single_used,
+      beds_sofa_used: reservation.beds_sofa_used,
+      beds_crib_used: reservation.beds_crib_used,
+      notes: reservation.notes ?? '',
+    });
+    setSelectedProperty((reservation.property as any) ?? null);
+  }, [reservation]);
 
   const set = (key: keyof ReservationFormData, value: any) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => prev ? { ...prev, [key]: value } : prev);
 
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
     set('property_id', property.id);
-    set('category', PROPERTY_TYPE_DEFAULT_CATEGORY[property.property_type]);
-    // reset beds when property changes
-    set('beds_double_used', 0);
-    set('beds_single_used', 0);
-    set('beds_sofa_used', 0);
-    set('beds_crib_used', 0);
   };
 
   const handleGuestChange = (key: keyof ReservationFormData, value: number) => {
+    if (!form || !selectedProperty) { set(key, value); return; }
     const updated = { ...form, [key]: value };
-    setForm(updated);
-    // Auto-suggest bed allocation when guests change
-    if (selectedProperty) {
-      const suggestion = suggestBedAllocation(
-        {
-          nb_couples: updated.nb_couples,
-          nb_solo_adults: updated.nb_solo_adults,
-          nb_children: updated.nb_children,
-          nb_babies: updated.nb_babies,
-        },
-        selectedProperty
-      );
-      setForm((prev) => ({
-        ...prev,
-        [key]: value,
-        beds_double_used: suggestion.beds_double_used,
-        beds_single_used: suggestion.beds_single_used,
-        beds_sofa_used: suggestion.beds_sofa_used,
-        beds_crib_used: suggestion.beds_crib_used,
-      }));
-    }
+    const suggestion = suggestBedAllocation(
+      {
+        nb_couples: updated.nb_couples,
+        nb_solo_adults: updated.nb_solo_adults,
+        nb_children: updated.nb_children,
+        nb_babies: updated.nb_babies,
+      },
+      selectedProperty
+    );
+    setForm({
+      ...updated,
+      beds_double_used: suggestion.beds_double_used,
+      beds_single_used: suggestion.beds_single_used,
+      beds_sofa_used: suggestion.beds_sofa_used,
+      beds_crib_used: suggestion.beds_crib_used,
+    });
   };
 
   const linenPreview = useMemo(() => {
-    if (!selectedProperty) return null;
+    if (!selectedProperty || !form) return null;
     const totalAdults = form.nb_couples * 2 + form.nb_solo_adults;
     if (totalAdults + form.nb_children + form.nb_babies === 0) return null;
     return calculateLinen(
@@ -102,49 +98,51 @@ export default function NewReservationScreen() {
       },
       selectedProperty.nb_bathrooms
     );
-  }, [form.nb_couples, form.nb_solo_adults, form.nb_children, form.nb_babies,
-      form.beds_double_used, form.beds_single_used, form.beds_sofa_used, form.beds_crib_used,
+  }, [form?.nb_couples, form?.nb_solo_adults, form?.nb_children, form?.nb_babies,
+      form?.beds_double_used, form?.beds_single_used, form?.beds_sofa_used, form?.beds_crib_used,
       selectedProperty]);
 
   const handleSubmit = async () => {
-    if (!form.property_id) { setError('Veuillez sélectionner un logement'); return; }
+    if (!form) return;
     if (!form.guest_name.trim()) { setError('Le nom du voyageur est obligatoire'); return; }
     if (!form.check_in || !form.check_out) { setError('Les dates sont obligatoires'); return; }
     if (form.check_out <= form.check_in) { setError(t('reservations.checkInBeforeCheckOut')); return; }
-    if (form.nb_couples + form.nb_solo_adults + form.nb_children + form.nb_babies === 0) {
-      setError('Au moins 1 voyageur requis');
-      return;
-    }
-    if (!selectedProperty) return;
-
-    // Check overlap
-    const hasOverlap = await reservationsService.checkOverlap(form.property_id, form.check_in, form.check_out);
-    if (hasOverlap) { setOverlapWarning(true); return; }
-
     try {
-      await createReservation({ form, property: selectedProperty });
+      await updateReservation({ id, form, property: selectedProperty ?? undefined });
       router.back();
     } catch (e: any) {
       setError(e.message ?? t('common.error'));
     }
   };
 
-  const nights = form.check_in && form.check_out && form.check_out > form.check_in
+  const nights = form?.check_in && form?.check_out && form.check_out > form.check_in
     ? calcNights(form.check_in, form.check_out)
     : 0;
+
+  if (loadingRes || !form) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Appbar.Header style={styles.appbar}>
+          <Appbar.BackAction onPress={() => router.back()} iconColor="#FFFFFF" />
+          <Appbar.Content title="Modifier" titleStyle={styles.appbarTitle} />
+        </Appbar.Header>
+        <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <Appbar.Header style={styles.appbar}>
         <Appbar.BackAction onPress={() => router.back()} iconColor="#FFFFFF" />
-        <Appbar.Content title={t('reservations.new')} titleStyle={styles.appbarTitle} />
+        <Appbar.Content title="Modifier la réservation" titleStyle={styles.appbarTitle} />
         <Appbar.Action icon="check" iconColor="#FFFFFF" onPress={handleSubmit} disabled={isPending} />
       </Appbar.Header>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Property */}
-        <SectionHeader title={t('reservations.property') + ' *'} />
+        <SectionHeader title={t('reservations.property')} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.propertyRow}>
           {(properties ?? []).map((p) => (
             <TouchableOpacity
@@ -222,18 +220,14 @@ export default function NewReservationScreen() {
             onPress={() => setDatePickerTarget('check_in')}
           >
             <Text style={styles.datePickerLabel}>{t('reservations.checkIn')}</Text>
-            <Text style={[styles.datePickerValue, !form.check_in && styles.datePlaceholder]}>
-              {form.check_in || 'Sélectionner...'}
-            </Text>
+            <Text style={styles.datePickerValue}>{form.check_in}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.datePicker}
             onPress={() => setDatePickerTarget('check_out')}
           >
             <Text style={styles.datePickerLabel}>{t('reservations.checkOut')}</Text>
-            <Text style={[styles.datePickerValue, !form.check_out && styles.datePlaceholder]}>
-              {form.check_out || 'Sélectionner...'}
-            </Text>
+            <Text style={styles.datePickerValue}>{form.check_out}</Text>
           </TouchableOpacity>
           {nights > 0 && (
             <Text style={styles.nightsText}>{nights} nuit{nights > 1 ? 's' : ''}</Text>
@@ -377,14 +371,6 @@ export default function NewReservationScreen() {
         </View>
       </Modal>
 
-      <Snackbar
-        visible={overlapWarning}
-        onDismiss={() => setOverlapWarning(false)}
-        duration={4000}
-        style={{ backgroundColor: APP_COLORS.danger }}
-      >
-        {t('reservations.overlap')}
-      </Snackbar>
       <Snackbar visible={!!error} onDismiss={() => setError('')} duration={3000}>
         {error}
       </Snackbar>
@@ -410,13 +396,12 @@ const styles = StyleSheet.create({
   datePicker: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: APP_COLORS.border },
   datePickerLabel: { fontSize: 12, color: APP_COLORS.textSecondary, marginBottom: 4 },
   datePickerValue: { fontSize: 16, fontWeight: '600', color: APP_COLORS.textPrimary },
-  datePlaceholder: { color: APP_COLORS.textSecondary, fontWeight: '400' },
   nightsText: { fontSize: 13, color: APP_COLORS.primary, fontWeight: '600', textAlign: 'center' },
   linenPreviewContainer: { marginHorizontal: 16, marginBottom: 8 },
   submitButton: { marginHorizontal: 16, marginTop: 8, borderRadius: 8, backgroundColor: APP_COLORS.primary },
   submitButtonContent: { paddingVertical: 6 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 48 },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 40 },
   modalTitle: { fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 12, color: APP_COLORS.textPrimary },
-  cancelButton: { marginTop: 12, borderColor: APP_COLORS.border },
+  cancelButton: { marginTop: 8, borderColor: APP_COLORS.border },
 });

@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { FONTS } from '@/constants/typography';
 import { useTodayActivity, useUpcomingReservations } from '@/hooks/useReservations';
 import { useLowStockAlerts } from '@/hooks/useInventory';
+import { useActiveProperties } from '@/hooks/useProperties';
 import { ReservationCard } from '@/components/reservation/ReservationCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { APP_COLORS } from '@/constants/colors';
@@ -84,7 +85,9 @@ export default function DashboardScreen() {
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
   const { data: upcoming, isLoading: upcomingLoading } = useUpcomingReservations(3);
   const { data: lowStock, isLoading: stockLoading } = useLowStockAlerts();
+  const { data: allProperties } = useActiveProperties();
 
+  const propertiesWithNotes = (allProperties ?? []).filter((p) => p.notes);
   const isLoading = todayLoading || upcomingLoading || stockLoading;
 
   return (
@@ -181,6 +184,21 @@ export default function DashboardScreen() {
                 <MaterialCommunityIcons name="check-circle" size={16} color={APP_COLORS.success} />
                 <Text style={styles.allGoodText}>{t('dashboard.noLowStock')}</Text>
               </View>
+            )}
+
+            {/* Property notes */}
+            {propertiesWithNotes.length > 0 && (
+              <>
+                <SectionHeader title="Notes des logements" />
+                {propertiesWithNotes.map((p) => (
+                  <View key={p.id} style={[styles.noteCard, { borderLeftColor: p.color }]}>
+                    <View style={styles.noteCardHeader}>
+                      <Text style={styles.notePropertyName}>⚠️ {p.name}</Text>
+                    </View>
+                    <Text style={styles.noteContent}>{p.notes}</Text>
+                  </View>
+                ))}
+              </>
             )}
           </>
         )}
@@ -349,4 +367,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: APP_COLORS.success,
   },
+  noteCard: {
+    backgroundColor: '#FFFBEB',
+    borderLeftWidth: 4,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+  },
+  noteCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  notePropertyName: { fontSize: 13, fontWeight: '700', color: APP_COLORS.textPrimary },
+  noteContent: { fontSize: 13, color: APP_COLORS.textPrimary, lineHeight: 18 },
 });

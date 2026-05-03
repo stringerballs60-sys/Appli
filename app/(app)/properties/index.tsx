@@ -77,6 +77,12 @@ function PropertyCard({
               </Chip>
             )}
           </View>
+          {property.notes ? (
+            <View style={styles.noteRow}>
+              <Text style={styles.noteIcon}>⚠️</Text>
+              <Text style={styles.noteText} numberOfLines={2}>{property.notes}</Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={20} color={APP_COLORS.border} style={{ marginRight: 8 }} />
@@ -287,4 +293,7 @@ const styles = StyleSheet.create({
   bedsText: { fontSize: 12, color: APP_COLORS.textSecondary, flex: 1 },
   inactiveChip: { backgroundColor: '#F3F4F6', marginLeft: 'auto' },
   inactiveText: { fontSize: 10, color: APP_COLORS.textSecondary },
+  noteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 2 },
+  noteIcon: { fontSize: 11 },
+  noteText: { fontSize: 11, color: APP_COLORS.warning, flex: 1, fontStyle: 'italic' },
 });

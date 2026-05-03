@@ -9,6 +9,7 @@ import { useActiveProperties } from '@/hooks/useProperties';
 import { ReservationCard } from '@/components/reservation/ReservationCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { APP_COLORS } from '@/constants/colors';
+import { FONTS } from '@/constants/typography';
 import { ReservationStatus } from '@/types';
 import { RESERVATION_STATUS_LABELS } from '@/constants/labels';
 
@@ -127,7 +128,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  title: { fontSize: 22, fontWeight: '700', color: '#FFFFFF' },
+  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
   subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   filterRow: {
     paddingHorizontal: 12,

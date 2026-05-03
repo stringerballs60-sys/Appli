@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { FONTS } from '@/constants/typography';
 import { useTodayActivity, useUpcomingReservations } from '@/hooks/useReservations';
 import { useLowStockAlerts } from '@/hooks/useInventory';
 import { ReservationCard } from '@/components/reservation/ReservationCard';
@@ -207,8 +208,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   greeting: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontFamily: FONTS.titleBold,
     color: '#FFFFFF',
   },
   headerRight: {

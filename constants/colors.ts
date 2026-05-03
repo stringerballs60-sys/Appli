@@ -34,11 +34,12 @@ export const PROPERTY_TYPE_COLORS: Record<string, string> = {
 };
 
 export const APP_COLORS = {
-  primary: '#1a56db',
+  primary: '#1A365D',
+  accent: '#D4F370',
   background: '#F8F9FA',
   surface: '#FFFFFF',
   border: '#E5E7EB',
-  textPrimary: '#111827',
+  textPrimary: '#333333',
   textSecondary: '#6B7280',
   danger: '#EF4444',
   warning: '#F59E0B',

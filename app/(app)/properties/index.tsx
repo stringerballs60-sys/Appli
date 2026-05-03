@@ -12,6 +12,7 @@ import { useProperties } from '@/hooks/useProperties';
 import { PropertyBadge } from '@/components/ui/PropertyBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { APP_COLORS } from '@/constants/colors';
+import { FONTS } from '@/constants/typography';
 import { Property, PropertyType } from '@/types';
 import { PROPERTY_TYPE_LABELS } from '@/constants/labels';
 
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  title: { fontSize: 22, fontWeight: '700', color: '#FFFFFF' },
+  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
   subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   filterRow: {
     flexDirection: 'row',

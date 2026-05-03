@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/services/supabase';
 import { APP_COLORS } from '@/constants/colors';
+import { FONTS } from '@/constants/typography';
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
@@ -37,15 +38,10 @@ export default function RegisterScreen() {
     const { error: authError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: {
-        data: { full_name: fullName.trim() },
-      },
+      options: { data: { full_name: fullName.trim() } },
     });
     setLoading(false);
-    if (authError) {
-      setError(t('auth.registerError'));
-      return;
-    }
+    if (authError) { setError(t('auth.registerError')); return; }
     setSuccess(true);
   };
 
@@ -54,11 +50,7 @@ export default function RegisterScreen() {
       <View style={styles.successContainer}>
         <View style={styles.successCard}>
           <View style={styles.logoContainer}>
-            <Image
-              source={require('@/assets/icon.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <Image source={require('@/assets/icon.png')} style={styles.logo} resizeMode="contain" />
           </View>
           <Text style={styles.successTitle}>Compte créé !</Text>
           <Text style={styles.successText}>{t('auth.registerSuccess')}</Text>
@@ -67,6 +59,8 @@ export default function RegisterScreen() {
             onPress={() => router.replace('/(auth)/login')}
             style={styles.button}
             contentStyle={styles.buttonContent}
+            buttonColor={APP_COLORS.primary}
+            textColor="#FFFFFF"
           >
             {t('auth.goToLogin')}
           </Button>
@@ -83,11 +77,7 @@ export default function RegisterScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image
-              source={require('@/assets/icon.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <Image source={require('@/assets/icon.png')} style={styles.logo} resizeMode="contain" />
           </View>
           <Text style={styles.title}>{t('auth.register')}</Text>
           <Text style={styles.subtitle}>{t('auth.registerSubtitle')}</Text>
@@ -123,12 +113,7 @@ export default function RegisterScreen() {
             mode="outlined"
             style={styles.input}
             left={<TextInput.Icon icon="lock" />}
-            right={
-              <TextInput.Icon
-                icon={secureText ? 'eye' : 'eye-off'}
-                onPress={() => setSecureText(!secureText)}
-              />
-            }
+            right={<TextInput.Icon icon={secureText ? 'eye' : 'eye-off'} onPress={() => setSecureText(!secureText)} />}
           />
           <TextInput
             label={t('auth.confirmPassword')}
@@ -138,12 +123,7 @@ export default function RegisterScreen() {
             mode="outlined"
             style={styles.input}
             left={<TextInput.Icon icon="lock-check" />}
-            right={
-              <TextInput.Icon
-                icon={secureConfirm ? 'eye' : 'eye-off'}
-                onPress={() => setSecureConfirm(!secureConfirm)}
-              />
-            }
+            right={<TextInput.Icon icon={secureConfirm ? 'eye' : 'eye-off'} onPress={() => setSecureConfirm(!secureConfirm)} />}
           />
           {error ? <HelperText type="error">{error}</HelperText> : null}
 
@@ -154,6 +134,8 @@ export default function RegisterScreen() {
             disabled={loading}
             style={styles.button}
             contentStyle={styles.buttonContent}
+            buttonColor={APP_COLORS.primary}
+            textColor="#FFFFFF"
           >
             {t('auth.register')}
           </Button>
@@ -173,7 +155,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: APP_COLORS.primary,
+    backgroundColor: APP_COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -192,9 +174,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
     overflow: 'hidden',
     elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
   },
   logo: {
     width: 80,
@@ -202,19 +188,24 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    fontFamily: FONTS.titleBold,
+    color: APP_COLORS.primary,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 15,
+    fontFamily: FONTS.body,
+    color: APP_COLORS.textSecondary,
   },
   form: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 24,
-    elevation: 4,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
   },
   input: {
     marginBottom: 12,
@@ -235,16 +226,18 @@ const styles = StyleSheet.create({
   },
   loginHint: {
     fontSize: 13,
-    color: '#666',
+    fontFamily: FONTS.body,
+    color: APP_COLORS.textSecondary,
   },
   loginLink: {
     fontSize: 13,
+    fontFamily: FONTS.bodyMedium,
     color: APP_COLORS.primary,
     fontWeight: '700',
   },
   successContainer: {
     flex: 1,
-    backgroundColor: APP_COLORS.primary,
+    backgroundColor: APP_COLORS.background,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
@@ -253,17 +246,18 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
-    elevation: 4,
+    elevation: 3,
     gap: 16,
   },
   successTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: FONTS.titleBold,
     color: APP_COLORS.primary,
   },
   successText: {
     fontSize: 14,
-    color: '#555',
+    fontFamily: FONTS.body,
+    color: APP_COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },

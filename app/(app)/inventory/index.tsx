@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useActiveProperties } from '@/hooks/useProperties';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { APP_COLORS } from '@/constants/colors';
+import { FONTS } from '@/constants/typography';
 import { Property } from '@/types';
 
 interface InventoryPropertyCardProps {
@@ -89,7 +90,7 @@ export default function InventoryScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
   header: { backgroundColor: APP_COLORS.primary, paddingHorizontal: 20, paddingVertical: 16 },
-  title: { fontSize: 22, fontWeight: '700', color: '#FFFFFF' },
+  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
   subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   card: {
     backgroundColor: '#FFFFFF',

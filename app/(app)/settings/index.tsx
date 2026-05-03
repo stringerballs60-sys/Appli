@@ -8,6 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { APP_COLORS } from '@/constants/colors';
+import { FONTS } from '@/constants/typography';
 
 const APP_VERSION = '1.0.0';
 
@@ -146,7 +147,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
   header: { backgroundColor: APP_COLORS.primary, paddingHorizontal: 20, paddingVertical: 16 },
-  title: { fontSize: 22, fontWeight: '700', color: '#FFFFFF' },
+  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
   scroll: { flex: 1 },
   sectionLabel: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
   sectionLabelText: { fontSize: 12, fontWeight: '700', color: APP_COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },

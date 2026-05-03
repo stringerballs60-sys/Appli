@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
 import { APP_COLORS } from '@/constants/colors';
+import { FONTS } from '@/constants/typography';
 
 const REMEMBER_ME_KEY = 'kaza_remember_me';
 
@@ -44,6 +45,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.inner}>
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Image
@@ -56,6 +58,7 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
         </View>
 
+        {/* Form */}
         <View style={styles.form}>
           <TextInput
             label={t('auth.email')}
@@ -101,6 +104,8 @@ export default function LoginScreen() {
             disabled={loading}
             style={styles.button}
             contentStyle={styles.buttonContent}
+            buttonColor={APP_COLORS.primary}
+            textColor="#FFFFFF"
           >
             {t('auth.login')}
           </Button>
@@ -120,7 +125,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: APP_COLORS.primary,
+    backgroundColor: APP_COLORS.background,
   },
   inner: {
     flex: 1,
@@ -129,7 +134,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   logoContainer: {
     width: 90,
@@ -138,29 +143,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
     overflow: 'hidden',
     elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
   },
   logo: {
     width: 80,
     height: 80,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    fontSize: 34,
+    fontFamily: FONTS.titleBold,
+    color: APP_COLORS.primary,
+    marginBottom: 6,
+    letterSpacing: 1,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 15,
+    fontFamily: FONTS.body,
+    color: APP_COLORS.textSecondary,
   },
   form: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 24,
-    elevation: 4,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
   },
   input: {
     marginBottom: 12,
@@ -175,7 +190,8 @@ const styles = StyleSheet.create({
   },
   rememberLabel: {
     fontSize: 14,
-    color: '#333',
+    fontFamily: FONTS.body,
+    color: APP_COLORS.textPrimary,
   },
   button: {
     borderRadius: 8,
@@ -191,10 +207,12 @@ const styles = StyleSheet.create({
   },
   registerHint: {
     fontSize: 13,
-    color: '#666',
+    fontFamily: FONTS.body,
+    color: APP_COLORS.textSecondary,
   },
   registerLink: {
     fontSize: 13,
+    fontFamily: FONTS.bodyMedium,
     color: APP_COLORS.primary,
     fontWeight: '700',
   },

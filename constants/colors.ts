@@ -35,7 +35,7 @@ export const PROPERTY_TYPE_COLORS: Record<string, string> = {
 
 export const APP_COLORS = {
   primary: '#1A365D',
-  accent: '#D4F370',
+  accent: '#D4AF37',
   background: '#F8F9FA',
   surface: '#FFFFFF',
   border: '#E5E7EB',

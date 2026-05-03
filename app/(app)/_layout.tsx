@@ -45,13 +45,13 @@ export default function AppLayout() {
           borderTopColor: APP_COLORS.border,
           elevation: 8,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
+        tabBarLabelStyle: { fontSize: 9, fontWeight: '500' },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: t('navigation.dashboard'),
+          title: "Aujourd'hui",
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="view-dashboard" size={size} color={color} />
           ),
@@ -71,7 +71,7 @@ export default function AppLayout() {
         options={{
           title: t('navigation.reservations'),
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="bed" size={size} color={color} />
+            <MaterialCommunityIcons name="bed-king-outline" size={size} color={color} />
           ),
         }}
       />
@@ -80,7 +80,7 @@ export default function AppLayout() {
         options={{
           title: t('navigation.properties'),
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="home-city" size={size} color={color} />
+            <MaterialCommunityIcons name="home-group-plus" size={size} color={color} />
           ),
         }}
       />

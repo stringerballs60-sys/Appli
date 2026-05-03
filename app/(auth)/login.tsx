@@ -1,17 +1,23 @@
 import { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { TextInput, Button, Text, Snackbar, HelperText } from 'react-native-paper';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Image, TouchableOpacity } from 'react-native';
+import { TextInput, Button, Text, HelperText, Switch } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
 import { APP_COLORS } from '@/constants/colors';
 
+const REMEMBER_ME_KEY = 'kaza_remember_me';
+
 export default function LoginScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [secureText, setSecureText] = useState(true);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -25,7 +31,11 @@ export default function LoginScreen() {
       password,
     });
     setLoading(false);
-    if (authError) setError(t('auth.loginError'));
+    if (authError) {
+      setError(t('auth.loginError'));
+      return;
+    }
+    await AsyncStorage.setItem(REMEMBER_ME_KEY, rememberMe ? 'true' : 'false');
   };
 
   return (
@@ -36,7 +46,11 @@ export default function LoginScreen() {
       <View style={styles.inner}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>🏠</Text>
+            <Image
+              source={require('@/assets/icon.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.title}>{t('auth.title')}</Text>
           <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
@@ -71,6 +85,15 @@ export default function LoginScreen() {
           />
           {error ? <HelperText type="error">{error}</HelperText> : null}
 
+          <View style={styles.rememberRow}>
+            <Text style={styles.rememberLabel}>{t('auth.rememberMe')}</Text>
+            <Switch
+              value={rememberMe}
+              onValueChange={setRememberMe}
+              color={APP_COLORS.primary}
+            />
+          </View>
+
           <Button
             mode="contained"
             onPress={handleLogin}
@@ -81,6 +104,13 @@ export default function LoginScreen() {
           >
             {t('auth.login')}
           </Button>
+
+          <View style={styles.registerRow}>
+            <Text style={styles.registerHint}>{t('auth.noAccount')} </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+              <Text style={styles.registerLink}>{t('auth.createAccount')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -102,16 +132,19 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 90,
+    height: 90,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    overflow: 'hidden',
+    elevation: 4,
   },
-  logoIcon: {
-    fontSize: 40,
+  logo: {
+    width: 80,
+    height: 80,
   },
   title: {
     fontSize: 32,
@@ -133,11 +166,36 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: '#FFFFFF',
   },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  rememberLabel: {
+    fontSize: 14,
+    color: '#333',
+  },
   button: {
-    marginTop: 8,
     borderRadius: 8,
   },
   buttonContent: {
     paddingVertical: 6,
+  },
+  registerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  registerHint: {
+    fontSize: 13,
+    color: '#666',
+  },
+  registerLink: {
+    fontSize: 13,
+    color: APP_COLORS.primary,
+    fontWeight: '700',
   },
 });

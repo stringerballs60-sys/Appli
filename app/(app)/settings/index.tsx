@@ -46,8 +46,13 @@ export default function SettingsScreen() {
           text: t('settings.logout'),
           style: 'destructive',
           onPress: async () => {
-            await supabase.auth.signOut();
+            try {
+              await supabase.auth.signOut();
+            } catch (_) {
+              // ignore network errors — local state is cleared regardless
+            }
             reset();
+            router.replace('/(auth)/login');
           },
         },
       ]

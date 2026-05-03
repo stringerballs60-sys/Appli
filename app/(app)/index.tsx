@@ -1,4 +1,4 @@
-import { ScrollView, View, StyleSheet } from 'react-native';
+import { ScrollView, View, StyleSheet, Image } from 'react-native';
 import { Text, Surface, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -74,10 +74,16 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>ConciergePro</Text>
+            <Text style={styles.greeting}>KAZA</Text>
             <Text style={styles.date}>{formatDateLong(today)}</Text>
           </View>
-          <MaterialCommunityIcons name="home-city" size={32} color="#FFFFFF" />
+          <View style={styles.headerLogoContainer}>
+            <Image
+              source={require('@/assets/icon.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+          </View>
         </View>
 
         {isLoading ? (
@@ -181,6 +187,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  headerLogoContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 40,
+    height: 40,
   },
   date: {
     fontSize: 13,

@@ -18,6 +18,7 @@
     "expo-constants": "^55.0.15",
     "expo-linking": "^55.0.14",
     "expo-router": "^55.0.13",
+    "expo-secure-store": "^55.0.13",
     "expo-status-bar": "~3.0.9",
     "i18next": "^26.0.8",
     "react": "19.1.0",

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ConciergePro",
-    "slug": "conciergepro",
+    "name": "KAZA",
+    "slug": "KAZA",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1a56db"
+      "backgroundColor": "#F8F9FA"
     },
     "ios": {
       "supportsTablet": true,
@@ -20,7 +20,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1a56db"
+        "backgroundColor": "#F8F9FA"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

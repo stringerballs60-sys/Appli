@@ -18,8 +18,6 @@ type MarkedDates = Record<string, {
   endingDay?: boolean;
   color?: string;
   textColor?: string;
-  dots?: { key: string; color: string }[];
-  marked?: boolean;
   selected?: boolean;
   selectedColor?: string;
 }>;
@@ -39,21 +37,22 @@ function buildMarkedDates(
     const dates = getDatesInRange(res.check_in, res.check_out);
 
     dates.forEach((date, idx) => {
-      if (!marks[date]) marks[date] = {};
       const isStart = idx === 0;
       const isEnd = idx === dates.length - 1;
 
-      if (!marks[date].dots) marks[date].dots = [];
-      if (isStart) {
-        marks[date].dots!.push({ key: res.id + '_in', color: APP_COLORS.success });
-        marks[date].startingDay = true;
-        marks[date].color = color;
-      } else if (isEnd) {
-        marks[date].dots!.push({ key: res.id + '_out', color: APP_COLORS.warning });
-        marks[date].endingDay = true;
-        marks[date].color = color + '99';
+      if (!marks[date]) {
+        marks[date] = {
+          color: isStart ? color : isEnd ? color + 'BB' : color + '66',
+          textColor: isStart || isEnd ? '#FFFFFF' : APP_COLORS.textPrimary,
+          startingDay: isStart,
+          endingDay: isEnd,
+        };
       } else {
-        marks[date].color = color + '44';
+        // Multiple reservations on same day — keep the last one
+        marks[date].color = isStart ? color : isEnd ? color + 'BB' : color + '66';
+        marks[date].textColor = isStart || isEnd ? '#FFFFFF' : APP_COLORS.textPrimary;
+        if (isStart) marks[date].startingDay = true;
+        if (isEnd) marks[date].endingDay = true;
       }
     });
   }
@@ -135,7 +134,7 @@ export default function CalendarScreen() {
           current={calendarMonth + '-01'}
           onDayPress={handleDayPress}
           onMonthChange={handleMonthChange}
-          markingType="multi-dot"
+          markingType="period"
           markedDates={markedDates}
           style={styles.calendar}
           theme={{
@@ -160,15 +159,15 @@ export default function CalendarScreen() {
       {/* Legend */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: APP_COLORS.success }]} />
+          <View style={[styles.legendBar, { backgroundColor: APP_COLORS.primary }]} />
           <Text style={styles.legendText}>Arrivée</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: APP_COLORS.warning }]} />
+          <View style={[styles.legendBar, { backgroundColor: APP_COLORS.primary + 'BB' }]} />
           <Text style={styles.legendText}>Départ</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: APP_COLORS.primary }]} />
+          <View style={[styles.legendBar, { backgroundColor: APP_COLORS.primary + '66' }]} />
           <Text style={styles.legendText}>Occupation</Text>
         </View>
       </View>
@@ -192,6 +191,6 @@ const styles = StyleSheet.create({
   calendar: { margin: 8, borderRadius: 12, elevation: 2 },
   legend: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingVertical: 10, backgroundColor: '#FFFFFF', marginHorizontal: 8, borderRadius: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendBar: { width: 20, height: 8, borderRadius: 4 },
   legendText: { fontSize: 12, color: APP_COLORS.textSecondary },
 });

@@ -10,7 +10,7 @@ import { APP_COLORS } from '@/constants/colors';
 import { LINEN_TYPE_LABELS } from '@/constants/labels';
 import { LinenType } from '@/types';
 
-const ALL_LINEN_TYPES = Object.values(LinenType);
+const ALL_LINEN_TYPES = Object.values(LinenType).filter((t) => t !== LinenType.FACE_TOWELS);
 
 export default function LinenInventoryScreen() {
   const { propertyId } = useLocalSearchParams<{ propertyId: string }>();

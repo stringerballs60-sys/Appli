@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { FlatList, View, StyleSheet, ScrollView } from 'react-native';
-import { Text, FAB, ActivityIndicator, Chip, Appbar } from 'react-native-paper';
+import { FlatList, View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, ActivityIndicator, Chip } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,8 +37,18 @@ export default function ReservationsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('reservations.title')}</Text>
-        <Text style={styles.subtitle}>{reservations?.length ?? 0} réservation{(reservations?.length ?? 0) !== 1 ? 's' : ''}</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.title}>{t('reservations.title')}</Text>
+            <Text style={styles.subtitle}>{reservations?.length ?? 0} réservation{(reservations?.length ?? 0) !== 1 ? 's' : ''}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => router.push('/(app)/reservations/new')}
+          >
+            <MaterialCommunityIcons name="plus" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Property filter */}
@@ -45,6 +56,7 @@ export default function ReservationsScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
           contentContainerStyle={styles.filterRow}
         >
           <Chip
@@ -71,6 +83,7 @@ export default function ReservationsScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
         contentContainerStyle={styles.filterRow}
       >
         {STATUS_FILTERS.map((status) => (
@@ -105,18 +118,11 @@ export default function ReservationsScreen() {
             />
           }
           contentContainerStyle={
-            reservations?.length === 0 ? { flex: 1 } : { paddingTop: 8, paddingBottom: 80 }
+            reservations?.length === 0 ? { flex: 1 } : { paddingTop: 8, paddingBottom: 24 }
           }
           showsVerticalScrollIndicator={false}
         />
       )}
-
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        onPress={() => router.push('/(app)/reservations/new')}
-        label={t('reservations.new')}
-      />
     </SafeAreaView>
   );
 }
@@ -128,14 +134,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
   subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterScroll: { flexShrink: 0, flexGrow: 0, backgroundColor: '#FFFFFF' },
   filterRow: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
   },
   filterChip: { borderRadius: 20 },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: APP_COLORS.primary },
 });

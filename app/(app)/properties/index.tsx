@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, FAB, ActivityIndicator, Surface, Chip } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import { Text, ActivityIndicator, Surface, Chip } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -90,6 +90,7 @@ export default function PropertiesScreen() {
   const { data: properties, isLoading } = useProperties();
   const [sorted, setSorted] = useState<Property[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Load and apply saved order
   useEffect(() => {
@@ -99,7 +100,6 @@ export default function PropertiesScreen() {
       const order: string[] = JSON.parse(raw);
       const map = new Map(properties.map((p) => [p.id, p]));
       const reordered = order.map((id) => map.get(id)).filter(Boolean) as Property[];
-      // Append any new properties not yet in the saved order
       const extra = properties.filter((p) => !order.includes(p.id));
       setSorted([...reordered, ...extra]);
     });
@@ -145,25 +145,54 @@ export default function PropertiesScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <Text style={styles.title}>{t('properties.title')}</Text>
-          <Text style={styles.subtitle}>{properties?.length ?? 0} logements</Text>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.title}>{t('properties.title')}</Text>
+              <Text style={styles.subtitle}>{properties?.length ?? 0} logements</Text>
+            </View>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={[styles.iconButton, filtersOpen && styles.iconButtonActive]}
+                onPress={() => setFiltersOpen((v) => !v)}
+              >
+                <MaterialCommunityIcons
+                  name="filter-variant"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => router.push('/(app)/properties/new')}
+              >
+                <MaterialCommunityIcons name="plus" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
-        {/* Filter chips */}
-        <View style={styles.filterRow}>
-          {filters.map((f) => (
-            <Chip
-              key={f.key}
-              selected={filter === f.key}
-              onPress={() => setFilter(f.key)}
-              style={[styles.filterChip, filter === f.key && styles.filterChipSelected]}
-              textStyle={[styles.filterChipText, filter === f.key && styles.filterChipTextSelected]}
-              compact
-            >
-              {f.label}
-            </Chip>
-          ))}
-        </View>
+        {/* Collapsible filter chips */}
+        {filtersOpen && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroll}
+            contentContainerStyle={styles.filterRow}
+          >
+            {filters.map((f) => (
+              <Chip
+                key={f.key}
+                selected={filter === f.key}
+                onPress={() => setFilter(f.key)}
+                style={[styles.filterChip, filter === f.key && styles.filterChipSelected]}
+                textStyle={[styles.filterChipText, filter === f.key && styles.filterChipTextSelected]}
+                compact
+              >
+                {f.label}
+              </Chip>
+            ))}
+          </ScrollView>
+        )}
 
         {isLoading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
@@ -179,18 +208,10 @@ export default function PropertiesScreen() {
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             onDragEnd={handleDragEnd}
-            contentContainerStyle={{ paddingBottom: 80, paddingTop: 4 }}
+            contentContainerStyle={{ paddingBottom: 24, paddingTop: 4 }}
             showsVerticalScrollIndicator={false}
           />
         )}
-
-        <FAB
-          icon="plus"
-          style={styles.fab}
-          onPress={() => router.push('/(app)/properties/new')}
-          label={t('properties.new')}
-          labelStyle={styles.fabLabel}
-        />
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -203,17 +224,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
   subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  headerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconButtonActive: {
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterScroll: { flexShrink: 0, flexGrow: 0, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: APP_COLORS.border },
   filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border,
+    gap: 6,
+    alignItems: 'center',
   },
   filterChip: { backgroundColor: APP_COLORS.background },
   filterChipSelected: { backgroundColor: APP_COLORS.primary },
@@ -244,6 +287,4 @@ const styles = StyleSheet.create({
   bedsText: { fontSize: 12, color: APP_COLORS.textSecondary, flex: 1 },
   inactiveChip: { backgroundColor: '#F3F4F6', marginLeft: 'auto' },
   inactiveText: { fontSize: 10, color: APP_COLORS.textSecondary },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: APP_COLORS.primary },
-  fabLabel: { color: '#FFFFFF' },
 });

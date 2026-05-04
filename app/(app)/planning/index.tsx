@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
@@ -10,6 +10,7 @@ import {
 import { fr } from 'date-fns/locale';
 import { useProperties } from '@/hooks/useProperties';
 import { useReservationsForMonth } from '@/hooks/useReservations';
+import { useAppStore } from '@/stores/appStore';
 import { APP_COLORS } from '@/constants/colors';
 import { FONTS } from '@/constants/typography';
 import { toISODateString } from '@/utils/dateHelpers';
@@ -89,38 +90,47 @@ export default function PlanningScreen() {
   const router = useRouter();
   const { data: properties, isLoading: loadingProps } = useProperties();
   const scrollRef = useRef<ScrollView>(null);
+  const { planningScrollX, setPlanningScrollX } = useAppStore();
 
   const { days, from, to } = useMemo(() => buildRange(), []);
   const { data: reservations, isLoading: loadingRes } = useReservationsForMonth(from, to);
+
+  const todayIdx = days.indexOf(TODAY);
+  const todayScrollX = Math.max(0, NAME_W + todayIdx * DAY_W - 80);
 
   const [visibleMonth, setVisibleMonth] = useState(() =>
     format(parseISO(TODAY), 'MMMM yyyy', { locale: fr }).replace(/^\w/, (c) => c.toUpperCase())
   );
 
-  const todayIdx = days.indexOf(TODAY);
-  const todayScrollX = NAME_W + todayIdx * DAY_W - 80;
-
-  /* Auto-scroll to today on first load */
+  /* Restore saved position when returning from a reservation, else scroll to today */
   const onContentReady = useCallback(() => {
-    if (todayIdx >= 0) {
-      scrollRef.current?.scrollTo({ x: Math.max(0, todayScrollX), animated: false });
-    }
-  }, [todayIdx, todayScrollX]);
+    const target = planningScrollX >= 0 ? planningScrollX : todayScrollX;
+    scrollRef.current?.scrollTo({ x: target, animated: false });
+  }, [planningScrollX, todayScrollX]);
 
-  /* Update month label based on scroll position */
+  /* Refocus: restore scroll position each time screen comes back into view */
+  useFocusEffect(
+    useCallback(() => {
+      const target = planningScrollX >= 0 ? planningScrollX : todayScrollX;
+      setTimeout(() => scrollRef.current?.scrollTo({ x: target, animated: false }), 50);
+    }, [planningScrollX, todayScrollX])
+  );
+
+  /* Save scroll X + update month label */
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const x = e.nativeEvent.contentOffset.x;
+      setPlanningScrollX(x);
       const dayIdx = Math.floor((x - NAME_W) / DAY_W);
       const idx = Math.max(0, Math.min(dayIdx, days.length - 1));
       const d = days[idx];
       if (d) {
-        const label = format(parseISO(d), 'MMMM yyyy', { locale: fr })
-          .replace(/^\w/, (c) => c.toUpperCase());
-        setVisibleMonth(label);
+        setVisibleMonth(
+          format(parseISO(d), 'MMMM yyyy', { locale: fr }).replace(/^\w/, (c) => c.toUpperCase())
+        );
       }
     },
-    [days]
+    [days, setPlanningScrollX]
   );
 
   const allBlocks = useMemo(() => {

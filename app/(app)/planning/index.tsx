@@ -21,7 +21,7 @@ const ROW_H = 52;
 const NAME_W = 108;
 const HEADER_H = 44;
 const MONTHS_BACK = 1;
-const MONTHS_FORWARD = 4;
+const MONTHS_FORWARD = 5;
 const TODAY = toISODateString(new Date());
 
 /* Build a continuous range of days spanning several months */
@@ -47,6 +47,7 @@ type Block = {
   width: number;
   color: string;
   label: string;
+  info: string;
   isStart: boolean;
   isEnd: boolean;
   widthDays: number;
@@ -72,12 +73,21 @@ function buildBlocks(reservations: Reservation[], days: string[], propertyId: st
     const widthDays = differenceInDays(parseISO(clampedEnd), parseISO(clampedStart));
     if (widthDays <= 0) continue;
 
+    const totalGuests = res.nb_couples * 2 + res.nb_solo_adults + res.nb_children + res.nb_babies;
+    const beds = [
+      res.beds_double_used > 0 ? `${res.beds_double_used}×2` : '',
+      res.beds_single_used > 0 ? `${res.beds_single_used}×1` : '',
+      res.beds_sofa_used > 0 ? `${res.beds_sofa_used}canapé` : '',
+    ].filter(Boolean).join(' ');
+    const info = `${totalGuests}p · ${beds || '?'}`;
+
     blocks.push({
       resId: res.id,
       left: offsetDays * DAY_W,
       width: widthDays * DAY_W - 3,
       color: (res.property as any)?.color ?? APP_COLORS.primary,
       label: res.guest_name,
+      info,
       isStart: res.check_in >= rangeStart,
       isEnd: res.check_out <= rangeEnd,
       widthDays,
@@ -286,6 +296,11 @@ export default function PlanningScreen() {
                                 {b.label}
                               </Text>
                             )}
+                            {b.widthDays >= 4 && (
+                              <Text style={styles.blockInfo} numberOfLines={1}>
+                                {b.info}
+                              </Text>
+                            )}
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -427,10 +442,11 @@ const styles = StyleSheet.create({
 
   block: {
     position: 'absolute',
-    top: 11,
-    height: ROW_H - 22,
+    top: 8,
+    height: ROW_H - 16,
     justifyContent: 'center',
     paddingHorizontal: 5,
+    gap: 1,
   },
   blockText: {
     fontSize: 10,
@@ -439,6 +455,14 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  blockInfo: {
+    fontSize: 8,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.85)',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
 
   footer: {

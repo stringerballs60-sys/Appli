@@ -85,6 +85,24 @@ export const reservationsService = {
     return { checkIns: checkInsRes.data, checkOuts: checkOutsRes.data };
   },
 
+  async getPendingCheckInTime(userId: string, daysAhead = 3): Promise<Reservation[]> {
+    const today = new Date().toISOString().slice(0, 10);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + daysAhead);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('*, property:properties(*)')
+      .eq('user_id', userId)
+      .gte('check_in', today)
+      .lte('check_in', cutoffStr)
+      .eq('check_in_time_confirmed', false)
+      .neq('status', 'cancelled')
+      .order('check_in');
+    if (error) throw error;
+    return data;
+  },
+
   async checkOverlap(
     propertyId: string,
     checkIn: string,

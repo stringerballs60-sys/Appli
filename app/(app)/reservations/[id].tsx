@@ -95,6 +95,20 @@ export default function ReservationDetailScreen() {
             <View style={styles.dateBlock}>
               <Text style={styles.dateLabel}>Arrivée</Text>
               <Text style={styles.dateValue}>{formatDate(reservation.check_in)}</Text>
+              {reservation.check_in_time ? (
+                <View style={styles.timeRow}>
+                  <MaterialCommunityIcons
+                    name={reservation.check_in_time_confirmed ? 'clock-check' : 'clock-alert'}
+                    size={13}
+                    color={reservation.check_in_time_confirmed ? APP_COLORS.success : APP_COLORS.warning}
+                  />
+                  <Text style={[styles.timeText, { color: reservation.check_in_time_confirmed ? APP_COLORS.success : APP_COLORS.warning }]}>
+                    {reservation.check_in_time.slice(0, 5)}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.timeUnknown}>heure ?</Text>
+              )}
             </View>
             <View style={styles.arrowContainer}>
               <MaterialCommunityIcons name="arrow-right" size={20} color={APP_COLORS.textSecondary} />
@@ -244,6 +258,9 @@ const styles = StyleSheet.create({
   dateValue: { fontSize: 15, fontWeight: '600', color: APP_COLORS.textPrimary },
   arrowContainer: { alignItems: 'center', gap: 2 },
   nightsText: { fontSize: 11, color: APP_COLORS.textSecondary },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
+  timeText: { fontSize: 12, fontWeight: '700' },
+  timeUnknown: { fontSize: 11, color: APP_COLORS.textSecondary, fontStyle: 'italic', marginTop: 4 },
   infoCard: { backgroundColor: '#FFFFFF', marginHorizontal: 16, borderRadius: 12, padding: 16, marginBottom: 8, gap: 12 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   infoLabel: { fontSize: 11, color: APP_COLORS.textSecondary },

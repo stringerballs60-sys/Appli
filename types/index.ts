@@ -82,6 +82,8 @@ export interface Reservation {
   status: ReservationStatus;
   check_in: string;
   check_out: string;
+  check_in_time: string | null;
+  check_in_time_confirmed: boolean;
   nb_nights: number;
   guest_name: string;
   guest_email: string | null;
@@ -169,6 +171,8 @@ export type ReservationFormData = {
   guest_phone: string;
   check_in: string;
   check_out: string;
+  check_in_time?: string;
+  check_in_time_confirmed?: boolean;
   nb_couples: number;
   nb_solo_adults: number;
   nb_children: number;

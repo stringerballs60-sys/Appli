@@ -57,6 +57,16 @@ export function useTodayActivity() {
   });
 }
 
+export function usePendingCheckInTime(daysAhead = 3) {
+  const userId = useAuthStore((s) => s.user?.id);
+  return useQuery({
+    queryKey: [RESERVATIONS_KEY, userId, 'pending-checkin-time', daysAhead],
+    queryFn: () => reservationsService.getPendingCheckInTime(userId!, daysAhead),
+    enabled: !!userId,
+    refetchInterval: 5 * 60 * 1000,
+  });
+}
+
 export function useCreateReservation() {
   const qc = useQueryClient();
   const userId = useAuthStore((s) => s.user?.id);

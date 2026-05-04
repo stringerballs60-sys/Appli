@@ -6,7 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { FONTS } from '@/constants/typography';
-import { useTodayActivity, useUpcomingReservations } from '@/hooks/useReservations';
+import { useTodayActivity, useUpcomingReservations, usePendingCheckInTime } from '@/hooks/useReservations';
 import { useLowStockAlerts } from '@/hooks/useInventory';
 import { useActiveProperties } from '@/hooks/useProperties';
 import { ReservationCard } from '@/components/reservation/ReservationCard';
@@ -83,9 +83,10 @@ export default function DashboardScreen() {
   };
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
-  const { data: upcoming, isLoading: upcomingLoading } = useUpcomingReservations(3);
+  const { data: upcoming, isLoading: upcomingLoading } = useUpcomingReservations(5);
   const { data: lowStock, isLoading: stockLoading } = useLowStockAlerts();
   const { data: allProperties } = useActiveProperties();
+  const { data: pendingCallList } = usePendingCheckInTime(3);
 
   const propertiesWithNotes = (allProperties ?? []).filter((p) => p.notes);
   const isLoading = todayLoading || upcomingLoading || stockLoading;
@@ -139,6 +140,41 @@ export default function DashboardScreen() {
                 />
               </View>
             </View>
+
+            {/* À appeler — check-in sans heure confirmée dans les 3 prochains jours */}
+            {pendingCallList && pendingCallList.length > 0 && (
+              <>
+                <SectionHeader title={`📞 À appeler (${pendingCallList.length})`} />
+                <View style={styles.callAlertBox}>
+                  {pendingCallList.map((r) => {
+                    const daysUntil = Math.round((new Date(r.check_in).getTime() - new Date(today).getTime()) / 86400000);
+                    const label = daysUntil === 0 ? "Aujourd'hui" : daysUntil === 1 ? 'Demain' : `Dans ${daysUntil}j`;
+                    return (
+                      <TouchableOpacity
+                        key={r.id}
+                        style={styles.callRow}
+                        onPress={() => router.push(`/(app)/reservations/${r.id}`)}
+                        activeOpacity={0.7}
+                      >
+                        {r.property && <View style={[styles.callDot, { backgroundColor: r.property.color }]} />}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.callGuestName}>{r.guest_name}</Text>
+                          <Text style={styles.callPropertyName}>{r.property?.name}</Text>
+                        </View>
+                        <View style={styles.callDateBadge}>
+                          <Text style={styles.callDateText}>{label}</Text>
+                        </View>
+                        {r.guest_phone ? (
+                          <MaterialCommunityIcons name="phone" size={18} color={APP_COLORS.primary} />
+                        ) : (
+                          <MaterialCommunityIcons name="phone-off" size={18} color={APP_COLORS.border} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            )}
 
             {/* Upcoming reservations */}
             <SectionHeader title={t('dashboard.upcoming')} />
@@ -367,6 +403,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: APP_COLORS.success,
   },
+  callAlertBox: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  callRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FEF3C7',
+  },
+  callDot: { width: 9, height: 9, borderRadius: 5, flexShrink: 0 },
+  callGuestName: { fontSize: 13, fontWeight: '700', color: APP_COLORS.textPrimary },
+  callPropertyName: { fontSize: 11, color: APP_COLORS.textSecondary },
+  callDateBadge: { backgroundColor: '#FEF3C7', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  callDateText: { fontSize: 11, fontWeight: '700', color: '#B45309' },
   noteCard: {
     backgroundColor: '#FFFBEB',
     borderLeftWidth: 4,

@@ -42,6 +42,8 @@ export default function EditReservationScreen() {
       guest_phone: reservation.guest_phone ?? '',
       check_in: reservation.check_in,
       check_out: reservation.check_out,
+      check_in_time: reservation.check_in_time ?? '',
+      check_in_time_confirmed: reservation.check_in_time_confirmed,
       nb_couples: reservation.nb_couples,
       nb_solo_adults: reservation.nb_solo_adults,
       nb_children: reservation.nb_children,
@@ -232,6 +234,25 @@ export default function EditReservationScreen() {
           {nights > 0 && (
             <Text style={styles.nightsText}>{nights} nuit{nights > 1 ? 's' : ''}</Text>
           )}
+          <View style={styles.timeRow}>
+            <TextInput
+              label="Heure d'arrivée (HH:MM)"
+              value={form.check_in_time ?? ''}
+              onChangeText={(v) => set('check_in_time', v)}
+              keyboardType="numbers-and-punctuation"
+              mode="outlined"
+              style={[styles.input, { flex: 1 }]}
+              placeholder="ex: 15:30"
+            />
+            <TouchableOpacity
+              style={[styles.confirmedBtn, form.check_in_time_confirmed && styles.confirmedBtnActive]}
+              onPress={() => set('check_in_time_confirmed', !form.check_in_time_confirmed)}
+            >
+              <Text style={[styles.confirmedBtnText, form.check_in_time_confirmed && styles.confirmedBtnTextActive]}>
+                {form.check_in_time_confirmed ? '✓ Confirmé' : 'À confirmer'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Guests */}
@@ -404,4 +425,9 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 40 },
   modalTitle: { fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 12, color: APP_COLORS.textPrimary },
   cancelButton: { marginTop: 8, borderColor: APP_COLORS.border },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  confirmedBtn: { borderWidth: 1, borderColor: APP_COLORS.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#FFFFFF' },
+  confirmedBtnActive: { backgroundColor: APP_COLORS.success, borderColor: APP_COLORS.success },
+  confirmedBtnText: { fontSize: 12, color: APP_COLORS.textSecondary, fontWeight: '600' },
+  confirmedBtnTextActive: { color: '#FFFFFF' },
 });

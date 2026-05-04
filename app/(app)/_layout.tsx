@@ -85,11 +85,11 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="inventory/index"
+        name="menu/index"
         options={{
-          title: t('navigation.inventory'),
+          title: 'Menu',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="package-variant" size={size} color={color} />
+            <MaterialCommunityIcons name="menu" size={size} color={color} />
           ),
         }}
       />
@@ -98,6 +98,7 @@ export default function AppLayout() {
       <Tabs.Screen name="reservations/[id]" options={{ href: null }} />
       <Tabs.Screen name="properties/new" options={{ href: null }} />
       <Tabs.Screen name="properties/[id]" options={{ href: null }} />
+      <Tabs.Screen name="inventory/index" options={{ href: null }} />
       <Tabs.Screen name="inventory/linen/[propertyId]" options={{ href: null }} />
       <Tabs.Screen name="inventory/equipment/[propertyId]" options={{ href: null }} />
       <Tabs.Screen name="inventory/consumables/[propertyId]" options={{ href: null }} />

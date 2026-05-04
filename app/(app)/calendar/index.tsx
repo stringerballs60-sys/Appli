@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, ActivityIndicator, Chip } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
+import { TouchableOpacity } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { useActiveProperties } from '@/hooks/useProperties';
@@ -61,6 +64,7 @@ function buildMarkedDates(
 
 export default function CalendarScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { calendarMonth, setCalendarMonth } = useAppStore();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -90,6 +94,13 @@ export default function CalendarScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('calendar.title')}</Text>
+        <TouchableOpacity
+          style={styles.planningBtn}
+          onPress={() => router.push('/(app)/planning' as any)}
+        >
+          <MaterialCommunityIcons name="view-sequential" size={20} color="#FFFFFF" />
+          <Text style={styles.planningBtnText}>Planning</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Property filter */}
@@ -174,8 +185,10 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
-  header: { backgroundColor: APP_COLORS.primary, paddingHorizontal: 20, paddingVertical: 16 },
+  header: { backgroundColor: APP_COLORS.primary, paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
+  planningBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  planningBtnText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600' },
   filterRow: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, backgroundColor: '#FFFFFF' },
   chip: { borderRadius: 20 },
   calendar: { margin: 8, borderRadius: 12, elevation: 2 },

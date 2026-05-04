@@ -107,18 +107,12 @@ export default function PlanningScreen() {
     setRowsHeight(e.nativeEvent.layout.height - HEADER_H);
   }, []);
 
-  /* Restore saved position when returning from a reservation, else scroll to today */
-  const onContentReady = useCallback(() => {
-    const target = planningScrollX >= 0 ? planningScrollX : todayScrollX;
-    scrollRef.current?.scrollTo({ x: target, animated: false });
-  }, [planningScrollX, todayScrollX]);
-
-  /* Refocus: restore scroll position each time screen comes back into view */
+  /* Restore scroll position once when screen comes into view */
   useFocusEffect(
     useCallback(() => {
       const target = planningScrollX >= 0 ? planningScrollX : todayScrollX;
-      setTimeout(() => scrollRef.current?.scrollTo({ x: target, animated: false }), 50);
-    }, [planningScrollX, todayScrollX])
+      setTimeout(() => scrollRef.current?.scrollTo({ x: target, animated: false }), 80);
+    }, [])
   );
 
   /* Save scroll X + update month label */
@@ -179,7 +173,6 @@ export default function PlanningScreen() {
             bounces={false}
             scrollEventThrottle={16}
             onScroll={onScroll}
-            onContentSizeChange={onContentReady}
             style={{ flex: 1 }}
           >
             <View style={{ width: NAME_W + totalDaysWidth }}>

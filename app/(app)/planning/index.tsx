@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -91,6 +91,7 @@ export default function PlanningScreen() {
   const { data: properties, isLoading: loadingProps } = useProperties();
   const scrollRef = useRef<ScrollView>(null);
   const { planningScrollX, setPlanningScrollX } = useAppStore();
+  const [rowsHeight, setRowsHeight] = useState(400);
 
   const { days, from, to } = useMemo(() => buildRange(), []);
   const { data: reservations, isLoading: loadingRes } = useReservationsForMonth(from, to);
@@ -101,6 +102,10 @@ export default function PlanningScreen() {
   const [visibleMonth, setVisibleMonth] = useState(() =>
     format(parseISO(TODAY), 'MMMM yyyy', { locale: fr }).replace(/^\w/, (c) => c.toUpperCase())
   );
+
+  const onGridLayout = useCallback((e: LayoutChangeEvent) => {
+    setRowsHeight(e.nativeEvent.layout.height - HEADER_H);
+  }, []);
 
   /* Restore saved position when returning from a reservation, else scroll to today */
   const onContentReady = useCallback(() => {
@@ -166,129 +171,138 @@ export default function PlanningScreen() {
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: 60 }} color={APP_COLORS.primary} />
       ) : (
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          showsHorizontalScrollIndicator
-          bounces={false}
-          scrollEventThrottle={16}
-          onScroll={onScroll}
-          onContentSizeChange={onContentReady}
-          style={{ flex: 1 }}
-        >
-          <View>
-            {/* Day header row */}
-            <View style={[styles.headerRow, { width: NAME_W + totalDaysWidth }]}>
-              <View style={[styles.cornerCell, { width: NAME_W }]}>
-                <Text style={styles.cornerText}>Logements</Text>
-              </View>
-              {days.map((d) => {
-                const isToday = d === TODAY;
-                const num = parseInt(d.slice(8), 10);
-                const dow = format(parseISO(d), 'EEE', { locale: fr }).slice(0, 2);
-                const isWE = [6, 0].includes(parseISO(d).getDay());
-                const isFirst = num === 1;
-                return (
-                  <View
-                    key={d}
-                    style={[
-                      styles.dayCell,
-                      isWE && styles.dayCellWE,
-                      isToday && styles.dayCellToday,
-                      isFirst && styles.dayCellFirst,
-                    ]}
-                  >
-                    {isFirst && (
-                      <Text style={styles.monthMark}>
-                        {format(parseISO(d), 'MMM', { locale: fr }).toUpperCase()}
-                      </Text>
-                    )}
-                    <Text style={[styles.dow, isToday && styles.textToday, isWE && styles.textWE]}>
-                      {dow}
-                    </Text>
-                    <Text style={[styles.dayNum, isToday && styles.textToday, isWE && styles.textWE]}>
-                      {num}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Property rows */}
-            {(properties ?? []).map((property, idx) => {
-              const blocks = allBlocks[property.id] ?? [];
-              return (
-                <View
-                  key={property.id}
-                  style={[
-                    styles.propertyRow,
-                    { width: NAME_W + totalDaysWidth },
-                    idx % 2 === 1 && styles.rowAlt,
-                    !property.is_active && styles.rowInactive,
-                  ]}
-                >
-                  {/* Property name cell */}
-                  <View style={[styles.nameCell, { width: NAME_W }]}>
-                    <View style={[styles.colorDot, { backgroundColor: property.color }]} />
-                    <Text style={styles.nameText} numberOfLines={2}>{property.name}</Text>
-                  </View>
-
-                  {/* Grid area */}
-                  <View style={{ width: totalDaysWidth, height: ROW_H }}>
-                    {/* Weekend + month separator tints */}
-                    {days.map((d, di) => {
-                      const isWE = [6, 0].includes(parseISO(d).getDay());
-                      const isFirst = d.slice(8) === '01';
-                      return (
-                        <View
-                          key={d}
-                          style={[
-                            styles.colLine,
-                            { left: di * DAY_W, width: DAY_W },
-                            isWE && styles.colLineWE,
-                            isFirst && styles.colLineFirst,
-                          ]}
-                        />
-                      );
-                    })}
-
-                    {/* Today highlight */}
-                    {todayIdx >= 0 && (
-                      <View style={[styles.todayCol, { left: todayIdx * DAY_W, width: DAY_W }]} />
-                    )}
-
-                    {/* Reservation blocks — tappable */}
-                    {blocks.map((b, bi) => (
-                      <TouchableOpacity
-                        key={bi}
-                        activeOpacity={0.75}
-                        onPress={() => router.push(`/(app)/reservations/${b.resId}` as any)}
-                        style={[
-                          styles.block,
-                          {
-                            left: b.left,
-                            width: b.width,
-                            backgroundColor: b.color,
-                            borderTopLeftRadius: b.isStart ? 6 : 0,
-                            borderBottomLeftRadius: b.isStart ? 6 : 0,
-                            borderTopRightRadius: b.isEnd ? 6 : 0,
-                            borderBottomRightRadius: b.isEnd ? 6 : 0,
-                          },
-                        ]}
-                      >
-                        {b.widthDays >= 2 && (
-                          <Text style={styles.blockText} numberOfLines={1}>
-                            {b.label}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+        <View style={{ flex: 1 }} onLayout={onGridLayout}>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            showsHorizontalScrollIndicator
+            bounces={false}
+            scrollEventThrottle={16}
+            onScroll={onScroll}
+            onContentSizeChange={onContentReady}
+            style={{ flex: 1 }}
+          >
+            <View style={{ width: NAME_W + totalDaysWidth }}>
+              {/* Day header row */}
+              <View style={[styles.headerRow, { width: NAME_W + totalDaysWidth }]}>
+                <View style={[styles.cornerCell, { width: NAME_W }]}>
+                  <Text style={styles.cornerText}>Logements</Text>
                 </View>
-              );
-            })}
-          </View>
-        </ScrollView>
+                {days.map((d) => {
+                  const isToday = d === TODAY;
+                  const num = parseInt(d.slice(8), 10);
+                  const dow = format(parseISO(d), 'EEE', { locale: fr }).slice(0, 2);
+                  const isWE = [6, 0].includes(parseISO(d).getDay());
+                  const isFirst = num === 1;
+                  return (
+                    <View
+                      key={d}
+                      style={[
+                        styles.dayCell,
+                        isWE && styles.dayCellWE,
+                        isToday && styles.dayCellToday,
+                        isFirst && styles.dayCellFirst,
+                      ]}
+                    >
+                      {isFirst && (
+                        <Text style={styles.monthMark}>
+                          {format(parseISO(d), 'MMM', { locale: fr }).toUpperCase()}
+                        </Text>
+                      )}
+                      <Text style={[styles.dow, isToday && styles.textToday, isWE && styles.textWE]}>
+                        {dow}
+                      </Text>
+                      <Text style={[styles.dayNum, isToday && styles.textToday, isWE && styles.textWE]}>
+                        {num}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* Property rows — vertical scroll */}
+              <ScrollView
+                style={{ height: rowsHeight }}
+                showsVerticalScrollIndicator
+                nestedScrollEnabled
+                bounces={false}
+              >
+                {(properties ?? []).map((property, idx) => {
+                  const blocks = allBlocks[property.id] ?? [];
+                  return (
+                    <View
+                      key={property.id}
+                      style={[
+                        styles.propertyRow,
+                        { width: NAME_W + totalDaysWidth },
+                        idx % 2 === 1 && styles.rowAlt,
+                        !property.is_active && styles.rowInactive,
+                      ]}
+                    >
+                      {/* Property name cell */}
+                      <View style={[styles.nameCell, { width: NAME_W }]}>
+                        <View style={[styles.colorDot, { backgroundColor: property.color }]} />
+                        <Text style={styles.nameText} numberOfLines={2}>{property.name}</Text>
+                      </View>
+
+                      {/* Grid area */}
+                      <View style={{ width: totalDaysWidth, height: ROW_H }}>
+                        {/* Weekend + month separator tints */}
+                        {days.map((d, di) => {
+                          const isWE = [6, 0].includes(parseISO(d).getDay());
+                          const isFirst = d.slice(8) === '01';
+                          return (
+                            <View
+                              key={d}
+                              style={[
+                                styles.colLine,
+                                { left: di * DAY_W, width: DAY_W },
+                                isWE && styles.colLineWE,
+                                isFirst && styles.colLineFirst,
+                              ]}
+                            />
+                          );
+                        })}
+
+                        {/* Today highlight */}
+                        {todayIdx >= 0 && (
+                          <View style={[styles.todayCol, { left: todayIdx * DAY_W, width: DAY_W }]} />
+                        )}
+
+                        {/* Reservation blocks — tappable */}
+                        {blocks.map((b, bi) => (
+                          <TouchableOpacity
+                            key={bi}
+                            activeOpacity={0.75}
+                            onPress={() => router.push(`/(app)/reservations/${b.resId}` as any)}
+                            style={[
+                              styles.block,
+                              {
+                                left: b.left,
+                                width: b.width,
+                                backgroundColor: b.color,
+                                borderTopLeftRadius: b.isStart ? 6 : 0,
+                                borderBottomLeftRadius: b.isStart ? 6 : 0,
+                                borderTopRightRadius: b.isEnd ? 6 : 0,
+                                borderBottomRightRadius: b.isEnd ? 6 : 0,
+                              },
+                            ]}
+                          >
+                            {b.widthDays >= 2 && (
+                              <Text style={styles.blockText} numberOfLines={1}>
+                                {b.label}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </ScrollView>
+        </View>
       )}
 
       {/* Footer */}

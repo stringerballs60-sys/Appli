@@ -109,6 +109,12 @@ export default function PlanningScreen() {
   const todayIdx = days.indexOf(TODAY);
   const todayScrollX = Math.max(0, NAME_W + todayIdx * DAY_W - 80);
 
+  // Scroll initial : position sauvegardée si on revient d'une fiche résa, sinon aujourd'hui
+  const initialScrollX = useMemo(
+    () => (planningScrollX >= 0 ? planningScrollX : todayScrollX),
+    [] // capturé une seule fois au montage
+  );
+
   const [visibleMonth, setVisibleMonth] = useState(() =>
     format(parseISO(TODAY), 'MMMM yyyy', { locale: fr }).replace(/^\w/, (c) => c.toUpperCase())
   );
@@ -117,12 +123,12 @@ export default function PlanningScreen() {
     setRowsHeight(e.nativeEvent.layout.height - HEADER_H);
   }, []);
 
-  /* Restore scroll position once when screen comes into view */
+  /* Quand on revient d'une fiche résa → restaure la position sauvegardée */
   useFocusEffect(
     useCallback(() => {
       const target = planningScrollX >= 0 ? planningScrollX : todayScrollX;
-      setTimeout(() => scrollRef.current?.scrollTo({ x: target, animated: false }), 80);
-    }, [])
+      setTimeout(() => scrollRef.current?.scrollTo({ x: target, animated: false }), 120);
+    }, [planningScrollX, todayScrollX])
   );
 
   /* Save scroll X + update month label */
@@ -181,6 +187,7 @@ export default function PlanningScreen() {
             horizontal
             showsHorizontalScrollIndicator
             bounces={false}
+            contentOffset={{ x: initialScrollX, y: 0 }}
             scrollEventThrottle={16}
             onScroll={onScroll}
             style={{ flex: 1 }}

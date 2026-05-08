@@ -74,7 +74,7 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>ConciergePro</Text>
+            <Text style={styles.greeting}>KAZA</Text>
             <Text style={styles.date}>{formatDateLong(today)}</Text>
           </View>
           <MaterialCommunityIcons name="home-city" size={32} color="#FFFFFF" />

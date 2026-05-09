@@ -13,3 +13,4 @@ web-build/
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+expo-env.d.ts

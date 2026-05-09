@@ -1,4 +1,4 @@
-// ── Enums ──────────────────────────────────────────────────────────────────
+// ── Enums ──────────────────────────────────────────────────────────────────────────────
 
 export enum PropertyType {
   SCI = 'SCI',
@@ -35,7 +35,7 @@ export enum LinenType {
   KITCHEN_TOWELS = 'kitchen_towels',
 }
 
-// ── Data Models ────────────────────────────────────────────────────────────
+// ── Data Models ──────────────────────────────────────────────────────────────────
 
 export interface Profile {
   id: string;
@@ -82,6 +82,8 @@ export interface Reservation {
   status: ReservationStatus;
   check_in: string;
   check_out: string;
+  check_in_time: string | null;
+  check_in_time_confirmed: boolean;
   nb_nights: number;
   guest_name: string;
   guest_email: string | null;
@@ -98,7 +100,6 @@ export interface Reservation {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  // joined relation
   property?: Property;
 }
 
@@ -138,12 +139,11 @@ export interface Consumable {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  // derived
   is_low?: boolean;
   property?: Pick<Property, 'id' | 'name' | 'color'>;
 }
 
-// ── Form / Input Types ──────────────────────────────────────────────────────
+// ── Form / Input Types ────────────────────────────────────────────────────────────────────
 
 export type PropertyFormData = {
   name: string;
@@ -169,6 +169,8 @@ export type ReservationFormData = {
   guest_phone: string;
   check_in: string;
   check_out: string;
+  check_in_time?: string;
+  check_in_time_confirmed?: boolean;
   nb_couples: number;
   nb_solo_adults: number;
   nb_children: number;

@@ -1,0 +1,4 @@
+@echo off
+echo EXPO_PUBLIC_SUPABASE_URL=https://hzxbtlhvxnocjemxtxap.supabase.co> .env
+echo EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6eGJ0bGh2eG5vY2plbXh0eGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NDEwNjEsImV4cCI6MjA5MzMxNzA2MX0.zoSbpz7QvtaS36MNOXKm-uolkAgHQiD9yT9RkcpS-xA>> .env
+echo .env cree avec succes !

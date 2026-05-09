@@ -61,10 +61,7 @@ export const reservationsService = {
     return data;
   },
 
-  async getTodayActivity(userId: string): Promise<{
-    checkIns: Reservation[];
-    checkOuts: Reservation[];
-  }> {
+  async getTodayActivity(userId: string): Promise<{ checkIns: Reservation[]; checkOuts: Reservation[] }> {
     const today = new Date().toISOString().slice(0, 10);
     const [checkInsRes, checkOutsRes] = await Promise.all([
       supabase
@@ -83,6 +80,24 @@ export const reservationsService = {
     if (checkInsRes.error) throw checkInsRes.error;
     if (checkOutsRes.error) throw checkOutsRes.error;
     return { checkIns: checkInsRes.data, checkOuts: checkOutsRes.data };
+  },
+
+  async getPendingCheckInTime(userId: string, daysAhead = 3): Promise<Reservation[]> {
+    const today = new Date().toISOString().slice(0, 10);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + daysAhead);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('*, property:properties(*)')
+      .eq('user_id', userId)
+      .gte('check_in', today)
+      .lte('check_in', cutoffStr)
+      .eq('check_in_time_confirmed', false)
+      .neq('status', 'cancelled')
+      .order('check_in');
+    if (error) throw error;
+    return data;
   },
 
   async checkOverlap(
@@ -104,11 +119,7 @@ export const reservationsService = {
     return (data ?? []).length > 0;
   },
 
-  async create(
-    userId: string,
-    form: ReservationFormData,
-    property: Property
-  ): Promise<Reservation> {
+  async create(userId: string, form: ReservationFormData, property: Property): Promise<Reservation> {
     const linen_calculation = calculateLinen(
       { nb_couples: form.nb_couples, nb_solo_adults: form.nb_solo_adults, nb_children: form.nb_children },
       {
@@ -136,11 +147,7 @@ export const reservationsService = {
     return data;
   },
 
-  async update(
-    id: string,
-    form: Partial<ReservationFormData>,
-    property?: Property
-  ): Promise<Reservation> {
+  async update(id: string, form: Partial<ReservationFormData>, property?: Property): Promise<Reservation> {
     let linen_calculation = undefined;
     if (property && form.beds_double_used !== undefined) {
       linen_calculation = calculateLinen(
@@ -170,10 +177,7 @@ export const reservationsService = {
   },
 
   async updateStatus(id: string, status: string): Promise<void> {
-    const { error } = await supabase
-      .from('reservations')
-      .update({ status })
-      .eq('id', id);
+    const { error } = await supabase.from('reservations').update({ status }).eq('id', id);
     if (error) throw error;
   },
 

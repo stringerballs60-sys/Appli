@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import { Text, Chip } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { PropertyType } from '@/types';
 import { PROPERTY_TYPE_COLORS } from '@/constants/colors';
 import { PROPERTY_TYPE_SHORT_LABELS } from '@/constants/labels';

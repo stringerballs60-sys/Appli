@@ -74,52 +74,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     overflow: 'hidden',
   },
-  colorStrip: {
-    width: 5,
-    alignSelf: 'stretch',
-  },
-  content: {
-    flex: 1,
-    padding: 12,
-    gap: 4,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  guestName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: APP_COLORS.textPrimary,
-    flex: 1,
-    marginRight: 8,
-  },
-  propertyName: {
-    fontSize: 13,
-    color: APP_COLORS.textSecondary,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dateText: {
-    fontSize: 13,
-    color: APP_COLORS.textSecondary,
-  },
-  nights: {
-    fontSize: 12,
-    color: APP_COLORS.primary,
-    fontWeight: '600',
-  },
-  guestRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  guestCount: {
-    fontSize: 13,
-    color: APP_COLORS.textSecondary,
-  },
+  colorStrip: { width: 5, alignSelf: 'stretch' },
+  content: { flex: 1, padding: 12, gap: 4 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  guestName: { fontSize: 15, fontWeight: '600', color: APP_COLORS.textPrimary, flex: 1, marginRight: 8 },
+  propertyName: { fontSize: 13, color: APP_COLORS.textSecondary },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dateText: { fontSize: 13, color: APP_COLORS.textSecondary },
+  nights: { fontSize: 12, color: APP_COLORS.primary, fontWeight: '600' },
+  guestRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  guestCount: { fontSize: 13, color: APP_COLORS.textSecondary },
 });

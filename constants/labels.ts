@@ -33,17 +33,16 @@ export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
 };
 
 export const LINEN_TYPE_LABELS: Record<LinenType, string> = {
-  [LinenType.DOUBLE_SHEETS]: 'Draps doubles',
-  [LinenType.SINGLE_SHEETS]: 'Draps simples',
+  [LinenType.DOUBLE_SHEETS]: 'Drap housse 140×190 + drap 200×220',
+  [LinenType.SINGLE_SHEETS]: 'Drap housse 90×190 + taie + drap',
   [LinenType.BABY_SHEETS]: 'Draps bébé',
-  [LinenType.BATH_TOWELS]: 'Serviettes de bain',
-  [LinenType.HAND_TOWELS]: 'Serviettes de main',
+  [LinenType.BATH_TOWELS]: 'Serviettes bain',
+  [LinenType.HAND_TOWELS]: 'Serviettes mains',
   [LinenType.FACE_TOWELS]: 'Gants de toilette',
   [LinenType.BATH_MATS]: 'Tapis de bain',
   [LinenType.KITCHEN_TOWELS]: 'Torchons',
 };
 
-// Suggested categories by property type
 export const PROPERTY_TYPE_DEFAULT_CATEGORY: Record<PropertyType, ReservationCategory> = {
   [PropertyType.SCI]: ReservationCategory.AIRBNB_SCI,
   [PropertyType.COHOST_AIRBNB]: ReservationCategory.AIRBNB_COHOST,

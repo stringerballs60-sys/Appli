@@ -7,8 +7,6 @@ export const LINEN_KEY = 'linen';
 export const EQUIPMENT_KEY = 'equipment';
 export const CONSUMABLES_KEY = 'consumables';
 
-// ── Linen ─────────────────────────────────────────────────────────────────
-
 export function useLinenForProperty(propertyId: string) {
   return useQuery({
     queryKey: [LINEN_KEY, propertyId],
@@ -34,8 +32,6 @@ export function useUpsertLinen() {
       qc.invalidateQueries({ queryKey: [LINEN_KEY, propertyId] }),
   });
 }
-
-// ── Equipment ─────────────────────────────────────────────────────────────
 
 export function useEquipmentForProperty(propertyId: string) {
   return useQuery({
@@ -87,8 +83,6 @@ export function useDeleteEquipment() {
       qc.invalidateQueries({ queryKey: [EQUIPMENT_KEY, propertyId] }),
   });
 }
-
-// ── Consumables ───────────────────────────────────────────────────────────
 
 export function useConsumablesForProperty(propertyId: string) {
   return useQuery({

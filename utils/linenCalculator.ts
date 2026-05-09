@@ -14,10 +14,6 @@ export interface BedUsage {
   beds_crib_used: number;
 }
 
-/**
- * Suggests an initial bed allocation from guest breakdown.
- * Result is pre-filled in the form but freely editable by the user.
- */
 export function suggestBedAllocation(
   guests: GuestBreakdown,
   property: Pick<Property, 'nb_double_beds' | 'nb_single_beds' | 'nb_sofa_beds' | 'nb_baby_cribs'>
@@ -42,10 +38,6 @@ export function suggestBedAllocation(
   };
 }
 
-/**
- * Calculates linen needed from the confirmed bed usage and guest counts.
- * This is the source of truth — NOT derived from couple/solo breakdown.
- */
 export function calculateLinen(
   guests: Pick<GuestBreakdown, 'nb_couples' | 'nb_solo_adults' | 'nb_children'>,
   beds: BedUsage,

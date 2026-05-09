@@ -2,8 +2,6 @@ import { supabase } from './supabase';
 import { LinenInventory, EquipmentInventory, Consumable, LinenType } from '@/types';
 
 export const inventoryService = {
-  // ── Linen ────────────────────────────────────────────────────────────────
-
   async getLinenForProperty(propertyId: string): Promise<LinenInventory[]> {
     const { data, error } = await supabase
       .from('linen_inventory')
@@ -31,8 +29,6 @@ export const inventoryService = {
     if (error) throw error;
     return data;
   },
-
-  // ── Equipment ────────────────────────────────────────────────────────────
 
   async getEquipmentForProperty(propertyId: string): Promise<EquipmentInventory[]> {
     const { data, error } = await supabase
@@ -76,8 +72,6 @@ export const inventoryService = {
     const { error } = await supabase.from('equipment_inventory').delete().eq('id', id);
     if (error) throw error;
   },
-
-  // ── Consumables ──────────────────────────────────────────────────────────
 
   async getConsumablesForProperty(propertyId: string): Promise<Consumable[]> {
     const { data, error } = await supabase

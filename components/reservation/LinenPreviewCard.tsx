@@ -48,45 +48,11 @@ export function LinenPreviewCard({ linen, title = 'Linge prévu' }: LinenPreview
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: '#EEF2FF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: APP_COLORS.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  item: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 8,
-    alignItems: 'center',
-    minWidth: 72,
-  },
-  qty: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: APP_COLORS.primary,
-  },
-  label: {
-    fontSize: 10,
-    color: APP_COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: 2,
-  },
+  card: { borderRadius: 12, padding: 12, backgroundColor: '#EEF2FF' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  title: { fontSize: 13, fontWeight: '700', color: APP_COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  item: { backgroundColor: '#FFFFFF', borderRadius: 8, padding: 8, alignItems: 'center', minWidth: 72 },
+  qty: { fontSize: 20, fontWeight: '700', color: APP_COLORS.primary },
+  label: { fontSize: 10, color: APP_COLORS.textSecondary, textAlign: 'center', marginTop: 2 },
 });

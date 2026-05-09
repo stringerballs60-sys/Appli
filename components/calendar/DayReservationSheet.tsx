@@ -1,5 +1,5 @@
 import { View, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
-import { Text, Surface } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Reservation } from '@/types';

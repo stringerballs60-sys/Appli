@@ -24,6 +24,7 @@ const MONTHS_BACK = 1;
 const MONTHS_FORWARD = 5;
 const TODAY = toISODateString(new Date());
 
+/* Build a continuous range of days spanning several months */
 function buildRange(): { days: string[]; from: string; to: string } {
   const start = startOfMonth(subDays(parseISO(TODAY), MONTHS_BACK * 30));
   const end = endOfMonth(addDays(parseISO(TODAY), MONTHS_FORWARD * 30));
@@ -108,9 +109,10 @@ export default function PlanningScreen() {
   const todayIdx = days.indexOf(TODAY);
   const todayScrollX = Math.max(0, NAME_W + todayIdx * DAY_W - 80);
 
+  // Scroll initial : position sauvegardée si on revient d'une fiche résa, sinon aujourd'hui
   const initialScrollX = useMemo(
     () => (planningScrollX >= 0 ? planningScrollX : todayScrollX),
-    []
+    [] // capturé une seule fois au montage
   );
 
   const [visibleMonth, setVisibleMonth] = useState(() =>
@@ -121,6 +123,7 @@ export default function PlanningScreen() {
     setRowsHeight(e.nativeEvent.layout.height - HEADER_H);
   }, []);
 
+  /* Quand on revient d'une fiche résa → restaure la position sauvegardée */
   useFocusEffect(
     useCallback(() => {
       const target = planningScrollX >= 0 ? planningScrollX : todayScrollX;
@@ -128,6 +131,7 @@ export default function PlanningScreen() {
     }, [planningScrollX, todayScrollX])
   );
 
+  /* Save scroll X + update month label */
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const x = e.nativeEvent.contentOffset.x;
@@ -158,6 +162,7 @@ export default function PlanningScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="#FFFFFF" />
@@ -188,6 +193,7 @@ export default function PlanningScreen() {
             style={{ flex: 1 }}
           >
             <View style={{ width: NAME_W + totalDaysWidth }}>
+              {/* Day header row */}
               <View style={[styles.headerRow, { width: NAME_W + totalDaysWidth }]}>
                 <View style={[styles.cornerCell, { width: NAME_W }]}>
                   <Text style={styles.cornerText}>Logements</Text>
@@ -224,6 +230,7 @@ export default function PlanningScreen() {
                 })}
               </View>
 
+              {/* Property rows — vertical scroll */}
               <ScrollView
                 style={{ height: rowsHeight }}
                 showsVerticalScrollIndicator
@@ -242,12 +249,15 @@ export default function PlanningScreen() {
                         !property.is_active && styles.rowInactive,
                       ]}
                     >
+                      {/* Property name cell */}
                       <View style={[styles.nameCell, { width: NAME_W }]}>
                         <View style={[styles.colorDot, { backgroundColor: property.color }]} />
                         <Text style={styles.nameText} numberOfLines={2}>{property.name}</Text>
                       </View>
 
+                      {/* Grid area */}
                       <View style={{ width: totalDaysWidth, height: ROW_H }}>
+                        {/* Weekend + month separator tints */}
                         {days.map((d, di) => {
                           const isWE = [6, 0].includes(parseISO(d).getDay());
                           const isFirst = d.slice(8) === '01';
@@ -264,10 +274,12 @@ export default function PlanningScreen() {
                           );
                         })}
 
+                        {/* Today highlight */}
                         {todayIdx >= 0 && (
                           <View style={[styles.todayCol, { left: todayIdx * DAY_W, width: DAY_W }]} />
                         )}
 
+                        {/* Reservation blocks — tappable */}
                         {blocks.map((b, bi) => (
                           <TouchableOpacity
                             key={bi}
@@ -308,6 +320,7 @@ export default function PlanningScreen() {
         </View>
       )}
 
+      {/* Footer */}
       {!isLoading && (
         <View style={styles.footer}>
           <Text style={styles.footerText}>
@@ -325,6 +338,7 @@ export default function PlanningScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
+
   header: {
     backgroundColor: APP_COLORS.primary,
     paddingHorizontal: 14,
@@ -348,6 +362,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   todayBtnText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600' },
+
   headerRow: {
     height: HEADER_H,
     flexDirection: 'row',
@@ -390,6 +405,7 @@ const styles = StyleSheet.create({
   dayNum: { fontSize: 13, fontWeight: '700', color: APP_COLORS.textPrimary },
   textToday: { color: APP_COLORS.primary },
   textWE: { color: '#4F46E5' },
+
   propertyRow: {
     height: ROW_H,
     flexDirection: 'row',
@@ -399,6 +415,7 @@ const styles = StyleSheet.create({
   },
   rowAlt: { backgroundColor: '#F9FAFB' },
   rowInactive: { opacity: 0.45 },
+
   nameCell: {
     height: ROW_H,
     flexDirection: 'row',
@@ -411,6 +428,7 @@ const styles = StyleSheet.create({
   },
   colorDot: { width: 9, height: 9, borderRadius: 5, flexShrink: 0 },
   nameText: { fontSize: 11, fontWeight: '600', color: APP_COLORS.textPrimary, flex: 1 },
+
   colLine: {
     position: 'absolute',
     top: 0,
@@ -428,6 +446,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: APP_COLORS.primary + 'AA',
   },
+
   block: {
     position: 'absolute',
     top: 8,
@@ -452,6 +471,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
   },
+
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -15,6 +15,7 @@ const MENU_ITEMS = [
     color: '#7C3AED',
     route: '/(app)/inventory',
   },
+  // Future items can be added here
 ];
 
 export default function MenuScreen() {

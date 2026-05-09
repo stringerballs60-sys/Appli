@@ -43,6 +43,7 @@ export const LINEN_TYPE_LABELS: Record<LinenType, string> = {
   [LinenType.KITCHEN_TOWELS]: 'Torchons',
 };
 
+// Suggested categories by property type
 export const PROPERTY_TYPE_DEFAULT_CATEGORY: Record<PropertyType, ReservationCategory> = {
   [PropertyType.SCI]: ReservationCategory.AIRBNB_SCI,
   [PropertyType.COHOST_AIRBNB]: ReservationCategory.AIRBNB_COHOST,

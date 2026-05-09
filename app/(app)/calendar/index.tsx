@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, ActivityIndicator, Chip } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
+import { TouchableOpacity } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { useActiveProperties } from '@/hooks/useProperties';
@@ -9,19 +12,17 @@ import { useReservationsForMonth, useReservationsForDay } from '@/hooks/useReser
 import { useAppStore } from '@/stores/appStore';
 import { DayReservationSheet } from '@/components/calendar/DayReservationSheet';
 import { APP_COLORS } from '@/constants/colors';
-import { getMonthRange, getDatesInRange, toISODateString } from '@/utils/dateHelpers';
+import { FONTS } from '@/constants/typography';
+import { getMonthRange, getDatesInRange } from '@/utils/dateHelpers';
 import { Reservation } from '@/types';
 
-type MarkedDates = Record<string, {
+type Period = {
   startingDay?: boolean;
   endingDay?: boolean;
-  color?: string;
-  textColor?: string;
-  dots?: { key: string; color: string }[];
-  marked?: boolean;
-  selected?: boolean;
-  selectedColor?: string;
-}>;
+  color: string;
+};
+
+type MarkedDates = Record<string, { periods: Period[]; selected?: boolean; selectedColor?: string }>;
 
 function buildMarkedDates(
   reservations: Reservation[],
@@ -29,6 +30,7 @@ function buildMarkedDates(
   filterPropertyId: string | null
 ): MarkedDates {
   const marks: MarkedDates = {};
+
   const filtered = filterPropertyId
     ? reservations.filter((r) => r.property_id === filterPropertyId)
     : reservations;
@@ -38,31 +40,23 @@ function buildMarkedDates(
     const dates = getDatesInRange(res.check_in, res.check_out);
 
     dates.forEach((date, idx) => {
-      if (!marks[date]) marks[date] = {};
       const isStart = idx === 0;
       const isEnd = idx === dates.length - 1;
 
-      if (!marks[date].dots) marks[date].dots = [];
-      if (isStart) {
-        marks[date].dots!.push({ key: res.id + '_in', color: APP_COLORS.success });
-        marks[date].startingDay = true;
-        marks[date].color = color;
-      } else if (isEnd) {
-        marks[date].dots!.push({ key: res.id + '_out', color: APP_COLORS.warning });
-        marks[date].endingDay = true;
-        marks[date].color = color + '99';
-      } else {
-        marks[date].color = color + '44';
-      }
+      if (!marks[date]) marks[date] = { periods: [] };
+
+      marks[date].periods.push({
+        startingDay: isStart,
+        endingDay: isEnd,
+        color,
+      });
     });
   }
 
   if (selectedDay) {
-    marks[selectedDay] = {
-      ...(marks[selectedDay] ?? {}),
-      selected: true,
-      selectedColor: APP_COLORS.primary,
-    };
+    if (!marks[selectedDay]) marks[selectedDay] = { periods: [] };
+    marks[selectedDay].selected = true;
+    marks[selectedDay].selectedColor = APP_COLORS.primary;
   }
 
   return marks;
@@ -70,6 +64,7 @@ function buildMarkedDates(
 
 export default function CalendarScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { calendarMonth, setCalendarMonth } = useAppStore();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -99,6 +94,13 @@ export default function CalendarScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('calendar.title')}</Text>
+        <TouchableOpacity
+          style={styles.planningBtn}
+          onPress={() => router.push('/(app)/planning' as any)}
+        >
+          <MaterialCommunityIcons name="view-sequential" size={20} color="#FFFFFF" />
+          <Text style={styles.planningBtnText}>Planning</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Property filter */}
@@ -134,7 +136,7 @@ export default function CalendarScreen() {
           current={calendarMonth + '-01'}
           onDayPress={handleDayPress}
           onMonthChange={handleMonthChange}
-          markingType="multi-dot"
+          markingType="multi-period"
           markedDates={markedDates}
           style={styles.calendar}
           theme={{
@@ -146,7 +148,6 @@ export default function CalendarScreen() {
             todayBackgroundColor: '#EEF2FF',
             dayTextColor: APP_COLORS.textPrimary,
             textDisabledColor: APP_COLORS.border,
-            dotColor: APP_COLORS.primary,
             arrowColor: APP_COLORS.primary,
             monthTextColor: APP_COLORS.textPrimary,
             textDayFontWeight: '500',
@@ -159,15 +160,15 @@ export default function CalendarScreen() {
       {/* Legend */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: APP_COLORS.success }]} />
+          <View style={[styles.legendBar, { backgroundColor: APP_COLORS.success }]} />
           <Text style={styles.legendText}>Arrivée</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: APP_COLORS.warning }]} />
+          <View style={[styles.legendBar, { backgroundColor: APP_COLORS.warning }]} />
           <Text style={styles.legendText}>Départ</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: APP_COLORS.primary }]} />
+          <View style={[styles.legendBar, { backgroundColor: APP_COLORS.primary + '88' }]} />
           <Text style={styles.legendText}>Occupation</Text>
         </View>
       </View>
@@ -184,13 +185,15 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
-  header: { backgroundColor: APP_COLORS.primary, paddingHorizontal: 20, paddingVertical: 16 },
-  title: { fontSize: 22, fontWeight: '700', color: '#FFFFFF' },
+  header: { backgroundColor: APP_COLORS.primary, paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
+  planningBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  planningBtnText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600' },
   filterRow: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, backgroundColor: '#FFFFFF' },
   chip: { borderRadius: 20 },
   calendar: { margin: 8, borderRadius: 12, elevation: 2 },
   legend: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingVertical: 10, backgroundColor: '#FFFFFF', marginHorizontal: 8, borderRadius: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendBar: { width: 20, height: 6, borderRadius: 3 },
   legendText: { fontSize: 12, color: APP_COLORS.textSecondary },
 });

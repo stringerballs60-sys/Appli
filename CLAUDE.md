@@ -75,9 +75,10 @@ Fichier : `utils/linenCalculator.ts`
 
 ## GitHub
 - Repo : `stringerballs60-sys/Appli`
-- Branche principale : `main`
-- Les branches Claude Code suivent le pattern `claude/...`
+- Branche principale : `kaza`
+- Toujours travailler directement sur la branche `kaza`, ne pas créer de nouvelles branches
 
 ## Historique des sessions
 - **Mai 2026** : Initialisation complète du MVP (auth, dashboard, calendrier, réservations, logements, inventaire 3 catégories, calcul linge, RLS Supabase)
 - **Mai 2026** : Renommage ConciergePro → KAZA (app.json, package.json, i18n, dashboard)
+- **Mai 2026** : Nettoyage GitHub — branche unique `kaza`, CLAUDE.md pour mémoire inter-sessions, hook SessionStart

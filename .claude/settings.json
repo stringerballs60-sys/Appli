@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/user/Appli && git checkout kaza 2>/dev/null || true",
+            "statusMessage": "Basculement sur la branche kaza..."
+          }
+        ]
+      }
+    ]
+  }
+}

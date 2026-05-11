@@ -174,9 +174,9 @@ function CleaningStatusCard({
   allArrivals: Reservation[];
   onToggle: (property: Property) => void;
 }) {
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+  const in3days = new Date(today);
+  in3days.setDate(in3days.getDate() + 3);
+  const in3daysStr = in3days.toISOString().slice(0, 10);
 
   const active = properties
     .filter((p) => p.is_active)
@@ -184,16 +184,17 @@ function CleaningStatusCard({
       const nextArrival = allArrivals
         .filter((r) => r.property_id === p.id)
         .sort((a, b) => a.check_in.localeCompare(b.check_in))[0];
-      const urgent = p.cleaning_status === 'to_do' && !!nextArrival && nextArrival.check_in <= tomorrowStr;
+      const urgent = p.cleaning_status === 'to_do' && !!nextArrival && nextArrival.check_in <= in3daysStr;
       return { property: p, nextArrival, urgent };
     })
     .sort((a, b) => {
-      if (a.property.cleaning_status !== b.property.cleaning_status) {
-        return a.property.cleaning_status === 'to_do' ? -1 : 1;
-      }
+      // Tri par date de prochain check-in (le plus proche en premier)
+      // Les logements sans check-in à venir vont en bas
       if (a.nextArrival && b.nextArrival) {
         return a.nextArrival.check_in.localeCompare(b.nextArrival.check_in);
       }
+      if (a.nextArrival) return -1;
+      if (b.nextArrival) return 1;
       return 0;
     });
 

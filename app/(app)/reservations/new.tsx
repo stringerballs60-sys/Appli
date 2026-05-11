@@ -46,11 +46,17 @@ export default function NewReservationScreen() {
   const [form, setForm] = useState<ReservationFormData>(emptyForm());
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [datePickerTarget, setDatePickerTarget] = useState<'check_in' | 'check_out' | null>(null);
+  const [calendarInitialDate, setCalendarInitialDate] = useState<string | undefined>(undefined);
   const [error, setError] = useState('');
   const [overlapWarning, setOverlapWarning] = useState(false);
 
   const set = (key: keyof ReservationFormData, value: any) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const openDatePicker = (target: 'check_in' | 'check_out') => {
+    setCalendarInitialDate(target === 'check_out' && form.check_in ? form.check_in : undefined);
+    setDatePickerTarget(target);
+  };
 
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
@@ -212,7 +218,7 @@ export default function NewReservationScreen() {
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.datePicker}
-            onPress={() => setDatePickerTarget('check_in')}
+            onPress={() => openDatePicker('check_in')}
           >
             <Text style={styles.datePickerLabel}>{t('reservations.checkIn')}</Text>
             <Text style={[styles.datePickerValue, !form.check_in && styles.datePlaceholder]}>
@@ -221,7 +227,7 @@ export default function NewReservationScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.datePicker}
-            onPress={() => setDatePickerTarget('check_out')}
+            onPress={() => openDatePicker('check_out')}
           >
             <Text style={styles.datePickerLabel}>{t('reservations.checkOut')}</Text>
             <Text style={[styles.datePickerValue, !form.check_out && styles.datePlaceholder]}>
@@ -335,8 +341,8 @@ export default function NewReservationScreen() {
               {datePickerTarget === 'check_in' ? t('reservations.checkIn') : t('reservations.checkOut')}
             </Text>
             <Calendar
-              key={datePickerTarget === 'check_out' && form.check_in ? form.check_in : 'checkin'}
-              current={datePickerTarget === 'check_out' && form.check_in ? form.check_in : undefined}
+              key={calendarInitialDate ?? 'checkin'}
+              current={calendarInitialDate}
               minDate={datePickerTarget === 'check_out' && form.check_in
                 ? form.check_in
                 : toISODateString(new Date())}

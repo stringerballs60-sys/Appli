@@ -20,9 +20,10 @@ import { Reservation } from '@/types';
 const DAY_WIDTH = 52;
 const LEFT_COL = 88;
 const ROW_HEIGHT = 62;
-const HEADER_HEIGHT = 50;
+const MONTH_ROW_HEIGHT = 22;
+const DAY_ROW_HEIGHT = 46;
+const HEADER_HEIGHT = MONTH_ROW_HEIGHT + DAY_ROW_HEIGHT;
 const PAST_DAYS = 3;
-const TOTAL_DAYS = 28;
 
 function getBlockGeometry(resa: Reservation, startDate: Date) {
   const checkIn = parseISO(resa.check_in);
@@ -43,6 +44,9 @@ export default function CalendarScreen() {
   startDate.setDate(startDate.getDate() - PAST_DAYS);
   startDate.setHours(0, 0, 0, 0);
 
+  const endDate = new Date(startDate.getFullYear(), 9, 31); // 31 octobre
+  const TOTAL_DAYS = Math.max(28, differenceInDays(endDate, startDate) + 1);
+
   const from = format(startDate, 'yyyy-MM-dd');
   const to = format(addDays(startDate, TOTAL_DAYS), 'yyyy-MM-dd');
 
@@ -50,6 +54,17 @@ export default function CalendarScreen() {
   const { data: properties, isLoading: propLoading } = useActiveProperties();
 
   const days = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(startDate, i));
+
+  // Group days by month for the month header row
+  const monthGroups: Array<{ label: string; count: number }> = [];
+  days.forEach((day) => {
+    const label = format(day, 'MMMM yyyy', { locale: fr });
+    if (monthGroups.length === 0 || monthGroups[monthGroups.length - 1].label !== label) {
+      monthGroups.push({ label, count: 1 });
+    } else {
+      monthGroups[monthGroups.length - 1].count++;
+    }
+  });
 
   const handleContentScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -87,20 +102,29 @@ export default function CalendarScreen() {
               scrollEnabled={false}
               showsHorizontalScrollIndicator={false}
             >
-              <View style={{ flexDirection: 'row' }}>
-                {days.map((day, i) => {
-                  const isT = isToday(day);
-                  return (
-                    <View key={i} style={[styles.dayHeader, isT && styles.dayHeaderToday]}>
-                      <Text style={[styles.dayNum, isT && styles.dayNumToday]}>
-                        {format(day, 'd')}
-                      </Text>
-                      <Text style={[styles.dayLabel, isT && styles.dayNumToday]}>
-                        {format(day, 'EEE', { locale: fr })}
-                      </Text>
+              <View>
+                <View style={{ flexDirection: 'row', height: MONTH_ROW_HEIGHT }}>
+                  {monthGroups.map((group, i) => (
+                    <View key={i} style={[styles.monthHeader, { width: group.count * DAY_WIDTH }]}>
+                      <Text style={styles.monthLabel} numberOfLines={1}>{group.label}</Text>
                     </View>
-                  );
-                })}
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row', height: DAY_ROW_HEIGHT }}>
+                  {days.map((day, i) => {
+                    const isT = isToday(day);
+                    return (
+                      <View key={i} style={[styles.dayHeader, isT && styles.dayHeaderToday]}>
+                        <Text style={[styles.dayNum, isT && styles.dayNumToday]}>
+                          {format(day, 'd')}
+                        </Text>
+                        <Text style={[styles.dayLabel, isT && styles.dayNumToday]}>
+                          {format(day, 'EEE', { locale: fr })}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -200,9 +224,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: APP_COLORS.border,
   },
+  monthHeader: {
+    height: MONTH_ROW_HEIGHT,
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    borderRightWidth: 1,
+    borderRightColor: APP_COLORS.border,
+    backgroundColor: APP_COLORS.primary + '10',
+  },
+  monthLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: APP_COLORS.primary,
+    textTransform: 'capitalize',
+  },
   dayHeader: {
     width: DAY_WIDTH,
-    height: HEADER_HEIGHT,
+    height: DAY_ROW_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
     borderRightWidth: 1,

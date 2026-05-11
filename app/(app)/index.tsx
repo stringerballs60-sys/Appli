@@ -124,16 +124,27 @@ function OccupiedCard({
 }
 
 function TurnoverCard({
-  checkIns,
-  checkOuts,
+  allDepartures,
+  allArrivals,
+  today,
   onPressItem,
 }: {
-  checkIns: Reservation[];
-  checkOuts: Reservation[];
+  allDepartures: Reservation[];
+  allArrivals: Reservation[];
+  today: string;
   onPressItem?: (r: Reservation) => void;
 }) {
-  const checkOutPropIds = new Set(checkOuts.map((r) => r.property_id));
-  const turnovers = checkIns.filter((r) => checkOutPropIds.has(r.property_id));
+  const seen = new Set<string>();
+  const turnovers = allDepartures
+    .filter((dep) => allArrivals.some((arr) => arr.property_id === dep.property_id && arr.check_in === dep.check_out))
+    .filter((dep) => {
+      const key = `${dep.property_id}-${dep.check_out}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.check_out.localeCompare(b.check_out));
+
   return (
     <Surface style={styles.statusCard} elevation={1}>
       <View style={styles.statusCardHeader}>
@@ -154,7 +165,12 @@ function TurnoverCard({
             activeOpacity={0.6}
           >
             {r.property && <View style={[styles.dot, { backgroundColor: r.property.color }]} />}
-            <Text style={styles.statusItemText} numberOfLines={1}>{r.property?.name}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statusItemText} numberOfLines={1}>{r.property?.name}</Text>
+              {r.check_out !== today && (
+                <Text style={styles.todayPropertyName}>{formatNextIn(r.check_out, today)}</Text>
+              )}
+            </View>
             <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
           </TouchableOpacity>
         ))
@@ -188,8 +204,6 @@ function CleaningStatusCard({
       return { property: p, nextArrival, urgent };
     })
     .sort((a, b) => {
-      // Tri par date de prochain check-in (le plus proche en premier)
-      // Les logements sans check-in à venir vont en bas
       if (a.nextArrival && b.nextArrival) {
         return a.nextArrival.check_in.localeCompare(b.nextArrival.check_in);
       }
@@ -405,8 +419,9 @@ export default function DashboardScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <TurnoverCard
-                  checkIns={todayData?.checkIns ?? []}
-                  checkOuts={todayData?.checkOuts ?? []}
+                  allDepartures={[...(todayData?.checkOuts ?? []), ...(upcomingActivity?.departures ?? [])]}
+                  allArrivals={allArrivals}
+                  today={today}
                   onPressItem={(r) => router.push(`/(app)/reservations/${r.id}`)}
                 />
               </View>

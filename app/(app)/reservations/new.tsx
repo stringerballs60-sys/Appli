@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ScrollView, View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, TextInput, Button, Snackbar, Appbar, HelperText } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,8 @@ const emptyForm = (): ReservationFormData => ({
   guest_phone: '',
   check_in: '',
   check_out: '',
+  check_in_time: '',
+  check_in_time_confirmed: false,
   nb_couples: 0,
   nb_solo_adults: 1,
   nb_children: 0,
@@ -237,6 +240,29 @@ export default function NewReservationScreen() {
           {nights > 0 && (
             <Text style={styles.nightsText}>{nights} nuit{nights > 1 ? 's' : ''}</Text>
           )}
+          <View style={styles.timeInputRow}>
+            <TextInput
+              label="Heure d'arrivée (ex: 16:00)"
+              value={form.check_in_time ?? ''}
+              onChangeText={(v) => set('check_in_time', v)}
+              keyboardType="numbers-and-punctuation"
+              mode="outlined"
+              style={[styles.input, { flex: 1 }]}
+            />
+            <TouchableOpacity
+              style={[styles.confirmedToggle, form.check_in_time_confirmed && styles.confirmedToggleActive]}
+              onPress={() => set('check_in_time_confirmed', !form.check_in_time_confirmed)}
+            >
+              <MaterialCommunityIcons
+                name={form.check_in_time_confirmed ? 'check-circle' : 'clock-alert-outline'}
+                size={18}
+                color={form.check_in_time_confirmed ? APP_COLORS.success : APP_COLORS.textSecondary}
+              />
+              <Text style={{ fontSize: 11, color: form.check_in_time_confirmed ? APP_COLORS.success : APP_COLORS.textSecondary, fontWeight: '600' }}>
+                {form.check_in_time_confirmed ? 'Confirmée' : 'À confirmer'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <SectionHeader title={t('reservations.guests')} />
@@ -408,6 +434,9 @@ const styles = StyleSheet.create({
   datePickerValue: { fontSize: 16, fontWeight: '600', color: APP_COLORS.textPrimary },
   datePlaceholder: { color: APP_COLORS.textSecondary, fontWeight: '400' },
   nightsText: { fontSize: 13, color: APP_COLORS.primary, fontWeight: '600', textAlign: 'center' },
+  timeInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  confirmedToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: APP_COLORS.border, backgroundColor: '#FFFFFF' },
+  confirmedToggleActive: { borderColor: APP_COLORS.success, backgroundColor: '#ECFDF5' },
   linenPreviewContainer: { marginHorizontal: 16, marginBottom: 8 },
   submitButton: { marginHorizontal: 16, marginTop: 8, borderRadius: 8, backgroundColor: APP_COLORS.primary },
   submitButtonContent: { paddingVertical: 6 },

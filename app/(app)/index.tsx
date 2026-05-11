@@ -292,7 +292,7 @@ export default function DashboardScreen() {
   };
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
-  const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(3);
+  const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(20);
   const { data: occupiedToday } = useOccupiedToday();
   const { data: lowStock, isLoading: stockLoading } = useLowStockAlerts();
   const { data: pendingCallList } = usePendingCheckInTime(3);
@@ -388,7 +388,7 @@ export default function DashboardScreen() {
               <View style={{ flex: 1 }}>
                 <TodayCard
                   title="3 prochains check-in"
-                  reservations={upcomingActivity?.arrivals ?? []}
+                  reservations={(upcomingActivity?.arrivals ?? []).slice(0, 3)}
                   icon="calendar-arrow-right"
                   iconColor={APP_COLORS.primary}
                   emptyLabel={t('dashboard.noUpcoming')}
@@ -399,7 +399,7 @@ export default function DashboardScreen() {
               <View style={{ flex: 1 }}>
                 <TodayCard
                   title="3 prochains check-out"
-                  reservations={upcomingActivity?.departures ?? []}
+                  reservations={(upcomingActivity?.departures ?? []).slice(0, 3)}
                   icon="calendar-arrow-left"
                   iconColor="#8B5CF6"
                   emptyLabel={t('dashboard.noUpcoming')}

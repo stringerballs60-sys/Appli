@@ -12,6 +12,7 @@ import { APP_COLORS, RESERVATION_STATUS_COLORS } from '@/constants/colors';
 import { RESERVATION_CATEGORY_LABELS, RESERVATION_STATUS_LABELS } from '@/constants/labels';
 import { formatDate, getNightsLabel } from '@/utils/dateHelpers';
 import { ReservationStatus } from '@/types';
+import { calculateLinen } from '@/utils/linenCalculator';
 
 export default function ReservationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,6 +37,17 @@ export default function ReservationDetailScreen() {
   }
 
   const property = reservation.property;
+
+  const linenToShow = reservation.linen_calculation ?? (
+    property && (reservation.nb_couples + reservation.nb_solo_adults + reservation.nb_children) > 0
+      ? calculateLinen(
+          { nb_couples: reservation.nb_couples, nb_solo_adults: reservation.nb_solo_adults, nb_children: reservation.nb_children },
+          { beds_double_used: reservation.beds_double_used, beds_single_used: reservation.beds_single_used, beds_sofa_used: reservation.beds_sofa_used, beds_crib_used: reservation.beds_crib_used },
+          property.nb_bathrooms
+        )
+      : null
+  );
+
   const totalGuests =
     reservation.nb_couples * 2 +
     reservation.nb_solo_adults +
@@ -199,9 +211,9 @@ export default function ReservationDetailScreen() {
         </View>
 
         {/* Linen */}
-        {reservation.linen_calculation && (
+        {linenToShow && (
           <View style={styles.linenContainer}>
-            <LinenPreviewCard linen={reservation.linen_calculation} />
+            <LinenPreviewCard linen={linenToShow!} />
           </View>
         )}
 

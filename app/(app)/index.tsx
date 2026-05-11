@@ -14,7 +14,7 @@ import { APP_COLORS } from '@/constants/colors';
 import { formatDateLong, formatDateShort } from '@/utils/dateHelpers';
 import { Reservation, Property } from '@/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { scheduleUpcomingNotifications } from '@/services/notifications';
+import { scheduleUpcomingNotifications, scheduleCleaningAlerts } from '@/services/notifications';
 
 function formatNextIn(date: string, today: string): string {
   const tomorrow = new Date(today);
@@ -190,9 +190,9 @@ function CleaningStatusCard({
   allArrivals: Reservation[];
   onToggle: (property: Property) => void;
 }) {
-  const in3days = new Date(today);
-  in3days.setDate(in3days.getDate() + 3);
-  const in3daysStr = in3days.toISOString().slice(0, 10);
+  const in4days = new Date(today);
+  in4days.setDate(in4days.getDate() + 4);
+  const in3daysStr = in4days.toISOString().slice(0, 10);
 
   const active = properties
     .filter((p) => p.is_active)
@@ -317,13 +317,26 @@ export default function DashboardScreen() {
   }, [todayData?.checkOuts, properties]);
 
   useEffect(() => {
-    if (upcomingActivity) {
-      scheduleUpcomingNotifications(
-        upcomingActivity.arrivals,
-        upcomingActivity.departures
-      ).catch(() => {});
-    }
-  }, [upcomingActivity]);
+    if (!upcomingActivity || !properties) return;
+    const in4daysStr = (() => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + 4);
+      return d.toISOString().slice(0, 10);
+    })();
+    const arrivals = [...(todayData?.checkIns ?? []), ...(upcomingActivity.arrivals ?? [])];
+    const urgent = properties
+      .filter((p) => p.is_active && p.cleaning_status === 'to_do')
+      .flatMap((p) => {
+        const next = arrivals
+          .filter((r) => r.property_id === p.id)
+          .sort((a, b) => a.check_in.localeCompare(b.check_in))[0];
+        if (!next || next.check_in > in4daysStr) return [];
+        return [{ name: p.name, checkIn: next.check_in }];
+      });
+    scheduleUpcomingNotifications(upcomingActivity.arrivals, upcomingActivity.departures)
+      .then(() => scheduleCleaningAlerts(urgent))
+      .catch(() => {});
+  }, [upcomingActivity, properties, todayData]);
 
   const handleCleaningToggle = useCallback(
     (property: Property) => {

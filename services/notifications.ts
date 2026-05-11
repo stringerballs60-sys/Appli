@@ -55,7 +55,7 @@ export async function scheduleUpcomingNotifications(
     byDate.set(r.check_out, entry);
   }
 
-  for (const [date, { arr, dep }] of byDate.entries()) {
+  for (const [date, { arr, dep }] of Array.from(byDate.entries())) {
     const parts: string[] = [];
     if (arr > 0) parts.push(`${arr} arrivée${arr > 1 ? 's' : ''}`);
     if (dep > 0) parts.push(`${dep} départ${dep > 1 ? 's' : ''}`);
@@ -70,6 +70,48 @@ export async function scheduleUpcomingNotifications(
         title: 'KAZA – Activité du jour',
         body: parts.join(' · '),
         data: { date },
+        ...(Platform.OS === 'android' ? { channelId: 'kaza-reminders' } : {}),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: notifDate,
+      },
+    });
+  }
+}
+
+export async function scheduleCleaningAlerts(
+  urgent: Array<{ name: string; checkIn: string }>
+): Promise<void> {
+  if (urgent.length === 0) return;
+  const granted = await requestNotificationPermissions();
+  if (!granted) return;
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+
+  for (let i = 0; i <= 4; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const dayStr = d.toISOString().slice(0, 10);
+
+    const pendingOnDay = urgent.filter((u) => u.checkIn >= dayStr);
+    if (pendingOnDay.length === 0) continue;
+
+    const notifDate = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9, 0, 0);
+    if (notifDate <= now) continue;
+
+    const body = pendingOnDay
+      .map((u) => {
+        const daysLeft = Math.round((new Date(u.checkIn).getTime() - d.getTime()) / 86400000);
+        return `${u.name} (J-${daysLeft})`;
+      })
+      .join(' · ');
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🧹 Ménage à planifier',
+        body,
         ...(Platform.OS === 'android' ? { channelId: 'kaza-reminders' } : {}),
       },
       trigger: {

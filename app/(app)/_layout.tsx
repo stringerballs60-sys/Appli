@@ -45,7 +45,7 @@ export default function AppLayout() {
           borderTopColor: APP_COLORS.border,
           elevation: 8,
         },
-        tabBarLabelStyle: { fontSize: 9, fontWeight: '500' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '500' },
       }}
     >
       <Tabs.Screen
@@ -62,19 +62,11 @@ export default function AppLayout() {
         options={{
           title: t('navigation.calendar'),
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="calendar-month" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="planning/index"
-        options={{
-          title: t('navigation.planning'),
-          tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="calendar-range" size={size} color={color} />
           ),
         }}
       />
+      <Tabs.Screen name="planning/index" options={{ href: null }} />
       <Tabs.Screen
         name="reservations/index"
         options={{

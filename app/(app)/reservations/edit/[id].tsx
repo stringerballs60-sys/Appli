@@ -353,6 +353,8 @@ export default function EditReservationScreen() {
               {datePickerTarget === 'check_in' ? t('reservations.checkIn') : t('reservations.checkOut')}
             </Text>
             <Calendar
+              key={datePickerTarget === 'check_out' && form.check_in ? form.check_in : 'checkin'}
+              current={datePickerTarget === 'check_out' && form.check_in ? form.check_in : undefined}
               minDate={datePickerTarget === 'check_out' && form.check_in
                 ? form.check_in
                 : toISODateString(new Date())}

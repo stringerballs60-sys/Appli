@@ -105,6 +105,9 @@ export default function AppLayout() {
       <Tabs.Screen name="inventory/consumables/[propertyId]" options={{ href: null }} />
       <Tabs.Screen name="settings/index" options={{ href: null }} />
       <Tabs.Screen name="reservations/edit/[id]" options={{ href: null }} />
+      <Tabs.Screen name="tasks/index" options={{ href: null }} />
+      <Tabs.Screen name="tasks/new" options={{ href: null }} />
+      <Tabs.Screen name="tasks/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

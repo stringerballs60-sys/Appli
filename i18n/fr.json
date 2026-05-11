@@ -166,5 +166,34 @@
     "hand_towels": "Serviettes de main",
     "bath_mats": "Tapis de bain",
     "kitchen_towels": "Torchons"
+  },
+  "tasks": {
+    "title": "Tâches",
+    "new": "Nouvelle tâche",
+    "noTasks": "Aucune tâche",
+    "today": "Aujourd'hui",
+    "upcoming": "À venir",
+    "done": "Terminées",
+    "type": {
+      "cleaning": "Ménage",
+      "maintenance": "Maintenance",
+      "restock": "Réappro."
+    },
+    "status": {
+      "pending": "À faire",
+      "in_progress": "En cours",
+      "done": "Terminée"
+    },
+    "startCleaning": "Démarrer le ménage",
+    "finishCleaning": "Terminer le ménage",
+    "start": "Démarrer la tâche",
+    "finish": "Terminer la tâche",
+    "duration": "Durée",
+    "checklist": "Checklist",
+    "checklistModel": "Modèle de checklist",
+    "addItem": "Ajouter un élément",
+    "noItems": "Aucun élément",
+    "loadModel": "Charger le modèle",
+    "deleteConfirm": "Supprimer cette tâche ?"
   }
 }

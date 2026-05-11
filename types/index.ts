@@ -181,3 +181,64 @@ export type ReservationFormData = {
   beds_crib_used: number;
   notes: string;
 };
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────────────────────
+
+export enum TaskType {
+  CLEANING = 'cleaning',
+  MAINTENANCE = 'maintenance',
+  RESTOCK = 'restock',
+}
+
+export enum TaskStatus {
+  PENDING = 'pending',
+  IN_PROGRESS = 'in_progress',
+  DONE = 'done',
+}
+
+export interface TaskChecklistItem {
+  id: string;
+  task_id: string;
+  user_id: string;
+  label: string;
+  is_checked: boolean;
+  checked_at: string | null;
+  order_index: number;
+  created_at: string;
+}
+
+export interface PropertyChecklistTemplate {
+  id: string;
+  user_id: string;
+  property_id: string;
+  label: string;
+  order_index: number;
+  created_at: string;
+}
+
+export interface Task {
+  id: string;
+  user_id: string;
+  property_id: string;
+  reservation_id: string | null;
+  type: TaskType;
+  title: string;
+  scheduled_date: string;
+  status: TaskStatus;
+  started_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  property?: Pick<Property, 'id' | 'name' | 'color'>;
+  checklist_items?: TaskChecklistItem[];
+}
+
+export type TaskFormData = {
+  property_id: string;
+  reservation_id: string | null;
+  type: TaskType;
+  title: string;
+  scheduled_date: string;
+  notes: string;
+};

@@ -8,14 +8,21 @@ import { FONTS } from '@/constants/typography';
 
 const MENU_ITEMS = [
   {
+    key: 'tasks',
+    label: 'Tâches',
+    subtitle: 'Ménage, maintenance, réappro.',
+    icon: 'checkbox-marked-circle-outline',
+    color: '#7C3AED',
+    route: '/(app)/tasks',
+  },
+  {
     key: 'inventory',
     label: 'Inventaire',
     subtitle: 'Linge, équipements, consommables',
     icon: 'package-variant',
-    color: '#7C3AED',
+    color: '#0891B2',
     route: '/(app)/inventory',
   },
-  // Future items can be added here
 ];
 
 export default function MenuScreen() {

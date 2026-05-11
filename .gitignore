@@ -15,4 +15,3 @@ yarn-debug.*
 yarn-error.*
 expo-env.d.ts
 *.lock
-package-lock.json

@@ -6,8 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
-import { useTodayActivity, useUpcomingActivity, usePendingCheckInTime } from '@/hooks/useReservations';
+import { useTodayActivity, useUpcomingActivity, usePendingCheckInTime, useUpcomingReservations } from '@/hooks/useReservations';
 import { useLowStockAlerts } from '@/hooks/useInventory';
+import { ReservationCard } from '@/components/reservation/ReservationCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { APP_COLORS } from '@/constants/colors';
 import { formatDateLong, formatDateShort } from '@/utils/dateHelpers';
@@ -68,7 +69,7 @@ export default function DashboardScreen() {
   const today = new Date().toISOString().slice(0, 10);
 
   const handleLogout = () => {
-    Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter ?', [
+    Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter ?', [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Déconnexion',
@@ -84,6 +85,7 @@ export default function DashboardScreen() {
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
   const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(5);
+  const { data: upcomingResas } = useUpcomingReservations(3);
   const { data: lowStock, isLoading: stockLoading } = useLowStockAlerts();
   const { data: pendingCallList } = usePendingCheckInTime(3);
 
@@ -169,6 +171,19 @@ export default function DashboardScreen() {
                 />
               </View>
             </View>
+
+            {upcomingResas && upcomingResas.length > 0 && (
+              <>
+                <SectionHeader title="Prochaines réservations" />
+                {upcomingResas.map((r) => (
+                  <ReservationCard
+                    key={r.id}
+                    reservation={r}
+                    onPress={() => router.push(`/(app)/reservations/${r.id}`)}
+                  />
+                ))}
+              </>
+            )}
 
             {pendingCallList && pendingCallList.length > 0 && (
               <>

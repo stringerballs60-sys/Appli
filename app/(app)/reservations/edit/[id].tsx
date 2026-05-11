@@ -29,7 +29,13 @@ export default function EditReservationScreen() {
   const [form, setForm] = useState<ReservationFormData | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [datePickerTarget, setDatePickerTarget] = useState<'check_in' | 'check_out' | null>(null);
+  const [calendarInitialDate, setCalendarInitialDate] = useState<string | undefined>(undefined);
   const [error, setError] = useState('');
+
+  const openDatePicker = (target: 'check_in' | 'check_out') => {
+    setCalendarInitialDate(target === 'check_out' && form?.check_in ? form.check_in : undefined);
+    setDatePickerTarget(target);
+  };
 
   useEffect(() => {
     if (!reservation) return;
@@ -215,14 +221,14 @@ export default function EditReservationScreen() {
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.datePicker}
-            onPress={() => setDatePickerTarget('check_in')}
+            onPress={() => openDatePicker('check_in')}
           >
             <Text style={styles.datePickerLabel}>{t('reservations.checkIn')}</Text>
             <Text style={styles.datePickerValue}>{form.check_in}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.datePicker}
-            onPress={() => setDatePickerTarget('check_out')}
+            onPress={() => openDatePicker('check_out')}
           >
             <Text style={styles.datePickerLabel}>{t('reservations.checkOut')}</Text>
             <Text style={styles.datePickerValue}>{form.check_out}</Text>
@@ -230,25 +236,6 @@ export default function EditReservationScreen() {
           {nights > 0 && (
             <Text style={styles.nightsText}>{nights} nuit{nights > 1 ? 's' : ''}</Text>
           )}
-          <View style={styles.timeRow}>
-            <TextInput
-              label="Heure d'arrivée (HH:MM)"
-              value={form.check_in_time ?? ''}
-              onChangeText={(v) => set('check_in_time', v)}
-              keyboardType="numbers-and-punctuation"
-              mode="outlined"
-              style={[styles.input, { flex: 1 }]}
-              placeholder="ex: 15:30"
-            />
-            <TouchableOpacity
-              style={[styles.confirmedBtn, form.check_in_time_confirmed && styles.confirmedBtnActive]}
-              onPress={() => set('check_in_time_confirmed', !form.check_in_time_confirmed)}
-            >
-              <Text style={[styles.confirmedBtnText, form.check_in_time_confirmed && styles.confirmedBtnTextActive]}>
-                {form.check_in_time_confirmed ? '✓ Confirmé' : 'À confirmer'}
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         <SectionHeader title={t('reservations.guests')} />
@@ -353,8 +340,8 @@ export default function EditReservationScreen() {
               {datePickerTarget === 'check_in' ? t('reservations.checkIn') : t('reservations.checkOut')}
             </Text>
             <Calendar
-              key={datePickerTarget === 'check_out' && form.check_in ? form.check_in : 'checkin'}
-              current={datePickerTarget === 'check_out' && form.check_in ? form.check_in : undefined}
+              key={calendarInitialDate ?? 'checkin'}
+              current={calendarInitialDate}
               minDate={datePickerTarget === 'check_out' && form.check_in
                 ? form.check_in
                 : toISODateString(new Date())}
@@ -415,12 +402,7 @@ const styles = StyleSheet.create({
   submitButton: { marginHorizontal: 16, marginTop: 8, borderRadius: 8, backgroundColor: APP_COLORS.primary },
   submitButtonContent: { paddingVertical: 6 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 40 },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 48 },
   modalTitle: { fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 12, color: APP_COLORS.textPrimary },
-  cancelButton: { marginTop: 8, borderColor: APP_COLORS.border },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  confirmedBtn: { borderWidth: 1, borderColor: APP_COLORS.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#FFFFFF' },
-  confirmedBtnActive: { backgroundColor: APP_COLORS.success, borderColor: APP_COLORS.success },
-  confirmedBtnText: { fontSize: 12, color: APP_COLORS.textSecondary, fontWeight: '600' },
-  confirmedBtnTextActive: { color: '#FFFFFF' },
+  cancelButton: { marginTop: 12, borderColor: APP_COLORS.border },
 });

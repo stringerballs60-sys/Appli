@@ -57,3 +57,12 @@ export function useTogglePropertyActive() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [PROPERTIES_KEY] }),
   });
 }
+
+export function useUpdateCleaningStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status, date }: { id: string; status: 'ready' | 'to_do'; date: string }) =>
+      propertiesService.updateCleaningStatus(id, status, date),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [PROPERTIES_KEY] }),
+  });
+}

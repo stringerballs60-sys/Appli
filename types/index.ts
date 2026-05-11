@@ -59,6 +59,8 @@ export interface Property {
   nb_bathrooms: number;
   is_active: boolean;
   color: string;
+  cleaning_status: 'ready' | 'to_do';
+  cleaning_status_date: string | null;
   created_at: string;
   updated_at: string;
 }

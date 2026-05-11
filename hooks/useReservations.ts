@@ -77,6 +77,17 @@ export function useUpcomingActivity(limit = 5) {
   });
 }
 
+export function useOccupiedToday() {
+  const userId = useAuthStore((s) => s.user?.id);
+  const today = new Date().toISOString().slice(0, 10);
+  return useQuery({
+    queryKey: [RESERVATIONS_KEY, userId, 'occupied', today],
+    queryFn: () => reservationsService.getForDay(userId!, today),
+    enabled: !!userId,
+    refetchInterval: 5 * 60 * 1000,
+  });
+}
+
 export function useCreateReservation() {
   const qc = useQueryClient();
   const userId = useAuthStore((s) => s.user?.id);

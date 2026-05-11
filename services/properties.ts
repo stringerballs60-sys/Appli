@@ -61,4 +61,12 @@ export const propertiesService = {
       .eq('id', id);
     if (error) throw error;
   },
+
+  async updateCleaningStatus(id: string, status: 'ready' | 'to_do', date: string): Promise<void> {
+    const { error } = await supabase
+      .from('properties')
+      .update({ cleaning_status: status, cleaning_status_date: date })
+      .eq('id', id);
+    if (error) throw error;
+  },
 };

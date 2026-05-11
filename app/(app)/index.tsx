@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import { Text, Surface, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
@@ -6,13 +6,13 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
-import { useTodayActivity, useUpcomingActivity, usePendingCheckInTime, useUpcomingReservations } from '@/hooks/useReservations';
+import { useTodayActivity, useUpcomingActivity, usePendingCheckInTime, useOccupiedToday } from '@/hooks/useReservations';
 import { useLowStockAlerts } from '@/hooks/useInventory';
-import { ReservationCard } from '@/components/reservation/ReservationCard';
+import { useActiveProperties, useUpdateCleaningStatus } from '@/hooks/useProperties';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { APP_COLORS } from '@/constants/colors';
 import { formatDateLong, formatDateShort } from '@/utils/dateHelpers';
-import { Reservation } from '@/types';
+import { Reservation, Property } from '@/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { scheduleUpcomingNotifications } from '@/services/notifications';
 
@@ -62,6 +62,117 @@ function TodayCard({
   );
 }
 
+function OccupiedCard({ reservations }: { reservations: Reservation[] }) {
+  const seen = new Set<string>();
+  const unique = reservations.filter((r) => {
+    if (seen.has(r.property_id)) return false;
+    seen.add(r.property_id);
+    return true;
+  });
+  return (
+    <Surface style={styles.statusCard} elevation={1}>
+      <View style={styles.statusCardHeader}>
+        <MaterialCommunityIcons name="home-account" size={18} color={APP_COLORS.primary} />
+        <Text style={[styles.statusCardTitle, { color: APP_COLORS.primary }]}>Occupés</Text>
+        <View style={[styles.countBadge, { backgroundColor: APP_COLORS.primary }]}>
+          <Text style={styles.countText}>{unique.length}</Text>
+        </View>
+      </View>
+      {unique.length === 0 ? (
+        <Text style={styles.emptyText}>Aucun logement occupé</Text>
+      ) : (
+        unique.map((r) => (
+          <View key={r.id} style={styles.statusItem}>
+            {r.property && <View style={[styles.dot, { backgroundColor: r.property.color }]} />}
+            <Text style={styles.statusItemText} numberOfLines={1}>{r.property?.name}</Text>
+          </View>
+        ))
+      )}
+    </Surface>
+  );
+}
+
+function TurnoverCard({ checkIns, checkOuts }: { checkIns: Reservation[]; checkOuts: Reservation[] }) {
+  const checkOutPropIds = new Set(checkOuts.map((r) => r.property_id));
+  const turnovers = checkIns.filter((r) => checkOutPropIds.has(r.property_id));
+  return (
+    <Surface style={styles.statusCard} elevation={1}>
+      <View style={styles.statusCardHeader}>
+        <MaterialCommunityIcons name="swap-horizontal" size={18} color={APP_COLORS.warning} />
+        <Text style={[styles.statusCardTitle, { color: APP_COLORS.warning }]}>Turn-over</Text>
+        <View style={[styles.countBadge, { backgroundColor: APP_COLORS.warning }]}>
+          <Text style={styles.countText}>{turnovers.length}</Text>
+        </View>
+      </View>
+      {turnovers.length === 0 ? (
+        <Text style={styles.emptyText}>Aucun turn-over</Text>
+      ) : (
+        turnovers.map((r) => (
+          <View key={r.id} style={styles.statusItem}>
+            {r.property && <View style={[styles.dot, { backgroundColor: r.property.color }]} />}
+            <Text style={styles.statusItemText} numberOfLines={1}>{r.property?.name}</Text>
+          </View>
+        ))
+      )}
+    </Surface>
+  );
+}
+
+function CleaningStatusCard({
+  properties,
+  today,
+  onToggle,
+}: {
+  properties: Property[];
+  today: string;
+  onToggle: (property: Property) => void;
+}) {
+  const active = properties.filter((p) => p.is_active);
+  return (
+    <Surface style={styles.cleaningCard} elevation={1}>
+      <View style={styles.statusCardHeader}>
+        <MaterialCommunityIcons name="broom" size={18} color="#8B5CF6" />
+        <Text style={[styles.statusCardTitle, { color: '#8B5CF6' }]}>Statut ménage</Text>
+      </View>
+      {active.length === 0 ? (
+        <Text style={styles.emptyText}>Aucun logement actif</Text>
+      ) : (
+        active.map((p) => {
+          const isDone = p.cleaning_status === 'ready';
+          return (
+            <View key={p.id} style={styles.cleaningRow}>
+              <View style={[styles.dot, { backgroundColor: p.color }]} />
+              <Text style={styles.cleaningPropertyName} numberOfLines={1}>{p.name}</Text>
+              <TouchableOpacity
+                style={[
+                  styles.cleaningBadge,
+                  { backgroundColor: isDone ? '#D1FAE5' : '#FEF3C7' },
+                ]}
+                onPress={() => onToggle(p)}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name={isDone ? 'check-circle' : 'clock-outline'}
+                  size={13}
+                  color={isDone ? APP_COLORS.success : '#B45309'}
+                />
+                <Text
+                  style={[
+                    styles.cleaningBadgeText,
+                    { color: isDone ? APP_COLORS.success : '#B45309' },
+                  ]}
+                >
+                  {isDone ? 'Prêt' : 'À faire'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })
+      )}
+    </Surface>
+  );
+}
+
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -69,7 +180,7 @@ export default function DashboardScreen() {
   const today = new Date().toISOString().slice(0, 10);
 
   const handleLogout = () => {
-    Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter ?', [
+    Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter ?', [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Déconnexion',
@@ -84,12 +195,25 @@ export default function DashboardScreen() {
   };
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
-  const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(5);
-  const { data: upcomingResas } = useUpcomingReservations(3);
+  const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(3);
+  const { data: occupiedToday } = useOccupiedToday();
   const { data: lowStock, isLoading: stockLoading } = useLowStockAlerts();
   const { data: pendingCallList } = usePendingCheckInTime(3);
+  const { data: properties } = useActiveProperties();
+  const { mutate: updateCleaningStatus } = useUpdateCleaningStatus();
 
   const isLoading = todayLoading || upcomingLoading || stockLoading;
+
+  // Auto-set "à faire" pour les logements avec un départ aujourd'hui (si pas déjà mis à jour aujourd'hui)
+  useEffect(() => {
+    if (!todayData?.checkOuts || !properties) return;
+    todayData.checkOuts.forEach((r) => {
+      const prop = properties.find((p) => p.id === r.property_id);
+      if (!prop) return;
+      if (prop.cleaning_status_date === today) return;
+      updateCleaningStatus({ id: prop.id, status: 'to_do', date: today });
+    });
+  }, [todayData?.checkOuts, properties]);
 
   useEffect(() => {
     if (upcomingActivity) {
@@ -99,6 +223,14 @@ export default function DashboardScreen() {
       ).catch(() => {});
     }
   }, [upcomingActivity]);
+
+  const handleCleaningToggle = useCallback(
+    (property: Property) => {
+      const newStatus = property.cleaning_status === 'ready' ? 'to_do' : 'ready';
+      updateCleaningStatus({ id: property.id, status: newStatus, date: today });
+    },
+    [today, updateCleaningStatus]
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -126,6 +258,7 @@ export default function DashboardScreen() {
           <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
         ) : (
           <>
+            {/* ── Aujourd'hui ── */}
             <SectionHeader title={t('dashboard.today')} />
             <View style={styles.todayRow}>
               <View style={{ flex: 1 }}>
@@ -148,11 +281,12 @@ export default function DashboardScreen() {
               </View>
             </View>
 
+            {/* ── À venir ── */}
             <SectionHeader title={t('dashboard.upcoming')} />
             <View style={styles.todayRow}>
               <View style={{ flex: 1 }}>
                 <TodayCard
-                  title={t('dashboard.upcomingArrivals')}
+                  title="3 prochains check-in"
                   reservations={upcomingActivity?.arrivals ?? []}
                   icon="calendar-arrow-right"
                   iconColor={APP_COLORS.primary}
@@ -162,7 +296,7 @@ export default function DashboardScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <TodayCard
-                  title={t('dashboard.upcomingDepartures')}
+                  title="3 prochains check-out"
                   reservations={upcomingActivity?.departures ?? []}
                   icon="calendar-arrow-left"
                   iconColor="#8B5CF6"
@@ -172,19 +306,28 @@ export default function DashboardScreen() {
               </View>
             </View>
 
-            {upcomingResas && upcomingResas.length > 0 && (
-              <>
-                <SectionHeader title="Prochaines réservations" />
-                {upcomingResas.map((r) => (
-                  <ReservationCard
-                    key={r.id}
-                    reservation={r}
-                    onPress={() => router.push(`/(app)/reservations/${r.id}`)}
-                  />
-                ))}
-              </>
-            )}
+            {/* ── Statut logements ── */}
+            <SectionHeader title="Statut logements" />
+            <View style={styles.todayRow}>
+              <View style={{ flex: 1 }}>
+                <OccupiedCard reservations={occupiedToday ?? []} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TurnoverCard
+                  checkIns={todayData?.checkIns ?? []}
+                  checkOuts={todayData?.checkOuts ?? []}
+                />
+              </View>
+            </View>
+            <View style={styles.cleaningWrapper}>
+              <CleaningStatusCard
+                properties={properties ?? []}
+                today={today}
+                onToggle={handleCleaningToggle}
+              />
+            </View>
 
+            {/* ── À appeler ── */}
             {pendingCallList && pendingCallList.length > 0 && (
               <>
                 <SectionHeader title={`📞 À appeler (${pendingCallList.length})`} />
@@ -224,6 +367,7 @@ export default function DashboardScreen() {
               </>
             )}
 
+            {/* ── Stocks bas ── */}
             {lowStock && lowStock.length > 0 && (
               <>
                 <SectionHeader title={t('dashboard.lowStock')} />
@@ -318,12 +462,52 @@ const styles = StyleSheet.create({
   todayGuestName: { fontSize: 12, fontWeight: '600', color: APP_COLORS.textPrimary },
   todayPropertyName: { fontSize: 10, color: APP_COLORS.textSecondary },
   emptyText: { fontSize: 11, color: APP_COLORS.textSecondary, fontStyle: 'italic' },
-  emptySection: {
-    fontSize: 14,
-    color: APP_COLORS.textSecondary,
-    textAlign: 'center',
-    padding: 20,
-    fontStyle: 'italic',
+  statusCard: {
+    borderRadius: 12,
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    gap: 6,
+  },
+  statusCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  statusCardTitle: { fontSize: 11, fontWeight: '700', flex: 1 },
+  statusItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusItemText: { fontSize: 12, fontWeight: '600', color: APP_COLORS.textPrimary, flex: 1 },
+  cleaningWrapper: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  cleaningCard: {
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    gap: 8,
+  },
+  cleaningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cleaningPropertyName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: APP_COLORS.textPrimary,
+  },
+  cleaningBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  cleaningBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   stockRow: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
   stockAlert: {

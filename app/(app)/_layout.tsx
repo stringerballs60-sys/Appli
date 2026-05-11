@@ -9,18 +9,25 @@ import { APP_COLORS } from '@/constants/colors';
 
 export default function AppLayout() {
   const { t } = useTranslation();
-  const { session, isLoading, setProfile } = useAuthStore();
+  const { session, isLoading, setProfile, setMembership, setEffectiveUserId } = useAuthStore();
+  const membership = useAuthStore((s) => s.membership);
+  const isManager = !membership;
 
   useEffect(() => {
     if (session?.user) {
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-        .then(({ data }) => {
-          if (data) setProfile(data);
-        });
+      Promise.all([
+        supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+        supabase.from('team_members').select('owner_id, role').eq('member_id', session.user.id).maybeSingle(),
+      ]).then(([profileRes, membershipRes]) => {
+        if (profileRes.data) setProfile(profileRes.data);
+        if (membershipRes.data) {
+          setMembership({ ownerId: membershipRes.data.owner_id, role: membershipRes.data.role as 'cleaner' });
+          setEffectiveUserId(membershipRes.data.owner_id);
+        } else {
+          setMembership(null);
+          setEffectiveUserId(session.user.id);
+        }
+      });
     }
   }, [session?.user?.id]);
 
@@ -79,6 +86,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="properties/index"
         options={{
+          href: isManager ? undefined : null,
           title: t('navigation.properties'),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="home-group-plus" size={size} color={color} />
@@ -108,6 +116,7 @@ export default function AppLayout() {
       <Tabs.Screen name="tasks/index" options={{ href: null }} />
       <Tabs.Screen name="tasks/new" options={{ href: null }} />
       <Tabs.Screen name="tasks/[id]" options={{ href: null }} />
+      <Tabs.Screen name="roles/index" options={{ href: null }} />
     </Tabs>
   );
 }

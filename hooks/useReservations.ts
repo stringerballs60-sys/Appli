@@ -11,7 +11,7 @@ export function useReservations(filters?: {
   to?: string;
   status?: string;
 }) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, filters],
     queryFn: () => reservationsService.getAll(userId!, filters),
@@ -20,7 +20,7 @@ export function useReservations(filters?: {
 }
 
 export function useReservationsForMonth(from: string, to: string) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, 'month', from, to],
     queryFn: () => reservationsService.getForMonth(userId!, from, to),
@@ -29,7 +29,7 @@ export function useReservationsForMonth(from: string, to: string) {
 }
 
 export function useReservationsForDay(date: string) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, 'day', date],
     queryFn: () => reservationsService.getForDay(userId!, date),
@@ -38,7 +38,7 @@ export function useReservationsForDay(date: string) {
 }
 
 export function useUpcomingReservations(limit = 3) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, 'upcoming', limit],
     queryFn: () => reservationsService.getUpcoming(userId!, limit),
@@ -48,7 +48,7 @@ export function useUpcomingReservations(limit = 3) {
 }
 
 export function useTodayActivity() {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, 'today'],
     queryFn: () => reservationsService.getTodayActivity(userId!),
@@ -58,7 +58,7 @@ export function useTodayActivity() {
 }
 
 export function usePendingCheckInTime(daysAhead = 3) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, 'pending-checkin-time', daysAhead],
     queryFn: () => reservationsService.getPendingCheckInTime(userId!, daysAhead),
@@ -68,7 +68,7 @@ export function usePendingCheckInTime(daysAhead = 3) {
 }
 
 export function useUpcomingActivity(limit = 5) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, 'upcomingActivity', limit],
     queryFn: () => reservationsService.getUpcomingActivity(userId!, limit),
@@ -78,7 +78,7 @@ export function useUpcomingActivity(limit = 5) {
 }
 
 export function useOccupiedToday() {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   const today = new Date().toISOString().slice(0, 10);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, 'occupied', today],

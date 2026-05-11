@@ -5,8 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { APP_COLORS } from '@/constants/colors';
 import { FONTS } from '@/constants/typography';
+import { useAuthStore } from '@/stores/authStore';
 
-const MENU_ITEMS = [
+const ALL_MENU_ITEMS = [
   {
     key: 'tasks',
     label: 'Tâches',
@@ -14,6 +15,7 @@ const MENU_ITEMS = [
     icon: 'checkbox-marked-circle-outline',
     color: '#7C3AED',
     route: '/(app)/tasks',
+    managerOnly: false,
   },
   {
     key: 'inventory',
@@ -22,21 +24,48 @@ const MENU_ITEMS = [
     icon: 'package-variant',
     color: '#0891B2',
     route: '/(app)/inventory',
+    managerOnly: true,
+  },
+  {
+    key: 'roles',
+    label: 'Rôles',
+    subtitle: "Gérer les accès de l'équipe",
+    icon: 'account-group',
+    color: '#059669',
+    route: '/(app)/roles',
+    managerOnly: true,
+  },
+  {
+    key: 'settings',
+    label: 'Paramètres',
+    subtitle: 'Profil et déconnexion',
+    icon: 'cog',
+    color: '#64748B',
+    route: '/(app)/settings',
+    managerOnly: false,
   },
 ];
 
 export default function MenuScreen() {
   const router = useRouter();
+  const membership = useAuthStore((s) => s.membership);
+  const isManager = !membership;
+  const menuItems = ALL_MENU_ITEMS.filter((item) => isManager || !item.managerOnly);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.title}>Menu</Text>
+        {!isManager && (
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>Femme de ménage</Text>
+          </View>
+        )}
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          {MENU_ITEMS.map((item) => (
+          {menuItems.map((item) => (
             <TouchableOpacity
               key={item.key}
               onPress={() => router.push(item.route as any)}
@@ -66,8 +95,18 @@ const styles = StyleSheet.create({
     backgroundColor: APP_COLORS.primary,
     paddingHorizontal: 20,
     paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
+  roleBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  roleBadgeText: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' },
   scroll: { flex: 1 },
   section: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
   menuCard: {

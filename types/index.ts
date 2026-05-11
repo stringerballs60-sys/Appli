@@ -242,3 +242,22 @@ export type TaskFormData = {
   scheduled_date: string;
   notes: string;
 };
+
+// ── Roles ─────────────────────────────────────────────────────────────────────
+
+export type UserRole = 'manager' | 'cleaner';
+
+export interface TeamMember {
+  id: string;
+  owner_id: string;
+  member_id: string;
+  member_name: string;
+  member_email: string;
+  role: 'cleaner';
+  created_at: string;
+}
+
+export interface Membership {
+  ownerId: string;
+  role: 'cleaner';
+}

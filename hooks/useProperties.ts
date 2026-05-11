@@ -6,7 +6,7 @@ import { PropertyFormData } from '@/types';
 export const PROPERTIES_KEY = 'properties';
 
 export function useProperties() {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [PROPERTIES_KEY, userId],
     queryFn: () => propertiesService.getAll(userId!),
@@ -15,7 +15,7 @@ export function useProperties() {
 }
 
 export function useActiveProperties() {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [PROPERTIES_KEY, userId, 'active'],
     queryFn: () => propertiesService.getActive(userId!),

@@ -7,7 +7,7 @@ export const TASKS_KEY = 'tasks';
 export const TEMPLATES_KEY = 'task_templates';
 
 export function useTasks(filters?: TaskFilters) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [TASKS_KEY, userId, filters],
     queryFn: () => tasksService.getAll(userId!, filters),
@@ -16,7 +16,7 @@ export function useTasks(filters?: TaskFilters) {
 }
 
 export function useTask(id: string) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [TASKS_KEY, userId, id],
     queryFn: () => tasksService.getById(id),
@@ -26,7 +26,7 @@ export function useTask(id: string) {
 }
 
 export function useTasksCountToday() {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [TASKS_KEY, userId, 'count-today'],
     queryFn: () => tasksService.countForToday(userId!),
@@ -103,7 +103,7 @@ export function useDeleteChecklistItem() {
 }
 
 export function usePropertyTemplates(propertyId: string | null) {
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [TEMPLATES_KEY, userId, propertyId],
     queryFn: () => tasksService.getTemplates(userId!, propertyId!),

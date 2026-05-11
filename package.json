@@ -43,7 +43,9 @@
     "@types/react": "~19.1.0",
     "babel-plugin-module-resolver": "^5.0.3",
     "babel-preset-expo": "~54.0.10",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "react-dom": "19.2.6",
+    "scheduler": "0.27.0"
   },
   "overrides": {
     "expo-constants": "~18.0.13",

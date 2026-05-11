@@ -51,7 +51,6 @@ export function calculateLinen(
     baby_sheets: beds.beds_crib_used,
     bath_towels: nb_adults + guests.nb_children,
     hand_towels: nb_adults + guests.nb_children,
-    face_towels: nb_adults + guests.nb_children,
     bath_mats: nb_bathrooms,
     kitchen_towels: 1,
   };

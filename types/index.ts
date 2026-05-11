@@ -30,7 +30,6 @@ export enum LinenType {
   BABY_SHEETS = 'baby_sheets',
   BATH_TOWELS = 'bath_towels',
   HAND_TOWELS = 'hand_towels',
-  FACE_TOWELS = 'face_towels',
   BATH_MATS = 'bath_mats',
   KITCHEN_TOWELS = 'kitchen_towels',
 }
@@ -71,7 +70,6 @@ export interface LinenCalculation {
   baby_sheets: number;
   bath_towels: number;
   hand_towels: number;
-  face_towels: number;
   bath_mats: number;
   kitchen_towels: number;
 }

@@ -38,7 +38,6 @@ export const LINEN_TYPE_LABELS: Record<LinenType, string> = {
   [LinenType.BABY_SHEETS]: 'Draps bébé',
   [LinenType.BATH_TOWELS]: 'Serviettes bain',
   [LinenType.HAND_TOWELS]: 'Serviettes mains',
-  [LinenType.FACE_TOWELS]: 'Gants de toilette',
   [LinenType.BATH_MATS]: 'Tapis de bain',
   [LinenType.KITCHEN_TOWELS]: 'Torchons',
 };

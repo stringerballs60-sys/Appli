@@ -17,7 +17,6 @@ const LINEN_ITEMS: { key: keyof LinenCalculation; type: LinenType }[] = [
   { key: 'baby_sheets', type: LinenType.BABY_SHEETS },
   { key: 'bath_towels', type: LinenType.BATH_TOWELS },
   { key: 'hand_towels', type: LinenType.HAND_TOWELS },
-  { key: 'face_towels', type: LinenType.FACE_TOWELS },
   { key: 'bath_mats', type: LinenType.BATH_MATS },
   { key: 'kitchen_towels', type: LinenType.KITCHEN_TOWELS },
 ];

@@ -21,8 +21,9 @@
     "noData": "Aucune donnée"
   },
   "navigation": {
-    "dashboard": "Tableau de bord",
+    "dashboard": "Accueil",
     "calendar": "Calendrier",
+    "planning": "Planning",
     "reservations": "Réservations",
     "properties": "Logements",
     "inventory": "Inventaire",
@@ -53,12 +54,15 @@
   },
   "dashboard": {
     "title": "Tableau de bord",
-    "todayCheckins": "Arrivées aujourd'hui",
-    "todayCheckouts": "Départs aujourd'hui",
-    "upcoming": "Prochaines réservations",
-    "noCheckins": "Aucune arrivée aujourd'hui",
-    "noCheckouts": "Aucun départ aujourd'hui",
-    "noUpcoming": "Aucune réservation à venir",
+    "today": "Aujourd'hui",
+    "todayCheckins": "Arrivées",
+    "todayCheckouts": "Départs",
+    "upcoming": "À venir",
+    "upcomingArrivals": "Prochaines arrivées",
+    "upcomingDepartures": "Prochains départs",
+    "noCheckins": "Aucune arrivée",
+    "noCheckouts": "Aucun départ",
+    "noUpcoming": "Aucune à venir",
     "lowStock": "Stocks faibles",
     "noLowStock": "Tous les stocks sont OK"
   },

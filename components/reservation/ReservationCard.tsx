@@ -51,6 +51,32 @@ export function ReservationCard({ reservation, onPress }: ReservationCardProps) 
               <MaterialCommunityIcons name="account-group" size={14} color={APP_COLORS.textSecondary} />
               <Text style={styles.guestCount}>{totalGuests} voyageur{totalGuests > 1 ? 's' : ''}</Text>
             </View>
+            <View style={styles.bedRow}>
+              {reservation.beds_double_used > 0 && (
+                <View style={styles.bedItem}>
+                  <MaterialCommunityIcons name="bed-double" size={13} color={APP_COLORS.textSecondary} />
+                  <Text style={styles.bedCount}>{reservation.beds_double_used}</Text>
+                </View>
+              )}
+              {reservation.beds_single_used > 0 && (
+                <View style={styles.bedItem}>
+                  <MaterialCommunityIcons name="bed-single" size={13} color={APP_COLORS.textSecondary} />
+                  <Text style={styles.bedCount}>{reservation.beds_single_used}</Text>
+                </View>
+              )}
+              {reservation.beds_sofa_used > 0 && (
+                <View style={styles.bedItem}>
+                  <MaterialCommunityIcons name="sofa" size={13} color={APP_COLORS.textSecondary} />
+                  <Text style={styles.bedCount}>{reservation.beds_sofa_used}</Text>
+                </View>
+              )}
+              {reservation.beds_crib_used > 0 && (
+                <View style={styles.bedItem}>
+                  <MaterialCommunityIcons name="baby-carriage" size={13} color={APP_COLORS.textSecondary} />
+                  <Text style={styles.bedCount}>{reservation.beds_crib_used}</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={20} color={APP_COLORS.border} />
@@ -84,4 +110,7 @@ const styles = StyleSheet.create({
   nights: { fontSize: 12, color: APP_COLORS.primary, fontWeight: '600' },
   guestRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   guestCount: { fontSize: 13, color: APP_COLORS.textSecondary },
+  bedRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bedItem: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  bedCount: { fontSize: 12, color: APP_COLORS.textSecondary, fontWeight: '500' },
 });

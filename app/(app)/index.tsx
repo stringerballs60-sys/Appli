@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import { Text, Surface, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
@@ -5,16 +6,14 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
-import { FONTS } from '@/constants/typography';
-import { useTodayActivity, useUpcomingReservations, usePendingCheckInTime } from '@/hooks/useReservations';
+import { useTodayActivity, useUpcomingActivity, usePendingCheckInTime } from '@/hooks/useReservations';
 import { useLowStockAlerts } from '@/hooks/useInventory';
-import { useActiveProperties } from '@/hooks/useProperties';
-import { ReservationCard } from '@/components/reservation/ReservationCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { APP_COLORS } from '@/constants/colors';
-import { formatDateLong, formatDate, getNightsLabel } from '@/utils/dateHelpers';
+import { formatDateLong, formatDateShort } from '@/utils/dateHelpers';
 import { Reservation } from '@/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { scheduleUpcomingNotifications } from '@/services/notifications';
 
 function TodayCard({
   title,
@@ -22,20 +21,20 @@ function TodayCard({
   icon,
   iconColor,
   emptyLabel,
+  dateField,
 }: {
   title: string;
   reservations: Reservation[];
   icon: string;
   iconColor: string;
   emptyLabel: string;
+  dateField?: 'check_in' | 'check_out';
 }) {
   return (
     <Surface style={styles.todayCard} elevation={1}>
       <View style={styles.todayCardHeader}>
-        <MaterialCommunityIcons name={icon as any} size={20} color={iconColor} />
-        <Text style={[styles.todayCardTitle, { color: iconColor }]}>
-          {title}
-        </Text>
+        <MaterialCommunityIcons name={icon as any} size={18} color={iconColor} />
+        <Text style={[styles.todayCardTitle, { color: iconColor }]}>{title}</Text>
         <View style={[styles.countBadge, { backgroundColor: iconColor }]}>
           <Text style={styles.countText}>{reservations.length}</Text>
         </View>
@@ -49,10 +48,11 @@ function TodayCard({
               <View style={[styles.dot, { backgroundColor: r.property.color }]} />
             )}
             <View style={{ flex: 1 }}>
-              <Text style={styles.todayGuestName}>{r.guest_name}</Text>
-              {r.property && (
-                <Text style={styles.todayPropertyName}>{r.property.name}</Text>
-              )}
+              <Text style={styles.todayGuestName} numberOfLines={1}>{r.guest_name}</Text>
+              <Text style={styles.todayPropertyName} numberOfLines={1}>
+                {r.property?.name}
+                {dateField ? ` · ${formatDateShort(r[dateField])}` : ''}
+              </Text>
             </View>
           </View>
         ))
@@ -83,18 +83,24 @@ export default function DashboardScreen() {
   };
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
-  const { data: upcoming, isLoading: upcomingLoading } = useUpcomingReservations(5);
+  const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(5);
   const { data: lowStock, isLoading: stockLoading } = useLowStockAlerts();
-  const { data: allProperties } = useActiveProperties();
   const { data: pendingCallList } = usePendingCheckInTime(3);
 
-  const propertiesWithNotes = (allProperties ?? []).filter((p) => p.notes);
   const isLoading = todayLoading || upcomingLoading || stockLoading;
+
+  useEffect(() => {
+    if (upcomingActivity) {
+      scheduleUpcomingNotifications(
+        upcomingActivity.arrivals,
+        upcomingActivity.departures
+      ).catch(() => {});
+    }
+  }, [upcomingActivity]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>KAZA</Text>
@@ -118,8 +124,7 @@ export default function DashboardScreen() {
           <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
         ) : (
           <>
-            {/* Today's activity */}
-            <SectionHeader title={t('dashboard.title')} />
+            <SectionHeader title={t('dashboard.today')} />
             <View style={styles.todayRow}>
               <View style={{ flex: 1 }}>
                 <TodayCard
@@ -141,14 +146,40 @@ export default function DashboardScreen() {
               </View>
             </View>
 
-            {/* À appeler — check-in sans heure confirmée dans les 3 prochains jours */}
+            <SectionHeader title={t('dashboard.upcoming')} />
+            <View style={styles.todayRow}>
+              <View style={{ flex: 1 }}>
+                <TodayCard
+                  title={t('dashboard.upcomingArrivals')}
+                  reservations={upcomingActivity?.arrivals ?? []}
+                  icon="calendar-arrow-right"
+                  iconColor={APP_COLORS.primary}
+                  emptyLabel={t('dashboard.noUpcoming')}
+                  dateField="check_in"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TodayCard
+                  title={t('dashboard.upcomingDepartures')}
+                  reservations={upcomingActivity?.departures ?? []}
+                  icon="calendar-arrow-left"
+                  iconColor="#8B5CF6"
+                  emptyLabel={t('dashboard.noUpcoming')}
+                  dateField="check_out"
+                />
+              </View>
+            </View>
+
             {pendingCallList && pendingCallList.length > 0 && (
               <>
                 <SectionHeader title={`📞 À appeler (${pendingCallList.length})`} />
                 <View style={styles.callAlertBox}>
                   {pendingCallList.map((r) => {
-                    const daysUntil = Math.round((new Date(r.check_in).getTime() - new Date(today).getTime()) / 86400000);
-                    const label = daysUntil === 0 ? "Aujourd'hui" : daysUntil === 1 ? 'Demain' : `Dans ${daysUntil}j`;
+                    const daysUntil = Math.round(
+                      (new Date(r.check_in).getTime() - new Date(today).getTime()) / 86400000
+                    );
+                    const label =
+                      daysUntil === 0 ? "Aujourd'hui" : daysUntil === 1 ? 'Demain' : `Dans ${daysUntil}j`;
                     return (
                       <TouchableOpacity
                         key={r.id}
@@ -156,7 +187,9 @@ export default function DashboardScreen() {
                         onPress={() => router.push(`/(app)/reservations/${r.id}`)}
                         activeOpacity={0.7}
                       >
-                        {r.property && <View style={[styles.callDot, { backgroundColor: r.property.color }]} />}
+                        {r.property && (
+                          <View style={[styles.callDot, { backgroundColor: r.property.color }]} />
+                        )}
                         <View style={{ flex: 1 }}>
                           <Text style={styles.callGuestName}>{r.guest_name}</Text>
                           <Text style={styles.callPropertyName}>{r.property?.name}</Text>
@@ -176,21 +209,6 @@ export default function DashboardScreen() {
               </>
             )}
 
-            {/* Upcoming reservations */}
-            <SectionHeader title={t('dashboard.upcoming')} />
-            {!upcoming || upcoming.length === 0 ? (
-              <Text style={styles.emptySection}>{t('dashboard.noUpcoming')}</Text>
-            ) : (
-              upcoming.map((r) => (
-                <ReservationCard
-                  key={r.id}
-                  reservation={r}
-                  onPress={() => router.push(`/(app)/reservations/${r.id}`)}
-                />
-              ))
-            )}
-
-            {/* Low stock alerts */}
             {lowStock && lowStock.length > 0 && (
               <>
                 <SectionHeader title={t('dashboard.lowStock')} />
@@ -221,21 +239,6 @@ export default function DashboardScreen() {
                 <Text style={styles.allGoodText}>{t('dashboard.noLowStock')}</Text>
               </View>
             )}
-
-            {/* Property notes */}
-            {propertiesWithNotes.length > 0 && (
-              <>
-                <SectionHeader title="Notes des logements" />
-                {propertiesWithNotes.map((p) => (
-                  <View key={p.id} style={[styles.noteCard, { borderLeftColor: p.color }]}>
-                    <View style={styles.noteCardHeader}>
-                      <Text style={styles.notePropertyName}>⚠️ {p.name}</Text>
-                    </View>
-                    <Text style={styles.noteContent}>{p.notes}</Text>
-                  </View>
-                ))}
-              </>
-            )}
           </>
         )}
 
@@ -246,13 +249,8 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: APP_COLORS.background,
-  },
-  container: {
-    flex: 1,
-  },
+  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
+  container: { flex: 1 },
   header: {
     backgroundColor: APP_COLORS.primary,
     paddingHorizontal: 20,
@@ -261,30 +259,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  greeting: {
-    fontSize: 22,
-    fontFamily: FONTS.titleBold,
-    color: '#FFFFFF',
+  greeting: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
+  date: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+    textTransform: 'capitalize',
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerLogoContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerLogo: {
-    width: 40,
-    height: 40,
-  },
-  logoutBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -292,12 +275,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  date: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-    textTransform: 'capitalize',
-  },
+  headerLogo: { width: 26, height: 26, borderRadius: 13 },
+  logoutBtn: { padding: 4 },
   todayRow: {
     flexDirection: 'row',
     gap: 8,
@@ -306,54 +285,23 @@ const styles = StyleSheet.create({
   },
   todayCard: {
     borderRadius: 12,
-    padding: 12,
+    padding: 10,
     backgroundColor: '#FFFFFF',
-    gap: 8,
+    gap: 6,
   },
   todayCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
-  todayCardTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    flex: 1,
-  },
-  countBadge: {
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-  },
-  countText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  todayItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  todayGuestName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: APP_COLORS.textPrimary,
-  },
-  todayPropertyName: {
-    fontSize: 11,
-    color: APP_COLORS.textSecondary,
-  },
-  emptyText: {
-    fontSize: 12,
-    color: APP_COLORS.textSecondary,
-    fontStyle: 'italic',
-  },
+  todayCardTitle: { fontSize: 11, fontWeight: '700', flex: 1 },
+  countBadge: { borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1 },
+  countText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
+  todayItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  todayGuestName: { fontSize: 12, fontWeight: '600', color: APP_COLORS.textPrimary },
+  todayPropertyName: { fontSize: 10, color: APP_COLORS.textSecondary },
+  emptyText: { fontSize: 11, color: APP_COLORS.textSecondary, fontStyle: 'italic' },
   emptySection: {
     fontSize: 14,
     color: APP_COLORS.textSecondary,
@@ -361,11 +309,7 @@ const styles = StyleSheet.create({
     padding: 20,
     fontStyle: 'italic',
   },
-  stockRow: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8,
-  },
+  stockRow: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
   stockAlert: {
     borderRadius: 12,
     padding: 12,
@@ -376,22 +320,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FECACA',
   },
-  stockItemName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: APP_COLORS.textPrimary,
-    textAlign: 'center',
-  },
-  stockPropertyName: {
-    fontSize: 11,
-    color: APP_COLORS.textSecondary,
-    textAlign: 'center',
-  },
-  stockQty: {
-    fontSize: 12,
-    color: APP_COLORS.danger,
-    fontWeight: '600',
-  },
+  stockItemName: { fontSize: 13, fontWeight: '600', color: APP_COLORS.textPrimary, textAlign: 'center' },
+  stockPropertyName: { fontSize: 11, color: APP_COLORS.textSecondary, textAlign: 'center' },
+  stockQty: { fontSize: 12, color: APP_COLORS.danger, fontWeight: '600' },
   allGoodRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -399,10 +330,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  allGoodText: {
-    fontSize: 13,
-    color: APP_COLORS.success,
-  },
+  allGoodText: { fontSize: 13, color: APP_COLORS.success },
   callAlertBox: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
@@ -426,15 +354,4 @@ const styles = StyleSheet.create({
   callPropertyName: { fontSize: 11, color: APP_COLORS.textSecondary },
   callDateBadge: { backgroundColor: '#FEF3C7', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   callDateText: { fontSize: 11, fontWeight: '700', color: '#B45309' },
-  noteCard: {
-    backgroundColor: '#FFFBEB',
-    borderLeftWidth: 4,
-    borderRadius: 8,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 12,
-  },
-  noteCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  notePropertyName: { fontSize: 13, fontWeight: '700', color: APP_COLORS.textPrimary },
-  noteContent: { fontSize: 13, color: APP_COLORS.textPrimary, lineHeight: 18 },
 });

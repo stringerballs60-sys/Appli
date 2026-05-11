@@ -16,6 +16,15 @@ import { Reservation, Property } from '@/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { scheduleUpcomingNotifications } from '@/services/notifications';
 
+function formatNextIn(date: string, today: string): string {
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+  if (date === today) return "Aujourd'hui";
+  if (date === tomorrowStr) return 'Demain';
+  return formatDateShort(date);
+}
+
 function TodayCard({
   title,
   reservations,
@@ -23,6 +32,7 @@ function TodayCard({
   iconColor,
   emptyLabel,
   dateField,
+  onPressItem,
 }: {
   title: string;
   reservations: Reservation[];
@@ -30,6 +40,7 @@ function TodayCard({
   iconColor: string;
   emptyLabel: string;
   dateField?: 'check_in' | 'check_out';
+  onPressItem?: (r: Reservation) => void;
 }) {
   return (
     <Surface style={styles.todayCard} elevation={1}>
@@ -44,7 +55,12 @@ function TodayCard({
         <Text style={styles.emptyText}>{emptyLabel}</Text>
       ) : (
         reservations.map((r) => (
-          <View key={r.id} style={styles.todayItem}>
+          <TouchableOpacity
+            key={r.id}
+            style={styles.todayItem}
+            onPress={() => onPressItem?.(r)}
+            activeOpacity={onPressItem ? 0.6 : 1}
+          >
             {r.property && (
               <View style={[styles.dot, { backgroundColor: r.property.color }]} />
             )}
@@ -55,14 +71,23 @@ function TodayCard({
                 {dateField ? ` · ${formatDateShort(r[dateField])}` : ''}
               </Text>
             </View>
-          </View>
+            {onPressItem && (
+              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+            )}
+          </TouchableOpacity>
         ))
       )}
     </Surface>
   );
 }
 
-function OccupiedCard({ reservations }: { reservations: Reservation[] }) {
+function OccupiedCard({
+  reservations,
+  onPressItem,
+}: {
+  reservations: Reservation[];
+  onPressItem?: (r: Reservation) => void;
+}) {
   const seen = new Set<string>();
   const unique = reservations.filter((r) => {
     if (seen.has(r.property_id)) return false;
@@ -82,17 +107,31 @@ function OccupiedCard({ reservations }: { reservations: Reservation[] }) {
         <Text style={styles.emptyText}>Aucun logement occupé</Text>
       ) : (
         unique.map((r) => (
-          <View key={r.id} style={styles.statusItem}>
+          <TouchableOpacity
+            key={r.id}
+            style={styles.statusItem}
+            onPress={() => onPressItem?.(r)}
+            activeOpacity={0.6}
+          >
             {r.property && <View style={[styles.dot, { backgroundColor: r.property.color }]} />}
             <Text style={styles.statusItemText} numberOfLines={1}>{r.property?.name}</Text>
-          </View>
+            <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+          </TouchableOpacity>
         ))
       )}
     </Surface>
   );
 }
 
-function TurnoverCard({ checkIns, checkOuts }: { checkIns: Reservation[]; checkOuts: Reservation[] }) {
+function TurnoverCard({
+  checkIns,
+  checkOuts,
+  onPressItem,
+}: {
+  checkIns: Reservation[];
+  checkOuts: Reservation[];
+  onPressItem?: (r: Reservation) => void;
+}) {
   const checkOutPropIds = new Set(checkOuts.map((r) => r.property_id));
   const turnovers = checkIns.filter((r) => checkOutPropIds.has(r.property_id));
   return (
@@ -108,10 +147,16 @@ function TurnoverCard({ checkIns, checkOuts }: { checkIns: Reservation[]; checkO
         <Text style={styles.emptyText}>Aucun turn-over</Text>
       ) : (
         turnovers.map((r) => (
-          <View key={r.id} style={styles.statusItem}>
+          <TouchableOpacity
+            key={r.id}
+            style={styles.statusItem}
+            onPress={() => onPressItem?.(r)}
+            activeOpacity={0.6}
+          >
             {r.property && <View style={[styles.dot, { backgroundColor: r.property.color }]} />}
             <Text style={styles.statusItemText} numberOfLines={1}>{r.property?.name}</Text>
-          </View>
+            <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+          </TouchableOpacity>
         ))
       )}
     </Surface>
@@ -121,13 +166,37 @@ function TurnoverCard({ checkIns, checkOuts }: { checkIns: Reservation[]; checkO
 function CleaningStatusCard({
   properties,
   today,
+  allArrivals,
   onToggle,
 }: {
   properties: Property[];
   today: string;
+  allArrivals: Reservation[];
   onToggle: (property: Property) => void;
 }) {
-  const active = properties.filter((p) => p.is_active);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+  const active = properties
+    .filter((p) => p.is_active)
+    .map((p) => {
+      const nextArrival = allArrivals
+        .filter((r) => r.property_id === p.id)
+        .sort((a, b) => a.check_in.localeCompare(b.check_in))[0];
+      const urgent = p.cleaning_status === 'to_do' && !!nextArrival && nextArrival.check_in <= tomorrowStr;
+      return { property: p, nextArrival, urgent };
+    })
+    .sort((a, b) => {
+      if (a.property.cleaning_status !== b.property.cleaning_status) {
+        return a.property.cleaning_status === 'to_do' ? -1 : 1;
+      }
+      if (a.nextArrival && b.nextArrival) {
+        return a.nextArrival.check_in.localeCompare(b.nextArrival.check_in);
+      }
+      return 0;
+    });
+
   return (
     <Surface style={styles.cleaningCard} elevation={1}>
       <View style={styles.statusCardHeader}>
@@ -137,35 +206,48 @@ function CleaningStatusCard({
       {active.length === 0 ? (
         <Text style={styles.emptyText}>Aucun logement actif</Text>
       ) : (
-        active.map((p) => {
+        active.map(({ property: p, nextArrival, urgent }) => {
           const isDone = p.cleaning_status === 'ready';
           return (
-            <View key={p.id} style={styles.cleaningRow}>
+            <TouchableOpacity
+              key={p.id}
+              style={[
+                styles.cleaningRow,
+                urgent && styles.cleaningRowUrgent,
+              ]}
+              onPress={() => onToggle(p)}
+              activeOpacity={0.7}
+            >
               <View style={[styles.dot, { backgroundColor: p.color }]} />
-              <Text style={styles.cleaningPropertyName} numberOfLines={1}>{p.name}</Text>
-              <TouchableOpacity
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cleaningPropertyName} numberOfLines={1}>{p.name}</Text>
+                {nextArrival && (
+                  <Text style={[styles.cleaningNextIn, urgent && { color: APP_COLORS.danger }]}>
+                    {urgent && '⚠ '}Check-in {formatNextIn(nextArrival.check_in, today)}
+                  </Text>
+                )}
+              </View>
+              <View
                 style={[
                   styles.cleaningBadge,
-                  { backgroundColor: isDone ? '#D1FAE5' : '#FEF3C7' },
+                  { backgroundColor: isDone ? '#D1FAE5' : urgent ? '#FEE2E2' : '#FEF3C7' },
                 ]}
-                onPress={() => onToggle(p)}
-                activeOpacity={0.7}
               >
                 <MaterialCommunityIcons
                   name={isDone ? 'check-circle' : 'clock-outline'}
                   size={13}
-                  color={isDone ? APP_COLORS.success : '#B45309'}
+                  color={isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : '#B45309'}
                 />
                 <Text
                   style={[
                     styles.cleaningBadgeText,
-                    { color: isDone ? APP_COLORS.success : '#B45309' },
+                    { color: isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : '#B45309' },
                   ]}
                 >
                   {isDone ? 'Prêt' : 'À faire'}
                 </Text>
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
           );
         })
       )}
@@ -204,7 +286,11 @@ export default function DashboardScreen() {
 
   const isLoading = todayLoading || upcomingLoading || stockLoading;
 
-  // Auto-set "à faire" pour les logements avec un départ aujourd'hui (si pas déjà mis à jour aujourd'hui)
+  const allArrivals = [
+    ...(todayData?.checkIns ?? []),
+    ...(upcomingActivity?.arrivals ?? []),
+  ];
+
   useEffect(() => {
     if (!todayData?.checkOuts || !properties) return;
     todayData.checkOuts.forEach((r) => {
@@ -258,7 +344,6 @@ export default function DashboardScreen() {
           <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
         ) : (
           <>
-            {/* ── Aujourd'hui ── */}
             <SectionHeader title={t('dashboard.today')} />
             <View style={styles.todayRow}>
               <View style={{ flex: 1 }}>
@@ -268,6 +353,7 @@ export default function DashboardScreen() {
                   icon="login"
                   iconColor={APP_COLORS.success}
                   emptyLabel={t('dashboard.noCheckins')}
+                  onPressItem={(r) => router.push(`/(app)/reservations/${r.id}`)}
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -277,11 +363,11 @@ export default function DashboardScreen() {
                   icon="logout"
                   iconColor={APP_COLORS.warning}
                   emptyLabel={t('dashboard.noCheckouts')}
+                  onPressItem={(r) => router.push(`/(app)/reservations/${r.id}`)}
                 />
               </View>
             </View>
 
-            {/* ── À venir ── */}
             <SectionHeader title={t('dashboard.upcoming')} />
             <View style={styles.todayRow}>
               <View style={{ flex: 1 }}>
@@ -292,6 +378,7 @@ export default function DashboardScreen() {
                   iconColor={APP_COLORS.primary}
                   emptyLabel={t('dashboard.noUpcoming')}
                   dateField="check_in"
+                  onPressItem={(r) => router.push(`/(app)/reservations/${r.id}`)}
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -302,20 +389,24 @@ export default function DashboardScreen() {
                   iconColor="#8B5CF6"
                   emptyLabel={t('dashboard.noUpcoming')}
                   dateField="check_out"
+                  onPressItem={(r) => router.push(`/(app)/reservations/${r.id}`)}
                 />
               </View>
             </View>
 
-            {/* ── Statut logements ── */}
             <SectionHeader title="Statut logements" />
             <View style={styles.todayRow}>
               <View style={{ flex: 1 }}>
-                <OccupiedCard reservations={occupiedToday ?? []} />
+                <OccupiedCard
+                  reservations={occupiedToday ?? []}
+                  onPressItem={(r) => router.push(`/(app)/reservations/${r.id}`)}
+                />
               </View>
               <View style={{ flex: 1 }}>
                 <TurnoverCard
                   checkIns={todayData?.checkIns ?? []}
                   checkOuts={todayData?.checkOuts ?? []}
+                  onPressItem={(r) => router.push(`/(app)/reservations/${r.id}`)}
                 />
               </View>
             </View>
@@ -323,11 +414,11 @@ export default function DashboardScreen() {
               <CleaningStatusCard
                 properties={properties ?? []}
                 today={today}
+                allArrivals={allArrivals}
                 onToggle={handleCleaningToggle}
               />
             </View>
 
-            {/* ── À appeler ── */}
             {pendingCallList && pendingCallList.length > 0 && (
               <>
                 <SectionHeader title={`📞 À appeler (${pendingCallList.length})`} />
@@ -367,7 +458,6 @@ export default function DashboardScreen() {
               </>
             )}
 
-            {/* ── Stocks bas ── */}
             {lowStock && lowStock.length > 0 && (
               <>
                 <SectionHeader title={t('dashboard.lowStock')} />
@@ -484,18 +574,28 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     backgroundColor: '#FFFFFF',
-    gap: 8,
+    gap: 4,
   },
   cleaningRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+  },
+  cleaningRowUrgent: {
+    backgroundColor: '#FFF1F2',
   },
   cleaningPropertyName: {
-    flex: 1,
     fontSize: 13,
     fontWeight: '600',
     color: APP_COLORS.textPrimary,
+  },
+  cleaningNextIn: {
+    fontSize: 10,
+    color: APP_COLORS.textSecondary,
+    marginTop: 1,
   },
   cleaningBadge: {
     flexDirection: 'row',

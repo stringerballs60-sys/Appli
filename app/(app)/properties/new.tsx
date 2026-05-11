@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, View, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, View, StyleSheet, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { Text, TextInput, Button, Switch, Snackbar, Appbar } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -64,7 +64,6 @@ export default function NewPropertyScreen() {
       </Appbar.Header>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Identité */}
         <SectionHeader title="Identité" />
         <View style={styles.section}>
           <TextInput
@@ -83,7 +82,6 @@ export default function NewPropertyScreen() {
           />
         </View>
 
-        {/* Type */}
         <SectionHeader title={t('properties.type')} />
         <View style={styles.section}>
           {PROPERTY_TYPES.map((type) => (
@@ -106,7 +104,6 @@ export default function NewPropertyScreen() {
           ))}
         </View>
 
-        {/* Lits */}
         <SectionHeader title={t('properties.beds')} />
         <View style={styles.section}>
           <StepperInput
@@ -131,7 +128,6 @@ export default function NewPropertyScreen() {
           />
         </View>
 
-        {/* Capacité */}
         <SectionHeader title="Capacité" />
         <View style={styles.section}>
           <StepperInput
@@ -148,23 +144,40 @@ export default function NewPropertyScreen() {
           />
         </View>
 
-        {/* Couleur */}
         <SectionHeader title={t('properties.color')} />
-        <View style={[styles.section, styles.colorGrid]}>
-          {PROPERTY_COLORS.map((color) => (
-            <TouchableOpacity
-              key={color}
-              style={[
-                styles.colorSwatch,
-                { backgroundColor: color },
-                form.color === color && styles.colorSwatchSelected,
-              ]}
-              onPress={() => set('color', color)}
-            />
+        <View style={styles.section}>
+          {Array.from({ length: PROPERTY_COLORS.length / 3 }, (_, i) => (
+            <View key={i} style={styles.colorFamily}>
+              {PROPERTY_COLORS.slice(i * 3, i * 3 + 3).map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorSwatch,
+                    { backgroundColor: color },
+                    form.color === color && styles.colorSwatchSelected,
+                  ]}
+                  onPress={() => set('color', color)}
+                />
+              ))}
+            </View>
           ))}
+          <View style={styles.customColorRow}>
+            <View style={[styles.customPreview, { backgroundColor: form.color }]} />
+            <RNTextInput
+              style={styles.hexInput}
+              value={form.color}
+              onChangeText={(v) => {
+                const hex = v.startsWith('#') ? v : `#${v}`;
+                if (/^#[0-9A-Fa-f]{0,6}$/.test(hex)) set('color', hex);
+              }}
+              placeholder="#RRGGBB"
+              autoCapitalize="characters"
+              maxLength={7}
+            />
+            <Text style={styles.hexHint}>Couleur personnalisée</Text>
+          </View>
         </View>
 
-        {/* Notes & actif */}
         <SectionHeader title={t('common.notes')} />
         <View style={styles.section}>
           <TextInput
@@ -242,15 +255,51 @@ const styles = StyleSheet.create({
     backgroundColor: APP_COLORS.primary,
   },
   typeLabel: { fontSize: 14, color: APP_COLORS.textPrimary },
-  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  colorFamily: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
   colorSwatch: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    flex: 1,
   },
   colorSwatchSelected: {
     borderWidth: 3,
     borderColor: APP_COLORS.textPrimary,
+  },
+  customColorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: APP_COLORS.border,
+  },
+  customPreview: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+  },
+  hexInput: {
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 14,
+    width: 100,
+    fontFamily: 'monospace',
+  },
+  hexHint: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+    flex: 1,
   },
   switchRow: {
     flexDirection: 'row',

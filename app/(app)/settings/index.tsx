@@ -49,7 +49,9 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               await supabase.auth.signOut();
-            } catch (_) {}
+            } catch (_) {
+              // ignore network errors
+            }
             reset();
             router.replace('/(auth)/login');
           },

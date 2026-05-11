@@ -1,334 +1,186 @@
-import { useMemo, useRef, useState, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
-import { Text, ActivityIndicator } from 'react-native-paper';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useCallback, useRef } from 'react';
 import {
-  parseISO, addDays, startOfMonth, endOfMonth, format, differenceInDays, subDays,
-} from 'date-fns';
+  View,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
+import { Text, Appbar, ActivityIndicator } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { addDays, differenceInDays, format, isToday, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useProperties } from '@/hooks/useProperties';
 import { useReservationsForMonth } from '@/hooks/useReservations';
-import { useAppStore } from '@/stores/appStore';
+import { useActiveProperties } from '@/hooks/useProperties';
 import { APP_COLORS } from '@/constants/colors';
-import { FONTS } from '@/constants/typography';
-import { toISODateString } from '@/utils/dateHelpers';
 import { Reservation } from '@/types';
 
-const DAY_W = 36;
-const ROW_H = 52;
-const NAME_W = 108;
-const HEADER_H = 44;
-const MONTHS_BACK = 1;
-const MONTHS_FORWARD = 5;
-const TODAY = toISODateString(new Date());
+const DAY_WIDTH = 52;
+const LEFT_COL = 88;
+const ROW_HEIGHT = 62;
+const HEADER_HEIGHT = 50;
+const PAST_DAYS = 3;
+const TOTAL_DAYS = 28;
 
-/* Build a continuous range of days spanning several months */
-function buildRange(): { days: string[]; from: string; to: string } {
-  const start = startOfMonth(subDays(parseISO(TODAY), MONTHS_BACK * 30));
-  const end = endOfMonth(addDays(parseISO(TODAY), MONTHS_FORWARD * 30));
-  const days: string[] = [];
-  let cur = start;
-  while (cur <= end) {
-    days.push(toISODateString(cur));
-    cur = addDays(cur, 1);
-  }
+function getBlockGeometry(resa: Reservation, startDate: Date) {
+  const checkIn = parseISO(resa.check_in);
+  const dayOffset = differenceInDays(checkIn, startDate);
+  const clampedOffset = Math.max(0, dayOffset);
+  const visibleNights = dayOffset < 0 ? resa.nb_nights + dayOffset : resa.nb_nights;
   return {
-    days,
-    from: toISODateString(start),
-    to: toISODateString(end),
+    left: clampedOffset * DAY_WIDTH + 2,
+    width: Math.max(visibleNights * DAY_WIDTH - 4, 0),
   };
-}
-
-type Block = {
-  resId: string;
-  left: number;
-  width: number;
-  color: string;
-  label: string;
-  info: string;
-  isStart: boolean;
-  isEnd: boolean;
-  widthDays: number;
-};
-
-function buildBlocks(reservations: Reservation[], days: string[], propertyId: string): Block[] {
-  if (!reservations.length || !days.length) return [];
-  const rangeStart = days[0];
-  const rangeEnd = days[days.length - 1];
-  const blocks: Block[] = [];
-
-  for (const res of reservations) {
-    if (res.property_id !== propertyId) continue;
-    if (res.check_out <= rangeStart || res.check_in > rangeEnd) continue;
-
-    const clampedStart = res.check_in >= rangeStart ? res.check_in : rangeStart;
-    const clampedEnd =
-      res.check_out <= rangeEnd
-        ? res.check_out
-        : toISODateString(addDays(parseISO(rangeEnd), 1));
-
-    const offsetDays = differenceInDays(parseISO(clampedStart), parseISO(rangeStart));
-    const widthDays = differenceInDays(parseISO(clampedEnd), parseISO(clampedStart));
-    if (widthDays <= 0) continue;
-
-    const totalGuests = res.nb_couples * 2 + res.nb_solo_adults + res.nb_children + res.nb_babies;
-    const beds = [
-      res.beds_double_used > 0 ? `${res.beds_double_used}×2` : '',
-      res.beds_single_used > 0 ? `${res.beds_single_used}×1` : '',
-      res.beds_sofa_used > 0 ? `${res.beds_sofa_used}canapé` : '',
-    ].filter(Boolean).join(' ');
-    const info = `${totalGuests}p · ${beds || '?'}`;
-
-    blocks.push({
-      resId: res.id,
-      left: offsetDays * DAY_W,
-      width: widthDays * DAY_W - 3,
-      color: (res.property as any)?.color ?? APP_COLORS.primary,
-      label: res.guest_name,
-      info,
-      isStart: res.check_in >= rangeStart,
-      isEnd: res.check_out <= rangeEnd,
-      widthDays,
-    });
-  }
-  return blocks;
 }
 
 export default function PlanningScreen() {
   const router = useRouter();
-  const { data: properties, isLoading: loadingProps } = useProperties();
-  const scrollRef = useRef<ScrollView>(null);
-  const { planningScrollX, setPlanningScrollX } = useAppStore();
-  const [rowsHeight, setRowsHeight] = useState(400);
+  const headerScrollRef = useRef<ScrollView>(null);
 
-  const { days, from, to } = useMemo(() => buildRange(), []);
-  const { data: reservations, isLoading: loadingRes } = useReservationsForMonth(from, to);
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - PAST_DAYS);
+  startDate.setHours(0, 0, 0, 0);
 
-  const todayIdx = days.indexOf(TODAY);
-  const todayScrollX = Math.max(0, NAME_W + todayIdx * DAY_W - 80);
+  const from = format(startDate, 'yyyy-MM-dd');
+  const to = format(addDays(startDate, TOTAL_DAYS), 'yyyy-MM-dd');
 
-  // Scroll initial : position sauvegardée si on revient d'une fiche résa, sinon aujourd'hui
-  const initialScrollX = useMemo(
-    () => (planningScrollX >= 0 ? planningScrollX : todayScrollX),
-    [] // capturé une seule fois au montage
-  );
+  const { data: reservations, isLoading: resaLoading } = useReservationsForMonth(from, to);
+  const { data: properties, isLoading: propLoading } = useActiveProperties();
 
-  const [visibleMonth, setVisibleMonth] = useState(() =>
-    format(parseISO(TODAY), 'MMMM yyyy', { locale: fr }).replace(/^\w/, (c) => c.toUpperCase())
-  );
+  const days = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(startDate, i));
 
-  const onGridLayout = useCallback((e: LayoutChangeEvent) => {
-    setRowsHeight(e.nativeEvent.layout.height - HEADER_H);
-  }, []);
-
-  /* Quand on revient d'une fiche résa → restaure la position sauvegardée */
-  useFocusEffect(
-    useCallback(() => {
-      const target = planningScrollX >= 0 ? planningScrollX : todayScrollX;
-      setTimeout(() => scrollRef.current?.scrollTo({ x: target, animated: false }), 120);
-    }, [planningScrollX, todayScrollX])
-  );
-
-  /* Save scroll X + update month label */
-  const onScroll = useCallback(
+  const handleContentScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const x = e.nativeEvent.contentOffset.x;
-      setPlanningScrollX(x);
-      const dayIdx = Math.floor((x - NAME_W) / DAY_W);
-      const idx = Math.max(0, Math.min(dayIdx, days.length - 1));
-      const d = days[idx];
-      if (d) {
-        setVisibleMonth(
-          format(parseISO(d), 'MMMM yyyy', { locale: fr }).replace(/^\w/, (c) => c.toUpperCase())
-        );
-      }
+      headerScrollRef.current?.scrollTo({
+        x: e.nativeEvent.contentOffset.x,
+        animated: false,
+      });
     },
-    [days, setPlanningScrollX]
+    []
   );
 
-  const allBlocks = useMemo(() => {
-    const result: Record<string, Block[]> = {};
-    for (const p of properties ?? []) {
-      result[p.id] = buildBlocks(reservations ?? [], days, p.id);
-    }
-    return result;
-  }, [reservations, properties, days]);
+  const getResaForProperty = (propertyId: string): Reservation[] =>
+    (reservations ?? []).filter(
+      (r) => r.property_id === propertyId && r.status !== 'cancelled'
+    );
 
-  const isLoading = loadingProps || loadingRes;
-  const totalDaysWidth = days.length * DAY_W;
-  const reservationCount = (reservations ?? []).length;
+  const isLoading = resaLoading || propLoading;
+  const initialScrollX = (PAST_DAYS - 1) * DAY_WIDTH;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.monthTitle}>{visibleMonth}</Text>
-        <TouchableOpacity
-          style={styles.todayBtn}
-          onPress={() =>
-            scrollRef.current?.scrollTo({ x: Math.max(0, todayScrollX), animated: true })
-          }
-        >
-          <Text style={styles.todayBtnText}>Aujourd'hui</Text>
-        </TouchableOpacity>
-      </View>
+      <Appbar.Header style={styles.appbar}>
+        <Appbar.Content title="Planning" titleStyle={styles.appbarTitle} />
+      </Appbar.Header>
 
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 60 }} color={APP_COLORS.primary} />
+        <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
       ) : (
-        <View style={{ flex: 1 }} onLayout={onGridLayout}>
-          <ScrollView
-            ref={scrollRef}
-            horizontal
-            showsHorizontalScrollIndicator
-            bounces={false}
-            contentOffset={{ x: initialScrollX, y: 0 }}
-            scrollEventThrottle={16}
-            onScroll={onScroll}
-            style={{ flex: 1 }}
-          >
-            <View style={{ width: NAME_W + totalDaysWidth }}>
-              {/* Day header row */}
-              <View style={[styles.headerRow, { width: NAME_W + totalDaysWidth }]}>
-                <View style={[styles.cornerCell, { width: NAME_W }]}>
-                  <Text style={styles.cornerText}>Logements</Text>
-                </View>
-                {days.map((d) => {
-                  const isToday = d === TODAY;
-                  const num = parseInt(d.slice(8), 10);
-                  const dow = format(parseISO(d), 'EEE', { locale: fr }).slice(0, 2);
-                  const isWE = [6, 0].includes(parseISO(d).getDay());
-                  const isFirst = num === 1;
+        <View style={styles.container}>
+          <View style={styles.headerRow}>
+            <View style={{ width: LEFT_COL, borderRightWidth: 1, borderRightColor: APP_COLORS.border }} />
+            <ScrollView
+              horizontal
+              ref={headerScrollRef}
+              scrollEnabled={false}
+              showsHorizontalScrollIndicator={false}
+            >
+              <View style={{ flexDirection: 'row' }}>
+                {days.map((day, i) => {
+                  const isT = isToday(day);
                   return (
-                    <View
-                      key={d}
-                      style={[
-                        styles.dayCell,
-                        isWE && styles.dayCellWE,
-                        isToday && styles.dayCellToday,
-                        isFirst && styles.dayCellFirst,
-                      ]}
-                    >
-                      {isFirst && (
-                        <Text style={styles.monthMark}>
-                          {format(parseISO(d), 'MMM', { locale: fr }).toUpperCase()}
-                        </Text>
-                      )}
-                      <Text style={[styles.dow, isToday && styles.textToday, isWE && styles.textWE]}>
-                        {dow}
+                    <View key={i} style={[styles.dayHeader, isT && styles.dayHeaderToday]}>
+                      <Text style={[styles.dayNum, isT && styles.dayNumToday]}>
+                        {format(day, 'd')}
                       </Text>
-                      <Text style={[styles.dayNum, isToday && styles.textToday, isWE && styles.textWE]}>
-                        {num}
+                      <Text style={[styles.dayLabel, isT && styles.dayNumToday]}>
+                        {format(day, 'EEE', { locale: fr })}
                       </Text>
                     </View>
                   );
                 })}
               </View>
+            </ScrollView>
+          </View>
 
-              {/* Property rows — vertical scroll */}
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row' }}>
+              <View style={{ width: LEFT_COL, borderRightWidth: 1, borderRightColor: APP_COLORS.border }}>
+                {(properties ?? []).map((p) => (
+                  <View key={p.id} style={styles.propertyCell}>
+                    <View style={[styles.propertyDot, { backgroundColor: p.color }]} />
+                    <Text style={styles.propertyName} numberOfLines={2}>
+                      {p.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
               <ScrollView
-                style={{ height: rowsHeight }}
-                showsVerticalScrollIndicator
-                nestedScrollEnabled
-                bounces={false}
+                horizontal
+                onScroll={handleContentScroll}
+                scrollEventThrottle={16}
+                showsHorizontalScrollIndicator={false}
+                contentOffset={{ x: initialScrollX, y: 0 }}
               >
-                {(properties ?? []).map((property, idx) => {
-                  const blocks = allBlocks[property.id] ?? [];
-                  return (
-                    <View
-                      key={property.id}
-                      style={[
-                        styles.propertyRow,
-                        { width: NAME_W + totalDaysWidth },
-                        idx % 2 === 1 && styles.rowAlt,
-                        !property.is_active && styles.rowInactive,
-                      ]}
-                    >
-                      {/* Property name cell */}
-                      <View style={[styles.nameCell, { width: NAME_W }]}>
-                        <View style={[styles.colorDot, { backgroundColor: property.color }]} />
-                        <Text style={styles.nameText} numberOfLines={2}>{property.name}</Text>
-                      </View>
+                <View style={{ width: TOTAL_DAYS * DAY_WIDTH }}>
+                  <View
+                    style={[
+                      styles.todayLine,
+                      {
+                        left: PAST_DAYS * DAY_WIDTH + DAY_WIDTH / 2 - 1,
+                        height: (properties ?? []).length * ROW_HEIGHT,
+                      },
+                    ]}
+                  />
 
-                      {/* Grid area */}
-                      <View style={{ width: totalDaysWidth, height: ROW_H }}>
-                        {/* Weekend + month separator tints */}
-                        {days.map((d, di) => {
-                          const isWE = [6, 0].includes(parseISO(d).getDay());
-                          const isFirst = d.slice(8) === '01';
-                          return (
-                            <View
-                              key={d}
-                              style={[
-                                styles.colLine,
-                                { left: di * DAY_W, width: DAY_W },
-                                isWE && styles.colLineWE,
-                                isFirst && styles.colLineFirst,
-                              ]}
-                            />
-                          );
-                        })}
+                  {(properties ?? []).map((property) => (
+                    <View key={property.id} style={styles.propertyRow}>
+                      {days.map((day, i) => (
+                        <View
+                          key={i}
+                          style={[
+                            styles.gridLine,
+                            { left: i * DAY_WIDTH },
+                            isToday(day) && styles.gridLineToday,
+                          ]}
+                        />
+                      ))}
 
-                        {/* Today highlight */}
-                        {todayIdx >= 0 && (
-                          <View style={[styles.todayCol, { left: todayIdx * DAY_W, width: DAY_W }]} />
-                        )}
-
-                        {/* Reservation blocks — tappable */}
-                        {blocks.map((b, bi) => (
+                      {getResaForProperty(property.id).map((resa) => {
+                        const { left, width } = getBlockGeometry(resa, startDate);
+                        if (width <= 0) return null;
+                        return (
                           <TouchableOpacity
-                            key={bi}
-                            activeOpacity={0.75}
-                            onPress={() => router.push(`/(app)/reservations/${b.resId}` as any)}
+                            key={resa.id}
                             style={[
-                              styles.block,
-                              {
-                                left: b.left,
-                                width: b.width,
-                                backgroundColor: b.color,
-                                borderTopLeftRadius: b.isStart ? 6 : 0,
-                                borderBottomLeftRadius: b.isStart ? 6 : 0,
-                                borderTopRightRadius: b.isEnd ? 6 : 0,
-                                borderBottomRightRadius: b.isEnd ? 6 : 0,
-                              },
+                              styles.resaBlock,
+                              { left, width, backgroundColor: property.color },
                             ]}
+                            onPress={() => router.push(`/(app)/reservations/${resa.id}`)}
+                            activeOpacity={0.85}
                           >
-                            {b.widthDays >= 2 && (
-                              <Text style={styles.blockText} numberOfLines={1}>
-                                {b.label}
-                              </Text>
-                            )}
-                            {b.widthDays >= 4 && (
-                              <Text style={styles.blockInfo} numberOfLines={1}>
-                                {b.info}
-                              </Text>
+                            <Text style={styles.resaName} numberOfLines={1}>
+                              {resa.guest_name}
+                            </Text>
+                            {width > 72 && (
+                              <Text style={styles.resaNights}>{resa.nb_nights}n</Text>
                             )}
                           </TouchableOpacity>
-                        ))}
-                      </View>
+                        );
+                      })}
                     </View>
-                  );
-                })}
+                  ))}
+                </View>
               </ScrollView>
             </View>
           </ScrollView>
-        </View>
-      )}
 
-      {/* Footer */}
-      {!isLoading && (
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            {reservationCount} réservation{reservationCount !== 1 ? 's' : ''} sur la période
-          </Text>
-          <View style={styles.legendItem}>
-            <View style={styles.todayMark} />
-            <Text style={styles.footerText}>Aujourd'hui</Text>
+          <View style={styles.legend}>
+            <View style={[styles.legendDot, { backgroundColor: APP_COLORS.danger }]} />
+            <Text style={styles.legendText}>Aujourd'hui</Text>
           </View>
         </View>
       )}
@@ -338,158 +190,131 @@ export default function PlanningScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
-
-  header: {
-    backgroundColor: APP_COLORS.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  navBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  monthTitle: {
-    fontSize: 16,
-    fontFamily: FONTS.titleBold,
-    color: '#FFFFFF',
-    flex: 1,
-    textAlign: 'center',
-  },
-  todayBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  todayBtnText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600' },
-
+  appbar: { backgroundColor: APP_COLORS.primary },
+  appbarTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
+  container: { flex: 1 },
   headerRow: {
-    height: HEADER_H,
     flexDirection: 'row',
-    backgroundColor: '#F0F2F5',
+    height: HEADER_HEIGHT,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: APP_COLORS.border,
   },
-  cornerCell: {
-    height: HEADER_H,
-    backgroundColor: '#F0F2F5',
-    borderRightWidth: 2,
+  dayHeader: {
+    width: DAY_WIDTH,
+    height: HEADER_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightWidth: 1,
     borderRightColor: APP_COLORS.border,
+  },
+  dayHeaderToday: {
+    backgroundColor: APP_COLORS.primary + '15',
+  },
+  dayNum: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: APP_COLORS.textPrimary,
+  },
+  dayLabel: {
+    fontSize: 10,
+    color: APP_COLORS.textSecondary,
+    textTransform: 'capitalize',
+  },
+  dayNumToday: {
+    color: APP_COLORS.primary,
+    fontWeight: '700',
+  },
+  propertyCell: {
+    height: ROW_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
-  },
-  cornerText: { fontSize: 10, fontWeight: '700', color: APP_COLORS.textSecondary, textTransform: 'uppercase' },
-  dayCell: {
-    width: DAY_W,
-    height: HEADER_H,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 4,
-    borderRightWidth: 1,
-    borderRightColor: APP_COLORS.border + '44',
-    gap: 0,
-  },
-  dayCellWE: { backgroundColor: '#E8ECFA' },
-  dayCellToday: { backgroundColor: APP_COLORS.primary + '22' },
-  dayCellFirst: { borderLeftWidth: 2, borderLeftColor: APP_COLORS.border },
-  monthMark: {
-    position: 'absolute',
-    top: 3,
-    fontSize: 7,
-    fontWeight: '800',
-    color: APP_COLORS.primary,
-    letterSpacing: 0.5,
-  },
-  dow: { fontSize: 8, color: APP_COLORS.textSecondary, textTransform: 'uppercase', fontWeight: '600' },
-  dayNum: { fontSize: 13, fontWeight: '700', color: APP_COLORS.textPrimary },
-  textToday: { color: APP_COLORS.primary },
-  textWE: { color: '#4F46E5' },
-
-  propertyRow: {
-    height: ROW_H,
-    flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border + '55',
-    backgroundColor: '#FFFFFF',
+    borderBottomColor: APP_COLORS.border,
+    gap: 4,
   },
-  rowAlt: { backgroundColor: '#F9FAFB' },
-  rowInactive: { opacity: 0.45 },
-
-  nameCell: {
-    height: ROW_H,
+  propertyDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  propertyName: {
+    fontSize: 10,
+    color: APP_COLORS.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  propertyRow: {
+    height: ROW_HEIGHT,
+    position: 'relative',
+    borderBottomWidth: 1,
+    borderBottomColor: APP_COLORS.border,
+    backgroundColor: '#FAFAFA',
+  },
+  gridLine: {
+    position: 'absolute',
+    top: 0,
+    width: 1,
+    height: ROW_HEIGHT,
+    backgroundColor: APP_COLORS.border,
+  },
+  gridLineToday: {
+    backgroundColor: APP_COLORS.primary + '18',
+    width: DAY_WIDTH,
+  },
+  todayLine: {
+    position: 'absolute',
+    top: 0,
+    width: 2,
+    backgroundColor: APP_COLORS.danger,
+    zIndex: 10,
+    opacity: 0.7,
+  },
+  resaBlock: {
+    position: 'absolute',
+    top: 10,
+    height: ROW_HEIGHT - 20,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+  },
+  resaName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  resaNights: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '500',
+  },
+  legend: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 8,
-    borderRightWidth: 2,
-    borderRightColor: APP_COLORS.border,
-    backgroundColor: 'rgba(255,255,255,0.97)',
-  },
-  colorDot: { width: 9, height: 9, borderRadius: 5, flexShrink: 0 },
-  nameText: { fontSize: 11, fontWeight: '600', color: APP_COLORS.textPrimary, flex: 1 },
-
-  colLine: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    borderRightWidth: 1,
-    borderRightColor: APP_COLORS.border + '33',
-  },
-  colLineWE: { backgroundColor: '#F0F4FF55' },
-  colLineFirst: { borderLeftWidth: 2, borderLeftColor: APP_COLORS.border + '88' },
-  todayCol: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    backgroundColor: APP_COLORS.primary + '14',
-    borderLeftWidth: 2,
-    borderLeftColor: APP_COLORS.primary + 'AA',
-  },
-
-  block: {
-    position: 'absolute',
-    top: 8,
-    height: ROW_H - 16,
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-    gap: 1,
-  },
-  blockText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  blockInfo: {
-    fontSize: 8,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.85)',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
-  },
-
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: APP_COLORS.border,
+    backgroundColor: '#FFFFFF',
   },
-  footerText: { fontSize: 12, color: APP_COLORS.textSecondary },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  todayMark: {
-    width: 14,
-    height: 14,
-    borderRadius: 2,
-    backgroundColor: APP_COLORS.primary + '20',
-    borderLeftWidth: 2,
-    borderLeftColor: APP_COLORS.primary,
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 11,
+    color: APP_COLORS.textSecondary,
   },
 });

@@ -199,4 +199,32 @@ export const reservationsService = {
     const { error } = await supabase.from('reservations').delete().eq('id', id);
     if (error) throw error;
   },
+
+  async getUpcomingActivity(
+    userId: string,
+    limit = 5
+  ): Promise<{ arrivals: Reservation[]; departures: Reservation[] }> {
+    const today = new Date().toISOString().slice(0, 10);
+    const [arr, dep] = await Promise.all([
+      supabase
+        .from('reservations')
+        .select('*, property:properties(*)')
+        .eq('user_id', userId)
+        .gt('check_in', today)
+        .neq('status', 'cancelled')
+        .order('check_in')
+        .limit(limit),
+      supabase
+        .from('reservations')
+        .select('*, property:properties(*)')
+        .eq('user_id', userId)
+        .gt('check_out', today)
+        .neq('status', 'cancelled')
+        .order('check_out')
+        .limit(limit),
+    ]);
+    if (arr.error) throw arr.error;
+    if (dep.error) throw dep.error;
+    return { arrivals: arr.data, departures: dep.data };
+  },
 };

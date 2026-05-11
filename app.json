@@ -25,7 +25,15 @@
       "package": "com.conciergepro.app"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1a56db",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -67,6 +67,15 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="planning/index"
+        options={{
+          title: t('navigation.planning'),
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="calendar-range" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="reservations/index"
         options={{
           title: t('navigation.reservations'),
@@ -103,7 +112,6 @@ export default function AppLayout() {
       <Tabs.Screen name="inventory/equipment/[propertyId]" options={{ href: null }} />
       <Tabs.Screen name="inventory/consumables/[propertyId]" options={{ href: null }} />
       <Tabs.Screen name="settings/index" options={{ href: null }} />
-      <Tabs.Screen name="planning/index" options={{ href: null }} />
       <Tabs.Screen name="reservations/edit/[id]" options={{ href: null }} />
     </Tabs>
   );

@@ -10,6 +10,25 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        brand: {
+          navy: '#1A365D',
+          'navy-700': '#15294A',
+          'navy-500': '#2A5085',
+          'navy-100': '#E2E8F0',
+          gold: '#D4AF37',
+          'gold-100': '#FAF1D2',
+        },
+        bg: '#F8F9FA',
+        surface: '#FFFFFF',
+        fg: {
+          1: '#333333',
+          2: '#6B7280',
+          3: '#9CA3AF',
+        },
+        success: '#10B981',
+        warning: '#F59E0B',
+        danger: '#EF4444',
+        info: '#2196F3',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -44,11 +63,15 @@ const config: Config = {
           foreground: 'hsl(var(--card-foreground))',
         },
         kaza: {
-          blue: '#1a56db',
+          blue: '#1A365D',
           success: '#10B981',
           warning: '#F59E0B',
           danger: '#EF4444',
         },
+      },
+      fontFamily: {
+        title: ['Montserrat', 'Helvetica Neue', 'system-ui', 'sans-serif'],
+        body: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',

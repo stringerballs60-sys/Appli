@@ -21,7 +21,6 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 
 const navItems = [
@@ -61,24 +60,34 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex flex-col h-screen bg-slate-900 text-slate-100 transition-all duration-300 ease-in-out relative',
+        'flex flex-col h-screen text-white transition-all duration-300 ease-in-out relative',
         collapsed ? 'w-16' : 'w-64'
       )}
+      style={{ backgroundColor: '#1A365D' }}
     >
       {/* Logo */}
-      <div className={cn('flex items-center h-16 px-4 border-b border-slate-700', collapsed ? 'justify-center' : 'gap-3')}>
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-kaza-blue flex items-center justify-center font-bold text-white text-sm">
+      <div className={cn('flex items-center h-16 px-4 border-b border-white/15', collapsed ? 'justify-center' : 'gap-3')}>
+        <div
+          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm"
+          style={{ backgroundColor: '#D4AF37', color: '#1A365D', fontFamily: 'Montserrat, sans-serif' }}
+        >
           K
         </div>
         {!collapsed && (
-          <span className="font-bold text-lg tracking-tight">KAZA</span>
+          <span
+            className="text-lg text-white"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: '1px' }}
+          >
+            KAZA
+          </span>
         )}
       </div>
 
       {/* Toggle button */}
       <button
         onClick={onToggle}
-        className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-300 hover:bg-slate-600 transition-colors z-10"
+        className="absolute -right-3 top-20 w-6 h-6 rounded-full border border-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors z-10"
+        style={{ backgroundColor: '#15294A' }}
       >
         {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
@@ -93,11 +102,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
         <div className="mt-4 px-2">
           {!collapsed && (
-            <p className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.40)' }}>
               Inventaire
             </p>
           )}
-          {collapsed && <Separator className="bg-slate-700 my-2" />}
+          {collapsed && <Separator className="my-2" style={{ backgroundColor: 'rgba(255,255,255,0.15)' }} />}
           <div className="space-y-0.5">
             {inventoryItems.map((item) => (
               <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
@@ -108,16 +117,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Bottom */}
       <div className="pb-4 px-2 space-y-0.5">
-        <Separator className="bg-slate-700 mb-2" />
+        <Separator className="mb-2" style={{ backgroundColor: 'rgba(255,255,255,0.15)' }} />
         {bottomItems.map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
         ))}
         <button
           onClick={handleSignOut}
           className={cn(
-            'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors',
+            'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors hover:bg-white/10 hover:text-white',
             collapsed && 'justify-center'
           )}
+          style={{ color: 'rgba(255,255,255,0.60)' }}
           title={collapsed ? 'Déconnexion' : undefined}
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
@@ -148,9 +158,14 @@ function NavLink({
         'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
         collapsed && 'justify-center',
         isActive
-          ? 'bg-kaza-blue text-white font-medium'
-          : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+          ? 'text-white font-medium'
+          : 'hover:text-white hover:bg-white/10'
       )}
+      style={
+        isActive
+          ? { backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }
+          : { color: 'rgba(255,255,255,0.60)' }
+      }
     >
       <Icon className="w-4 h-4 flex-shrink-0" />
       {!collapsed && <span>{item.label}</span>}

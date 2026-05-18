@@ -21,15 +21,26 @@ export default async function CalendarPage() {
   ])
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Calendrier</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Vue des réservations par période</p>
+    <div>
+      {/* Navy header */}
+      <div className="px-5 py-4" style={{ backgroundColor: '#1A365D' }}>
+        <h1
+          className="text-white text-xl"
+          style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: '1px' }}
+        >
+          Calendrier
+        </h1>
+        <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.70)' }}>
+          Vue des réservations par période
+        </p>
       </div>
-      <CalendarView
-        reservations={(reservations ?? []) as Reservation[]}
-        properties={(properties ?? []) as Pick<Property, 'id' | 'name' | 'color'>[]}
-      />
+
+      <div className="p-6 max-w-7xl mx-auto">
+        <CalendarView
+          reservations={(reservations ?? []) as Reservation[]}
+          properties={(properties ?? []) as Pick<Property, 'id' | 'name' | 'color'>[]}
+        />
+      </div>
     </div>
   )
 }

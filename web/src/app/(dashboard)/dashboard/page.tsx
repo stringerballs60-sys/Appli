@@ -79,18 +79,15 @@ export default async function DashboardPage() {
             {format(today, 'EEEE d MMMM yyyy', { locale: fr })}
           </p>
         </div>
-        <Link href="/reservations/new">
-          <button
-            className="text-white text-sm font-semibold px-3 py-1.5 rounded-md transition-colors"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.20)',
-              border: '1px solid rgba(255,255,255,0.30)',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.30)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.20)' }}
-          >
-            + Réservation
-          </button>
+        <Link
+          href="/reservations/new"
+          className="text-white text-sm font-semibold px-3 py-1.5 rounded-md transition-colors"
+          style={{
+            backgroundColor: 'rgba(255,255,255,0.20)',
+            border: '1px solid rgba(255,255,255,0.30)',
+          }}
+        >
+          + Réservation
         </Link>
       </div>
 

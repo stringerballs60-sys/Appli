@@ -203,20 +203,26 @@ export default function CalendarScreen() {
 
   const todayDayIndex = differenceInDays(new Date(), startDate);
 
-  // Jours avec à la fois une arrivée ET un départ (toutes propriétés confondues)
-  const turnoverDays = useMemo(() => {
+  // Catégorisation des jours par activité (toutes propriétés confondues)
+  const { arrivalDays, departureDays, turnoverDays } = useMemo(() => {
     const checkIns = new Set<string>();
     const checkOuts = new Set<string>();
     (reservations ?? []).forEach(r => {
       checkIns.add(r.check_in);
       checkOuts.add(r.check_out);
     });
-    const result = new Set<string>();
+    const arrivals = new Set<string>();
+    const departures = new Set<string>();
+    const turnovers = new Set<string>();
     days.forEach(day => {
       const d = format(day, 'yyyy-MM-dd');
-      if (checkIns.has(d) && checkOuts.has(d)) result.add(d);
+      const hasIn = checkIns.has(d);
+      const hasOut = checkOuts.has(d);
+      if (hasIn && hasOut) turnovers.add(d);
+      else if (hasIn) arrivals.add(d);
+      else if (hasOut) departures.add(d);
     });
-    return result;
+    return { arrivalDays: arrivals, departureDays: departures, turnoverDays: turnovers };
   }, [reservations, days]);
 
   // Scroll to today (or start of displayed month) when window changes
@@ -344,7 +350,10 @@ export default function CalendarScreen() {
             >
               {days.map((day, i) => {
                 const isT = isToday(day);
-                const isTurnover = turnoverDays.has(format(day, 'yyyy-MM-dd'));
+                const d = format(day, 'yyyy-MM-dd');
+                const isArrival  = arrivalDays.has(d);
+                const isDeparture = departureDays.has(d);
+                const isTurnover = turnoverDays.has(d);
                 const isFirst = day.getDate() === 1;
                 return (
                   <View
@@ -352,7 +361,9 @@ export default function CalendarScreen() {
                     style={[
                       styles.dayHeader,
                       { width: DAY_WIDTH },
-                      isTurnover && styles.dayHeaderTurnover,
+                      isDeparture && styles.dayHeaderDeparture,
+                      isArrival   && styles.dayHeaderArrival,
+                      isTurnover  && styles.dayHeaderTurnover,
                       isT && styles.dayHeaderToday,
                       isFirst && styles.dayHeaderFirst,
                     ]}
@@ -367,7 +378,13 @@ export default function CalendarScreen() {
                         {format(day, 'd')}
                       </Text>
                     </View>
-                    <Text style={[styles.dayLabel, isTurnover && styles.dayLabelTurnover, isT && styles.dayLabelToday]}>
+                    <Text style={[
+                      styles.dayLabel,
+                      isDeparture && styles.dayLabelDeparture,
+                      isArrival   && styles.dayLabelArrival,
+                      isTurnover  && styles.dayLabelTurnover,
+                      isT && styles.dayLabelToday,
+                    ]}>
                       {format(day, 'EEE', { locale: fr })}
                     </Text>
                   </View>
@@ -439,19 +456,27 @@ export default function CalendarScreen() {
                     ]}>
 
                       {/* Column backgrounds */}
-                      {days.map((day, i) => (
-                        (turnoverDays.has(format(day, 'yyyy-MM-dd')) || isToday(day)) ? (
+                      {days.map((day, i) => {
+                        const d = format(day, 'yyyy-MM-dd');
+                        const isArrival  = arrivalDays.has(d);
+                        const isDeparture = departureDays.has(d);
+                        const isTurnover = turnoverDays.has(d);
+                        const isT = isToday(day);
+                        if (!isArrival && !isDeparture && !isTurnover && !isT) return null;
+                        return (
                           <View
                             key={i}
                             style={[
                               styles.dayCol,
                               { left: i * DAY_WIDTH, height: ROW_HEIGHT },
-                              turnoverDays.has(format(day, 'yyyy-MM-dd')) && styles.dayColTurnover,
-                              isToday(day) && styles.dayColToday,
+                              isDeparture && styles.dayColDeparture,
+                              isArrival   && styles.dayColArrival,
+                              isTurnover  && styles.dayColTurnover,
+                              isT && styles.dayColToday,
                             ]}
                           />
-                        ) : null
-                      ))}
+                        );
+                      })}
 
                       {/* Grid lines */}
                       {days.map((_, i) => (
@@ -595,8 +620,14 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     gap: 1,
   },
+  dayHeaderDeparture: {
+    backgroundColor: '#FFFBEB',
+  },
+  dayHeaderArrival: {
+    backgroundColor: '#FFF0E6',
+  },
   dayHeaderTurnover: {
-    backgroundColor: '#FFF3CD',
+    backgroundColor: '#FEE2E2',
   },
   dayHeaderToday: {
     backgroundColor: APP_COLORS.primary + '0D',
@@ -639,8 +670,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  dayLabelTurnover: {
+  dayLabelDeparture: {
     color: '#B45309',
+    fontWeight: '700',
+  },
+  dayLabelArrival: {
+    color: '#C2410C',
+    fontWeight: '700',
+  },
+  dayLabelTurnover: {
+    color: '#B91C1C',
     fontWeight: '700',
   },
   dayLabelToday: {
@@ -700,8 +739,14 @@ const styles = StyleSheet.create({
     top: 0,
     width: DAY_WIDTH,
   },
-  dayColTurnover: {
+  dayColDeparture: {
     backgroundColor: '#FFFBEB',
+  },
+  dayColArrival: {
+    backgroundColor: '#FFF5EE',
+  },
+  dayColTurnover: {
+    backgroundColor: '#FEF2F2',
   },
   dayColToday: {
     backgroundColor: APP_COLORS.primary + '0B',

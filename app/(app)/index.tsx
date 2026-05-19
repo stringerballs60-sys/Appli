@@ -1,5 +1,5 @@
-import { useEffect, useCallback } from 'react';
-import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import { useEffect, useCallback, useState } from 'react';
+import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Alert, Modal, Pressable } from 'react-native';
 import { Text, Surface, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,8 @@ import { useActiveProperties, useUpdateCleaningStatus } from '@/hooks/usePropert
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { APP_COLORS } from '@/constants/colors';
 import { formatDateLong, formatDateShort } from '@/utils/dateHelpers';
+import { format, parseISO } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { Reservation, Property } from '@/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { scheduleUpcomingNotifications, scheduleCleaningAlerts } from '@/services/notifications';
@@ -132,7 +134,7 @@ function TurnoverCard({
   allDepartures: Reservation[];
   allArrivals: Reservation[];
   today: string;
-  onPressItem?: (r: Reservation) => void;
+  onPressItem?: (dep: Reservation, arr: Reservation | null) => void;
 }) {
   const seen = new Set<string>();
   const turnovers = allDepartures
@@ -143,7 +145,11 @@ function TurnoverCard({
       seen.add(key);
       return true;
     })
-    .sort((a, b) => a.check_out.localeCompare(b.check_out));
+    .map((dep) => ({
+      dep,
+      arr: allArrivals.find((arr) => arr.property_id === dep.property_id && arr.check_in === dep.check_out) ?? null,
+    }))
+    .sort((a, b) => a.dep.check_out.localeCompare(b.dep.check_out));
 
   return (
     <Surface style={styles.statusCard} elevation={1}>
@@ -157,18 +163,18 @@ function TurnoverCard({
       {turnovers.length === 0 ? (
         <Text style={styles.emptyText}>Aucun turn-over</Text>
       ) : (
-        turnovers.map((r) => (
+        turnovers.map(({ dep, arr }) => (
           <TouchableOpacity
-            key={r.id}
+            key={dep.id}
             style={styles.statusItem}
-            onPress={() => onPressItem?.(r)}
+            onPress={() => onPressItem?.(dep, arr)}
             activeOpacity={0.6}
           >
-            {r.property && <View style={[styles.dot, { backgroundColor: r.property.color }]} />}
+            {dep.property && <View style={[styles.dot, { backgroundColor: dep.property.color }]} />}
             <View style={{ flex: 1 }}>
-              <Text style={styles.statusItemText} numberOfLines={1}>{r.property?.name}</Text>
-              {r.check_out !== today && (
-                <Text style={styles.todayPropertyName}>{formatNextIn(r.check_out, today)}</Text>
+              <Text style={styles.statusItemText} numberOfLines={1}>{dep.property?.name}</Text>
+              {dep.check_out !== today && (
+                <Text style={styles.todayPropertyName}>{formatNextIn(dep.check_out, today)}</Text>
               )}
             </View>
             <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
@@ -176,6 +182,96 @@ function TurnoverCard({
         ))
       )}
     </Surface>
+  );
+}
+
+function TurnoverSheet({
+  dep,
+  arr,
+  onClose,
+  onViewDep,
+  onViewArr,
+}: {
+  dep: Reservation;
+  arr: Reservation | null;
+  onClose: () => void;
+  onViewDep: () => void;
+  onViewArr: () => void;
+}) {
+  const property = dep.property as Property | undefined;
+  const cleaningReady = property?.cleaning_status === 'ready';
+  const cleaningColor = cleaningReady ? APP_COLORS.success : APP_COLORS.warning;
+
+  return (
+    <Modal transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={tsheet.overlay} onPress={onClose}>
+        <Pressable style={tsheet.container} onPress={() => {}}>
+          <View style={tsheet.handle} />
+
+          <View style={tsheet.header}>
+            {property && <View style={[tsheet.colorStrip, { backgroundColor: property.color }]} />}
+            <View style={{ flex: 1, paddingLeft: 12 }}>
+              <Text style={tsheet.propertyName}>{property?.name ?? 'Logement'}</Text>
+              <Text style={tsheet.subTitle}>Turn-over</Text>
+            </View>
+            <View style={[tsheet.cleaningPill, { backgroundColor: cleaningColor + '22', borderColor: cleaningColor }]}>
+              <Text style={[tsheet.cleaningPillText, { color: cleaningColor }]}>
+                {cleaningReady ? '✓ Prêt' : 'À faire'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={tsheet.divider} />
+
+          <View style={tsheet.guestBlock}>
+            <View style={[tsheet.guestBadge, { backgroundColor: APP_COLORS.warning + '18' }]}>
+              <MaterialCommunityIcons name="logout" size={14} color={APP_COLORS.warning} />
+              <Text style={[tsheet.guestBadgeLabel, { color: APP_COLORS.warning }]}>DÉPART</Text>
+            </View>
+            <Text style={tsheet.guestName} numberOfLines={1}>{dep.guest_name}</Text>
+            <Text style={tsheet.guestDate}>
+              {format(parseISO(dep.check_out), 'EEE d MMM', { locale: fr })} · {dep.nb_nights} nuits
+            </Text>
+          </View>
+
+          {arr && (
+            <>
+              <View style={tsheet.swapRow}>
+                <View style={tsheet.swapLine} />
+                <View style={tsheet.swapIcon}>
+                  <MaterialCommunityIcons name="swap-vertical" size={16} color={APP_COLORS.primary} />
+                </View>
+                <View style={tsheet.swapLine} />
+              </View>
+
+              <View style={tsheet.guestBlock}>
+                <View style={[tsheet.guestBadge, { backgroundColor: APP_COLORS.success + '18' }]}>
+                  <MaterialCommunityIcons name="login" size={14} color={APP_COLORS.success} />
+                  <Text style={[tsheet.guestBadgeLabel, { color: APP_COLORS.success }]}>ARRIVÉE</Text>
+                </View>
+                <Text style={tsheet.guestName} numberOfLines={1}>{arr.guest_name}</Text>
+                <Text style={tsheet.guestDate}>
+                  {format(parseISO(arr.check_in), 'EEE d MMM', { locale: fr })} · {arr.nb_nights} nuits
+                </Text>
+              </View>
+            </>
+          )}
+
+          <View style={tsheet.actions}>
+            <TouchableOpacity style={tsheet.btnSecondary} onPress={onViewDep}>
+              <MaterialCommunityIcons name="logout" size={14} color={APP_COLORS.warning} />
+              <Text style={[tsheet.btnSecondaryText, { color: APP_COLORS.warning }]}>Voir le départ</Text>
+            </TouchableOpacity>
+            {arr && (
+              <TouchableOpacity style={tsheet.btnPrimary} onPress={onViewArr}>
+                <MaterialCommunityIcons name="login" size={14} color="#FFFFFF" />
+                <Text style={tsheet.btnPrimaryText}>Voir l'arrivée</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -290,6 +386,8 @@ export default function DashboardScreen() {
       },
     ]);
   };
+
+  const [turnoverDetail, setTurnoverDetail] = useState<{ dep: Reservation; arr: Reservation | null } | null>(null);
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
   const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(20);
@@ -435,7 +533,7 @@ export default function DashboardScreen() {
                   allDepartures={[...(todayData?.checkOuts ?? []), ...(upcomingActivity?.departures ?? [])]}
                   allArrivals={allArrivals}
                   today={today}
-                  onPressItem={(r) => router.push(`/(app)/reservations/${r.id}`)}
+                  onPressItem={(dep, arr) => setTurnoverDetail({ dep, arr })}
                 />
               </View>
             </View>
@@ -522,6 +620,24 @@ export default function DashboardScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {turnoverDetail && (
+        <TurnoverSheet
+          dep={turnoverDetail.dep}
+          arr={turnoverDetail.arr}
+          onClose={() => setTurnoverDetail(null)}
+          onViewDep={() => {
+            setTurnoverDetail(null);
+            router.push(`/(app)/reservations/${turnoverDetail.dep.id}`);
+          }}
+          onViewArr={() => {
+            if (turnoverDetail.arr) {
+              setTurnoverDetail(null);
+              router.push(`/(app)/reservations/${turnoverDetail.arr.id}`);
+            }
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -683,4 +799,135 @@ const styles = StyleSheet.create({
   callPropertyName: { fontSize: 11, color: APP_COLORS.textSecondary },
   callDateBadge: { backgroundColor: '#FEF3C7', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   callDateText: { fontSize: 11, fontWeight: '700', color: '#B45309' },
+});
+
+const tsheet = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  container: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 36,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingRight: 16,
+  },
+  colorStrip: {
+    width: 5,
+    alignSelf: 'stretch',
+    borderRadius: 3,
+  },
+  propertyName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: APP_COLORS.textPrimary,
+  },
+  subTitle: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+    marginTop: 2,
+  },
+  cleaningPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  cleaningPillText: { fontSize: 11, fontWeight: '700' },
+  divider: {
+    height: 1,
+    backgroundColor: APP_COLORS.border,
+    marginHorizontal: 16,
+    marginBottom: 4,
+  },
+  guestBlock: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 3,
+  },
+  guestBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: 4,
+  },
+  guestBadgeLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  guestName: { fontSize: 16, fontWeight: '700', color: APP_COLORS.textPrimary },
+  guestDate: { fontSize: 12, color: APP_COLORS.textSecondary },
+  swapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginVertical: 2,
+  },
+  swapLine: { flex: 1, height: 1, backgroundColor: APP_COLORS.border },
+  swapIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: APP_COLORS.primary + '12',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  btnSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: APP_COLORS.warning + '18',
+    borderWidth: 1,
+    borderColor: APP_COLORS.warning + '40',
+  },
+  btnSecondaryText: { fontSize: 13, fontWeight: '700' },
+  btnPrimary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: APP_COLORS.primary,
+    shadowColor: APP_COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  btnPrimaryText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
 });

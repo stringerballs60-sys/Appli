@@ -38,7 +38,7 @@ const MONTH_NAV_HEIGHT = 54;
 const DAY_HEADER_HEIGHT = 54;
 const MIN_ROW_HEIGHT = 44;
 const BLOCK_PADDING = 7;
-const WINDOW_MONTHS = 3; // months shown in one render
+// initial window; expands automatically as the user scrolls forward
 
 // ── Platform config ───────────────────────────────────────────────────────────
 const SOURCE_CFG: Record<string, { label: string; bg: string } | null> = {
@@ -177,13 +177,14 @@ export default function CalendarScreen() {
 
   // Window anchor = first month displayed
   const [windowStart, setWindowStart] = useState(() => startOfMonth(new Date()));
+  const [windowMonths, setWindowMonths] = useState(4);
   // Displayed month = derived from scroll, shown in header
   const [displayedMonth, setDisplayedMonth] = useState(() => startOfMonth(new Date()));
   const [selectedResa, setSelectedResa] = useState<Reservation | null>(null);
   const [gridHeight, setGridHeight] = useState(0);
 
   const startDate = windowStart;
-  const endDate = endOfMonth(addMonths(windowStart, WINDOW_MONTHS - 1));
+  const endDate = endOfMonth(addMonths(windowStart, windowMonths - 1));
   const TOTAL_DAYS = differenceInDays(endDate, startDate) + 1;
   const days = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(startDate, i));
 
@@ -244,17 +245,34 @@ export default function CalendarScreen() {
     [startDate, TOTAL_DAYS]
   );
 
+  const handleMomentumScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const x = e.nativeEvent.contentOffset.x;
+      const dayIndex = Math.floor(x / DAY_WIDTH);
+      if (TOTAL_DAYS - dayIndex < 60) {
+        setWindowMonths(prev => prev + 3);
+      }
+    },
+    [TOTAL_DAYS]
+  );
+
   const scrollToMonth = useCallback((targetMonth: Date) => {
-    // If target month is outside window, shift the window
     const targetStart = startOfMonth(targetMonth);
-    const windowEnd = endOfMonth(addMonths(windowStart, WINDOW_MONTHS - 1));
+    const windowEnd = endOfMonth(addMonths(windowStart, windowMonths - 1));
 
     if (targetStart < windowStart) {
       setWindowStart(targetStart);
-      return; // useEffect will scroll after re-render
+      return;
     }
     if (targetStart > windowEnd) {
-      setWindowStart(subMonths(targetStart, WINDOW_MONTHS - 1));
+      const extraMonths = Math.ceil(differenceInDays(targetStart, windowEnd) / 30) + 2;
+      setWindowMonths(prev => prev + extraMonths);
+      const offset = Math.max(0, differenceInDays(targetStart, startDate)) * DAY_WIDTH;
+      setTimeout(() => {
+        contentScrollRef.current?.scrollTo({ x: offset, animated: true });
+        headerScrollRef.current?.scrollTo({ x: offset, animated: true });
+        setDisplayedMonth(targetStart);
+      }, 150);
       return;
     }
 
@@ -262,7 +280,7 @@ export default function CalendarScreen() {
     contentScrollRef.current?.scrollTo({ x: offset, animated: true });
     headerScrollRef.current?.scrollTo({ x: offset, animated: true });
     setDisplayedMonth(targetStart);
-  }, [windowStart, startDate]);
+  }, [windowStart, windowMonths, startDate]);
 
   const handleGridLayout = useCallback((e: LayoutChangeEvent) => {
     setGridHeight(e.nativeEvent.layout.height);
@@ -388,6 +406,7 @@ export default function CalendarScreen() {
               ref={contentScrollRef}
               onScroll={handleContentScroll}
               scrollEventThrottle={16}
+              onMomentumScrollEnd={handleMomentumScrollEnd}
               showsHorizontalScrollIndicator={false}
               style={{ flex: 1 }}
             >

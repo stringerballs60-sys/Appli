@@ -42,14 +42,12 @@ function addMinutesToTime(start: string, minutes: number): string {
 }
 
 function estimateDuration(guestCount: number, nbBathrooms: number): number {
-  // base time by guest count
-  let base: number;
-  if (guestCount <= 2) base = 60;
-  else if (guestCount <= 4) base = 90;
-  else if (guestCount <= 6) base = 120;
-  else base = 150 + (guestCount - 6) * 15;
+  // Calibrated on real data:
+  //   3 guests (1 couple + sofa) = 2h (120min) → 40min/guest
+  //   6 guests (F5 Padru)        = 4h (240min) → 40min/guest
+  const base = Math.max(80, guestCount * 40);
 
-  // add time per extra bathroom
+  // +20min per extra bathroom beyond the first
   const extraBathrooms = Math.max(0, (nbBathrooms ?? 1) - 1);
   return base + extraBathrooms * 20;
 }

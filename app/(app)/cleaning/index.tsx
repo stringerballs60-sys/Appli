@@ -155,11 +155,17 @@ const card = StyleSheet.create({
   sep: { fontSize: 11, color: APP_COLORS.border },
 });
 
-function HelpBanner() {
+function HelpBanner({ totalMinutes }: { totalMinutes: number }) {
+  const urgent = totalMinutes > 360;
+  const color = urgent ? '#DC2626' : '#7C3AED';
+  const bg = urgent ? '#FEF2F2' : '#F3E8FF';
+  const border = urgent ? '#FECACA' : '#DDD6FE';
   return (
-    <View style={help.container}>
-      <MaterialCommunityIcons name="account-plus" size={16} color="#7C3AED" />
-      <Text style={help.text}>Journée chargée · Aide recommandée</Text>
+    <View style={[help.container, { backgroundColor: bg, borderColor: border }]}>
+      <MaterialCommunityIcons name="account-plus" size={16} color={color} />
+      <Text style={[help.text, { color }]}>
+        {urgent ? 'Aide nécessaire' : 'Aide recommandée'} · {formatDayMinutes(totalMinutes)} de ménage
+      </Text>
     </View>
   );
 }
@@ -315,7 +321,7 @@ export default function CleaningPlannerScreen() {
                     </View>
 
                     {/* Help banner */}
-                    {needsHelp && <HelpBanner />}
+                    {needsHelp && <HelpBanner totalMinutes={dayMinutes} />}
 
                     {/* Tasks */}
                     {dayTasks.map((task) => (

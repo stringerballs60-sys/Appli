@@ -129,11 +129,15 @@ function TurnoverCard({
   turnovers,
   today,
   onPressItem,
+  onShowAll,
 }: {
   turnovers: { dep: Reservation; arr: Reservation }[];
   today: string;
   onPressItem?: (dep: Reservation, arr: Reservation) => void;
+  onShowAll?: () => void;
 }) {
+  const first = turnovers[0];
+  const extra = turnovers.length - 1;
   return (
     <Surface style={styles.statusCard} elevation={1}>
       <View style={styles.statusCardHeader}>
@@ -143,28 +147,74 @@ function TurnoverCard({
           <Text style={styles.countText}>{turnovers.length}</Text>
         </View>
       </View>
-      {turnovers.length === 0 ? (
+      {!first ? (
         <Text style={styles.emptyText}>Aucun turn-over</Text>
       ) : (
-        turnovers.map(({ dep, arr }) => (
-          <TouchableOpacity
-            key={dep.id}
-            style={styles.statusItem}
-            onPress={() => onPressItem?.(dep, arr)}
-            activeOpacity={0.6}
-          >
-            {dep.property && <View style={[styles.dot, { backgroundColor: dep.property.color }]} />}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.statusItemText} numberOfLines={1}>{dep.property?.name}</Text>
-              {dep.check_out !== today && (
-                <Text style={styles.todayPropertyName}>{formatNextIn(dep.check_out, today)}</Text>
-              )}
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+        <View style={styles.statusItem}>
+          {first.dep.property && <View style={[styles.dot, { backgroundColor: first.dep.property.color }]} />}
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => onPressItem?.(first.dep, first.arr)} activeOpacity={0.6}>
+            <Text style={styles.statusItemText} numberOfLines={1}>{first.dep.property?.name}</Text>
+            {first.dep.check_out !== today && (
+              <Text style={styles.todayPropertyName}>{formatNextIn(first.dep.check_out, today)}</Text>
+            )}
           </TouchableOpacity>
-        ))
+          {extra > 0 ? (
+            <TouchableOpacity style={styles.extraBadge} onPress={onShowAll} activeOpacity={0.7}>
+              <Text style={styles.extraBadgeText}>+{extra}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => onPressItem?.(first.dep, first.arr)} activeOpacity={0.6}>
+              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
       )}
     </Surface>
+  );
+}
+
+function TurnoverListModal({
+  turnovers,
+  today,
+  onClose,
+  onPressItem,
+}: {
+  turnovers: { dep: Reservation; arr: Reservation }[];
+  today: string;
+  onClose: () => void;
+  onPressItem: (dep: Reservation, arr: Reservation) => void;
+}) {
+  return (
+    <Modal transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={tsheet.overlay} onPress={onClose}>
+        <Pressable style={[tsheet.container, { paddingBottom: 24 }]} onPress={() => {}}>
+          <View style={tsheet.handle} />
+          <View style={[tsheet.header, { paddingLeft: 20, paddingBottom: 12 }]}>
+            <MaterialCommunityIcons name="swap-horizontal" size={20} color={APP_COLORS.warning} />
+            <View style={{ flex: 1, paddingLeft: 10 }}>
+              <Text style={tsheet.propertyName}>Tous les turn-overs</Text>
+              <Text style={tsheet.subTitle}>{turnovers.length} à venir</Text>
+            </View>
+          </View>
+          <View style={tsheet.divider} />
+          {turnovers.map(({ dep, arr }) => (
+            <TouchableOpacity
+              key={dep.id}
+              style={styles.listModalItem}
+              onPress={() => { onClose(); onPressItem(dep, arr); }}
+              activeOpacity={0.7}
+            >
+              {dep.property && <View style={[styles.listModalStrip, { backgroundColor: dep.property.color }]} />}
+              <View style={{ flex: 1, paddingLeft: 12 }}>
+                <Text style={styles.statusItemText} numberOfLines={1}>{dep.property?.name}</Text>
+                <Text style={styles.todayPropertyName}>{formatNextIn(dep.check_out, today)}</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+            </TouchableOpacity>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -371,6 +421,7 @@ export default function DashboardScreen() {
   };
 
   const [turnoverDetail, setTurnoverDetail] = useState<{ dep: Reservation; arr: Reservation } | null>(null);
+  const [showTurnoverList, setShowTurnoverList] = useState(false);
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
   const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(20);
@@ -517,6 +568,7 @@ export default function DashboardScreen() {
                   turnovers={futureTurnovers ?? []}
                   today={today}
                   onPressItem={(dep, arr) => setTurnoverDetail({ dep, arr })}
+                  onShowAll={() => setShowTurnoverList(true)}
                 />
               </View>
             </View>
@@ -603,6 +655,15 @@ export default function DashboardScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {showTurnoverList && (
+        <TurnoverListModal
+          turnovers={futureTurnovers ?? []}
+          today={today}
+          onClose={() => setShowTurnoverList(false)}
+          onPressItem={(dep, arr) => setTurnoverDetail({ dep, arr })}
+        />
+      )}
 
       {turnoverDetail && (
         <TurnoverSheet
@@ -780,6 +841,24 @@ const styles = StyleSheet.create({
   callPropertyName: { fontSize: 11, color: APP_COLORS.textSecondary },
   callDateBadge: { backgroundColor: '#FEF3C7', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   callDateText: { fontSize: 11, fontWeight: '700', color: '#B45309' },
+  extraBadge: {
+    backgroundColor: APP_COLORS.warning + '22',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: APP_COLORS.warning + '55',
+  },
+  extraBadgeText: { fontSize: 11, fontWeight: '700', color: APP_COLORS.warning },
+  listModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: APP_COLORS.border,
+  },
+  listModalStrip: { width: 4, height: '100%', borderRadius: 2, minHeight: 36 },
 });
 
 const tsheet = StyleSheet.create({

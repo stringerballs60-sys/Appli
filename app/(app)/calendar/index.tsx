@@ -38,7 +38,7 @@ const MONTH_NAV_HEIGHT = 54;
 const DAY_HEADER_HEIGHT = 54;
 const MIN_ROW_HEIGHT = 44;
 const BLOCK_PADDING = 7;
-// initial window; expands automatically as the user scrolls forward
+const MAX_DATE = new Date(2026, 9, 30); // 30 octobre 2026 — limite absolue
 
 // ── Platform config ───────────────────────────────────────────────────────────
 const SOURCE_CFG: Record<string, { label: string; bg: string } | null> = {
@@ -177,15 +177,14 @@ export default function CalendarScreen() {
 
   // Window anchor = first month displayed
   const [windowStart, setWindowStart] = useState(() => startOfMonth(new Date()));
-  const [windowMonths, setWindowMonths] = useState(4);
   // Displayed month = derived from scroll, shown in header
   const [displayedMonth, setDisplayedMonth] = useState(() => startOfMonth(new Date()));
   const [selectedResa, setSelectedResa] = useState<Reservation | null>(null);
   const [gridHeight, setGridHeight] = useState(0);
 
   const startDate = windowStart;
-  const endDate = endOfMonth(addMonths(windowStart, windowMonths - 1));
-  const TOTAL_DAYS = differenceInDays(endDate, startDate) + 1;
+  const endDate = MAX_DATE; // limite fixe au 30 octobre 2026
+  const TOTAL_DAYS = Math.max(1, differenceInDays(endDate, startDate) + 1);
   const days = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(startDate, i));
 
   const from = format(startDate, 'yyyy-MM-dd');
@@ -251,42 +250,20 @@ export default function CalendarScreen() {
     [startDate, TOTAL_DAYS]
   );
 
-  const handleMomentumScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const x = e.nativeEvent.contentOffset.x;
-      const dayIndex = Math.floor(x / DAY_WIDTH);
-      if (TOTAL_DAYS - dayIndex < 60) {
-        setWindowMonths(prev => prev + 3);
-      }
-    },
-    [TOTAL_DAYS]
-  );
-
   const scrollToMonth = useCallback((targetMonth: Date) => {
     const targetStart = startOfMonth(targetMonth);
-    const windowEnd = endOfMonth(addMonths(windowStart, windowMonths - 1));
+    if (targetStart > MAX_DATE) return; // bloqué au 30 octobre
 
     if (targetStart < windowStart) {
       setWindowStart(targetStart);
-      return;
-    }
-    if (targetStart > windowEnd) {
-      const extraMonths = Math.ceil(differenceInDays(targetStart, windowEnd) / 30) + 2;
-      setWindowMonths(prev => prev + extraMonths);
-      const offset = Math.max(0, differenceInDays(targetStart, startDate)) * DAY_WIDTH;
-      setTimeout(() => {
-        contentScrollRef.current?.scrollTo({ x: offset, animated: true });
-        headerScrollRef.current?.scrollTo({ x: offset, animated: true });
-        setDisplayedMonth(targetStart);
-      }, 150);
-      return;
+      return; // useEffect scrolle après re-render
     }
 
     const offset = Math.max(0, differenceInDays(targetStart, startDate)) * DAY_WIDTH;
     contentScrollRef.current?.scrollTo({ x: offset, animated: true });
     headerScrollRef.current?.scrollTo({ x: offset, animated: true });
     setDisplayedMonth(targetStart);
-  }, [windowStart, windowMonths, startDate]);
+  }, [windowStart, startDate]);
 
   const handleGridLayout = useCallback((e: LayoutChangeEvent) => {
     setGridHeight(e.nativeEvent.layout.height);
@@ -317,11 +294,12 @@ export default function CalendarScreen() {
         </Text>
 
         <TouchableOpacity
-          style={styles.navBtn}
+          style={[styles.navBtn, isSameMonth(displayedMonth, MAX_DATE) && styles.navBtnDisabled]}
           onPress={() => scrollToMonth(addMonths(displayedMonth, 1))}
+          disabled={isSameMonth(displayedMonth, MAX_DATE)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.navArrow}>›</Text>
+          <Text style={[styles.navArrow, isSameMonth(displayedMonth, MAX_DATE) && { opacity: 0.25 }]}>›</Text>
         </TouchableOpacity>
 
         {!isSameMonth(displayedMonth, new Date()) && (
@@ -387,6 +365,14 @@ export default function CalendarScreen() {
                     ]}>
                       {format(day, 'EEE', { locale: fr })}
                     </Text>
+                    {(isDeparture || isArrival || isTurnover) && (
+                      <View style={[
+                        styles.dayIndicator,
+                        isDeparture && { backgroundColor: '#F59E0B' },
+                        isArrival   && { backgroundColor: '#EA580C' },
+                        isTurnover  && { backgroundColor: '#EF4444' },
+                      ]} />
+                    )}
                   </View>
                 );
               })}
@@ -423,7 +409,6 @@ export default function CalendarScreen() {
               ref={contentScrollRef}
               onScroll={handleContentScroll}
               scrollEventThrottle={16}
-              onMomentumScrollEnd={handleMomentumScrollEnd}
               showsHorizontalScrollIndicator={false}
               style={{ flex: 1 }}
             >
@@ -569,6 +554,9 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
+  navBtnDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
   navArrow: {
     fontSize: 24,
     color: '#FFFFFF',
@@ -624,10 +612,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFBEB',
   },
   dayHeaderArrival: {
-    backgroundColor: '#FFF0E6',
+    backgroundColor: '#FFF4ED',
   },
   dayHeaderTurnover: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FFF1F2',
+  },
+  dayIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 4,
+    right: 4,
+    height: 3,
+    borderRadius: 2,
   },
   dayHeaderToday: {
     backgroundColor: APP_COLORS.primary + '0D',
@@ -675,11 +671,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   dayLabelArrival: {
-    color: '#C2410C',
+    color: '#9A3412',
     fontWeight: '700',
   },
   dayLabelTurnover: {
-    color: '#B91C1C',
+    color: '#991B1B',
     fontWeight: '700',
   },
   dayLabelToday: {
@@ -743,10 +739,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFBEB',
   },
   dayColArrival: {
-    backgroundColor: '#FFF5EE',
+    backgroundColor: '#FFF4ED',
   },
   dayColTurnover: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FFF1F2',
   },
   dayColToday: {
     backgroundColor: APP_COLORS.primary + '0B',

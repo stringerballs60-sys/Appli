@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -20,7 +20,6 @@ import {
   endOfMonth,
   format,
   isToday,
-  isWeekend,
   isSameMonth,
   parseISO,
   startOfMonth,
@@ -203,6 +202,22 @@ export default function CalendarScreen() {
 
   const todayDayIndex = differenceInDays(new Date(), startDate);
 
+  // Jours avec à la fois une arrivée ET un départ (toutes propriétés confondues)
+  const turnoverDays = useMemo(() => {
+    const checkIns = new Set<string>();
+    const checkOuts = new Set<string>();
+    (reservations ?? []).forEach(r => {
+      checkIns.add(r.check_in);
+      checkOuts.add(r.check_out);
+    });
+    const result = new Set<string>();
+    days.forEach(day => {
+      const d = format(day, 'yyyy-MM-dd');
+      if (checkIns.has(d) && checkOuts.has(d)) result.add(d);
+    });
+    return result;
+  }, [reservations, days]);
+
   // Scroll to today (or start of displayed month) when window changes
   useEffect(() => {
     const targetDay = isSameMonth(new Date(), windowStart)
@@ -311,7 +326,7 @@ export default function CalendarScreen() {
             >
               {days.map((day, i) => {
                 const isT = isToday(day);
-                const isWE = isWeekend(day);
+                const isTurnover = turnoverDays.has(format(day, 'yyyy-MM-dd'));
                 const isFirst = day.getDate() === 1;
                 return (
                   <View
@@ -319,7 +334,7 @@ export default function CalendarScreen() {
                     style={[
                       styles.dayHeader,
                       { width: DAY_WIDTH },
-                      isWE && styles.dayHeaderWE,
+                      isTurnover && styles.dayHeaderTurnover,
                       isT && styles.dayHeaderToday,
                       isFirst && styles.dayHeaderFirst,
                     ]}
@@ -334,7 +349,7 @@ export default function CalendarScreen() {
                         {format(day, 'd')}
                       </Text>
                     </View>
-                    <Text style={[styles.dayLabel, isWE && styles.dayLabelWE, isT && styles.dayLabelToday]}>
+                    <Text style={[styles.dayLabel, isTurnover && styles.dayLabelTurnover, isT && styles.dayLabelToday]}>
                       {format(day, 'EEE', { locale: fr })}
                     </Text>
                   </View>
@@ -406,13 +421,13 @@ export default function CalendarScreen() {
 
                       {/* Column backgrounds */}
                       {days.map((day, i) => (
-                        (isWeekend(day) || isToday(day)) ? (
+                        (turnoverDays.has(format(day, 'yyyy-MM-dd')) || isToday(day)) ? (
                           <View
                             key={i}
                             style={[
                               styles.dayCol,
                               { left: i * DAY_WIDTH, height: ROW_HEIGHT },
-                              isWeekend(day) && styles.dayColWE,
+                              turnoverDays.has(format(day, 'yyyy-MM-dd')) && styles.dayColTurnover,
                               isToday(day) && styles.dayColToday,
                             ]}
                           />
@@ -561,8 +576,8 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     gap: 1,
   },
-  dayHeaderWE: {
-    backgroundColor: '#FFF8F2',
+  dayHeaderTurnover: {
+    backgroundColor: '#FFF3CD',
   },
   dayHeaderToday: {
     backgroundColor: APP_COLORS.primary + '0D',
@@ -605,8 +620,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  dayLabelWE: {
-    color: '#D97706',
+  dayLabelTurnover: {
+    color: '#B45309',
+    fontWeight: '700',
   },
   dayLabelToday: {
     color: APP_COLORS.primary,
@@ -665,8 +681,8 @@ const styles = StyleSheet.create({
     top: 0,
     width: DAY_WIDTH,
   },
-  dayColWE: {
-    backgroundColor: '#FFF5EB',
+  dayColTurnover: {
+    backgroundColor: '#FFFBEB',
   },
   dayColToday: {
     backgroundColor: APP_COLORS.primary + '0B',

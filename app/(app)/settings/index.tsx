@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { APP_COLORS } from '@/constants/colors';
 import { FONTS } from '@/constants/typography';
 import { NotifPrefs, getNotifPrefs, saveNotifPrefs } from '@/services/notificationPrefs';
+import { getCleaningPrefs, saveCleaningPrefs } from '@/services/cleaningPrefs';
 
 const APP_VERSION = '1.0.0';
 
@@ -58,9 +59,12 @@ export default function SettingsScreen() {
     memoHour: 8,
   });
   const [notifSaved, setNotifSaved] = useState(false);
+  const [maxCleaningsPerDay, setMaxCleaningsPerDay] = useState(2);
+  const [cleaningPrefSaved, setCleaningPrefSaved] = useState(false);
 
   useEffect(() => {
     getNotifPrefs().then(setNotifPrefs);
+    getCleaningPrefs().then((p) => setMaxCleaningsPerDay(p.maxPerDay));
   }, []);
 
   const handleSaveName = async () => {
@@ -86,6 +90,11 @@ export default function SettingsScreen() {
   const handleSaveNotifPrefs = async () => {
     await saveNotifPrefs(notifPrefs);
     setNotifSaved(true);
+  };
+
+  const handleSaveCleaningPrefs = async () => {
+    await saveCleaningPrefs({ maxPerDay: maxCleaningsPerDay });
+    setCleaningPrefSaved(true);
   };
 
   const handleLogout = () => {
@@ -184,6 +193,49 @@ export default function SettingsScreen() {
           </Button>
         </Surface>
 
+        {/* Planning ménage */}
+        <View style={styles.sectionLabel}>
+          <Text style={styles.sectionLabelText}>Planning ménage</Text>
+        </View>
+        <Surface style={styles.card} elevation={1}>
+          <Text style={styles.notifHint}>
+            Nombre maximum de ménages à planifier par jour. L'algorithme étale la charge en conséquence.
+          </Text>
+          <View style={styles.notifRow}>
+            <View style={[styles.notifIconBox, { backgroundColor: '#8B5CF618' }]}>
+              <MaterialCommunityIcons name="broom" size={18} color="#8B5CF6" />
+            </View>
+            <Text style={styles.notifLabel}>Ménages max / jour</Text>
+            <View style={picker.row}>
+              <TouchableOpacity
+                style={picker.btn}
+                onPress={() => setMaxCleaningsPerDay((v) => Math.max(1, v - 1))}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MaterialCommunityIcons name="minus" size={16} color={APP_COLORS.primary} />
+              </TouchableOpacity>
+              <View style={picker.display}>
+                <Text style={picker.hour}>{maxCleaningsPerDay}</Text>
+              </View>
+              <TouchableOpacity
+                style={picker.btn}
+                onPress={() => setMaxCleaningsPerDay((v) => Math.min(6, v + 1))}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MaterialCommunityIcons name="plus" size={16} color={APP_COLORS.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <Button
+            mode="contained"
+            onPress={handleSaveCleaningPrefs}
+            style={styles.saveBtn}
+            icon="content-save"
+          >
+            Enregistrer
+          </Button>
+        </Surface>
+
         {/* Application */}
         <View style={styles.sectionLabel}>
           <Text style={styles.sectionLabelText}>Application</Text>
@@ -221,6 +273,9 @@ export default function SettingsScreen() {
       </Snackbar>
       <Snackbar visible={notifSaved} onDismiss={() => setNotifSaved(false)} duration={2000}>
         Heures de notification enregistrées
+      </Snackbar>
+      <Snackbar visible={cleaningPrefSaved} onDismiss={() => setCleaningPrefSaved(false)} duration={2000}>
+        Capacité ménage enregistrée
       </Snackbar>
       <Snackbar visible={!!error} onDismiss={() => setError('')} duration={3000}>
         {error}

@@ -20,6 +20,16 @@ const ALL_MENU_ITEMS = [
     showBadge: true,
   },
   {
+    key: 'cleaning',
+    label: 'Planning ménage',
+    subtitle: 'Créneaux suggérés par logement',
+    icon: 'broom',
+    color: '#8B5CF6',
+    route: '/(app)/cleaning',
+    managerOnly: false,
+    showBadge: false,
+  },
+  {
     key: 'tasks',
     label: 'Tâches',
     subtitle: 'Ménage, maintenance, réappro.',

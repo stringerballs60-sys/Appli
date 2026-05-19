@@ -24,6 +24,8 @@ export enum ReservationStatus {
   COMPLETED = 'completed',
 }
 
+export type ReservationSource = 'airbnb' | 'booking' | 'abritel' | 'manual';
+
 export enum LinenType {
   DOUBLE_SHEETS = 'double_sheets',
   SINGLE_SHEETS = 'single_sheets',
@@ -98,6 +100,7 @@ export interface Reservation {
   beds_crib_used: number;
   linen_calculation: LinenCalculation | null;
   notes: string | null;
+  source?: ReservationSource;
   created_at: string;
   updated_at: string;
   property?: Property;

@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -6,24 +6,46 @@ import {
   StyleSheet,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Modal,
+  Pressable,
+  LayoutChangeEvent,
 } from 'react-native';
-import { Text, Appbar, ActivityIndicator } from 'react-native-paper';
+import { Text, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { addDays, differenceInDays, format, isToday, parseISO } from 'date-fns';
+import {
+  addDays,
+  addMonths,
+  differenceInDays,
+  endOfMonth,
+  format,
+  isToday,
+  isWeekend,
+  isSameMonth,
+  parseISO,
+  startOfMonth,
+  subMonths,
+} from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useReservationsForMonth } from '@/hooks/useReservations';
 import { useActiveProperties } from '@/hooks/useProperties';
 import { APP_COLORS } from '@/constants/colors';
-import { Reservation } from '@/types';
+import { Reservation, ReservationSource, Property } from '@/types';
 
-const DAY_WIDTH = 52;
-const LEFT_COL = 88;
-const ROW_HEIGHT = 62;
-const MONTH_ROW_HEIGHT = 22;
-const DAY_ROW_HEIGHT = 46;
-const HEADER_HEIGHT = MONTH_ROW_HEIGHT + DAY_ROW_HEIGHT;
-const PAST_DAYS = 3;
+const SIDEBAR_WIDTH = 76;
+const DAY_WIDTH = 46;
+const MONTH_NAV_HEIGHT = 52;
+const DAY_HEADER_HEIGHT = 50;
+const LEGEND_HEIGHT = 38;
+const MIN_ROW_HEIGHT = 44;
+const BLOCK_PADDING = 7;
+
+const SOURCE_CONFIG: Record<string, { label: string; bg: string } | null> = {
+  airbnb:  { label: 'AB', bg: '#FF5A5F' },
+  booking: { label: 'BK', bg: '#003580' },
+  abritel: { label: 'AV', bg: '#FF6600' },
+  manual:  null,
+};
 
 function getBlockGeometry(resa: Reservation, startDate: Date) {
   const checkIn = parseISO(resa.check_in);
@@ -36,35 +58,143 @@ function getBlockGeometry(resa: Reservation, startDate: Date) {
   };
 }
 
+// ── Preview Sheet ──────────────────────────────────────────────────────────────
+
+interface PreviewSheetProps {
+  resa: Reservation;
+  onClose: () => void;
+  onViewDetail: () => void;
+}
+
+function ReservationPreviewSheet({ resa, onClose, onViewDetail }: PreviewSheetProps) {
+  const property = resa.property;
+  const sourceConf = SOURCE_CONFIG[resa.source ?? 'manual'];
+  const isPending = resa.status === 'pending';
+  const totalGuests = resa.nb_couples * 2 + resa.nb_solo_adults + resa.nb_children + resa.nb_babies;
+
+  return (
+    <Modal transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={sheet.overlay} onPress={onClose}>
+        <Pressable style={sheet.container} onPress={() => {}}>
+          <View style={sheet.handle} />
+
+          {/* Header */}
+          <View style={sheet.header}>
+            {property && (
+              <View style={[sheet.colorStrip, { backgroundColor: property.color }]} />
+            )}
+            <View style={{ flex: 1, paddingLeft: 12 }}>
+              <Text style={sheet.guestName} numberOfLines={1}>{resa.guest_name}</Text>
+              {property && (
+                <Text style={sheet.propertyName}>{property.name}</Text>
+              )}
+            </View>
+            {sourceConf && (
+              <View style={[sheet.sourceBadge, { backgroundColor: sourceConf.bg }]}>
+                <Text style={sheet.sourceBadgeText}>{sourceConf.label}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Date range */}
+          <View style={sheet.dateRow}>
+            <View style={sheet.dateBlock}>
+              <Text style={sheet.dateLabel}>Arrivée</Text>
+              <Text style={sheet.dateValue}>
+                {format(parseISO(resa.check_in), 'EEE d MMM', { locale: fr })}
+              </Text>
+            </View>
+            <View style={sheet.nightsPill}>
+              <Text style={sheet.nightsNum}>{resa.nb_nights}</Text>
+              <Text style={sheet.nightsLabel}>nuits</Text>
+            </View>
+            <View style={[sheet.dateBlock, { alignItems: 'flex-end' }]}>
+              <Text style={sheet.dateLabel}>Départ</Text>
+              <Text style={sheet.dateValue}>
+                {format(parseISO(resa.check_out), 'EEE d MMM', { locale: fr })}
+              </Text>
+            </View>
+          </View>
+
+          {/* Meta row */}
+          <View style={sheet.metaRow}>
+            <View style={[sheet.statusPill, {
+              backgroundColor: isPending ? APP_COLORS.warning + '22' : APP_COLORS.success + '22'
+            }]}>
+              <View style={[sheet.statusDot, {
+                backgroundColor: isPending ? APP_COLORS.warning : APP_COLORS.success
+              }]} />
+              <Text style={[sheet.statusText, {
+                color: isPending ? APP_COLORS.warning : APP_COLORS.success
+              }]}>
+                {isPending ? 'En attente' : 'Confirmée'}
+              </Text>
+            </View>
+            {totalGuests > 0 && (
+              <Text style={sheet.guestsText}>{totalGuests} voyageur{totalGuests > 1 ? 's' : ''}</Text>
+            )}
+          </View>
+
+          {/* Actions */}
+          <View style={sheet.actions}>
+            <TouchableOpacity style={sheet.btnClose} onPress={onClose}>
+              <Text style={sheet.btnCloseText}>Fermer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={sheet.btnDetail} onPress={onViewDetail}>
+              <Text style={sheet.btnDetailText}>Voir le détail →</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// ── Calendar Screen ─────────────────────────────────────────────────────────────
+
 export default function CalendarScreen() {
   const router = useRouter();
   const headerScrollRef = useRef<ScrollView>(null);
+  const contentScrollRef = useRef<ScrollView>(null);
 
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - PAST_DAYS);
-  startDate.setHours(0, 0, 0, 0);
+  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedResa, setSelectedResa] = useState<Reservation | null>(null);
+  const [gridHeight, setGridHeight] = useState(0);
 
-  const endDate = new Date(startDate.getFullYear(), 9, 31); // 31 octobre
-  const TOTAL_DAYS = Math.max(28, differenceInDays(endDate, startDate) + 1);
+  const startDate = currentMonth;
+  const endDate = endOfMonth(currentMonth);
+  const TOTAL_DAYS = differenceInDays(endDate, startDate) + 1;
+  const days = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(startDate, i));
 
   const from = format(startDate, 'yyyy-MM-dd');
-  const to = format(addDays(startDate, TOTAL_DAYS), 'yyyy-MM-dd');
+  const to = format(addDays(endDate, 1), 'yyyy-MM-dd');
 
   const { data: reservations, isLoading: resaLoading } = useReservationsForMonth(from, to);
   const { data: properties, isLoading: propLoading } = useActiveProperties();
 
-  const days = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(startDate, i));
+  const isLoading = resaLoading || propLoading;
+  const numProps = (properties ?? []).length;
 
-  // Group days by month for the month header row
-  const monthGroups: Array<{ label: string; count: number }> = [];
-  days.forEach((day) => {
-    const label = format(day, 'MMMM yyyy', { locale: fr });
-    if (monthGroups.length === 0 || monthGroups[monthGroups.length - 1].label !== label) {
-      monthGroups.push({ label, count: 1 });
-    } else {
-      monthGroups[monthGroups.length - 1].count++;
-    }
-  });
+  const ROW_HEIGHT = numProps > 0 && gridHeight > 0
+    ? Math.max(MIN_ROW_HEIGHT, Math.floor(gridHeight / numProps))
+    : 60;
+
+  const todayDayIndex = isSameMonth(new Date(), currentMonth)
+    ? differenceInDays(new Date(), startDate)
+    : -1;
+
+  const isCurrentMonth = isSameMonth(currentMonth, new Date());
+
+  // Auto-scroll to today / beginning of month
+  useEffect(() => {
+    const offset = todayDayIndex > 2
+      ? Math.max(0, (todayDayIndex - 2) * DAY_WIDTH)
+      : 0;
+    setTimeout(() => {
+      contentScrollRef.current?.scrollTo({ x: offset, animated: false });
+      headerScrollRef.current?.scrollTo({ x: offset, animated: false });
+    }, 150);
+  }, [currentMonth]);
 
   const handleContentScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -76,283 +206,662 @@ export default function CalendarScreen() {
     []
   );
 
+  const handleGridLayout = useCallback((e: LayoutChangeEvent) => {
+    setGridHeight(e.nativeEvent.layout.height);
+  }, []);
+
   const getResaForProperty = (propertyId: string): Reservation[] =>
     (reservations ?? []).filter(
       (r) => r.property_id === propertyId && r.status !== 'cancelled'
     );
 
-  const isLoading = resaLoading || propLoading;
-  const initialScrollX = (PAST_DAYS - 1) * DAY_WIDTH;
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.Content title="Calendrier" titleStyle={styles.appbarTitle} />
-      </Appbar.Header>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+
+      {/* ── Month navigation ── */}
+      <View style={styles.monthNav}>
+        <TouchableOpacity
+          style={styles.navBtn}
+          onPress={() => setCurrentMonth(m => subMonths(m, 1))}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.navArrow}>‹</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.monthTitle}>
+          {format(currentMonth, 'MMMM yyyy', { locale: fr })}
+        </Text>
+
+        <TouchableOpacity
+          style={styles.navBtn}
+          onPress={() => setCurrentMonth(m => addMonths(m, 1))}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.navArrow}>›</Text>
+        </TouchableOpacity>
+
+        {!isCurrentMonth && (
+          <TouchableOpacity
+            style={styles.todayBtn}
+            onPress={() => setCurrentMonth(startOfMonth(new Date()))}
+          >
+            <Text style={styles.todayBtnText}>Auj.</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
+        <ActivityIndicator style={{ flex: 1 }} color={APP_COLORS.primary} />
       ) : (
-        <View style={styles.container}>
-          <View style={styles.headerRow}>
-            <View style={{ width: LEFT_COL, borderRightWidth: 1, borderRightColor: APP_COLORS.border }} />
+        <View style={styles.calendarWrapper}>
+
+          {/* ── Day headers (synced scroll) ── */}
+          <View style={styles.dayHeaderRow}>
+            <View style={{ width: SIDEBAR_WIDTH, borderRightWidth: 1, borderRightColor: APP_COLORS.border }} />
             <ScrollView
               horizontal
               ref={headerScrollRef}
               scrollEnabled={false}
               showsHorizontalScrollIndicator={false}
             >
-              <View>
-                <View style={{ flexDirection: 'row', height: MONTH_ROW_HEIGHT }}>
-                  {monthGroups.map((group, i) => (
-                    <View key={i} style={[styles.monthHeader, { width: group.count * DAY_WIDTH }]}>
-                      <Text style={styles.monthLabel} numberOfLines={1}>{group.label}</Text>
-                    </View>
-                  ))}
-                </View>
-                <View style={{ flexDirection: 'row', height: DAY_ROW_HEIGHT }}>
-                  {days.map((day, i) => {
-                    const isT = isToday(day);
-                    return (
-                      <View key={i} style={[styles.dayHeader, isT && styles.dayHeaderToday]}>
-                        <Text style={[styles.dayNum, isT && styles.dayNumToday]}>
-                          {format(day, 'd')}
-                        </Text>
-                        <Text style={[styles.dayLabel, isT && styles.dayNumToday]}>
-                          {format(day, 'EEE', { locale: fr })}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
+              {days.map((day, i) => {
+                const isT = isToday(day);
+                const isWE = isWeekend(day);
+                return (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dayHeader,
+                      { width: DAY_WIDTH },
+                      isWE && styles.dayHeaderWE,
+                      isT && styles.dayHeaderToday,
+                    ]}
+                  >
+                    <Text style={[styles.dayNum, isT && styles.dayNumToday]}>
+                      {format(day, 'd')}
+                    </Text>
+                    <Text style={[
+                      styles.dayLabel,
+                      isWE && styles.dayLabelWE,
+                      isT && styles.dayLabelToday,
+                    ]}>
+                      {format(day, 'EEE', { locale: fr })}
+                    </Text>
+                  </View>
+                );
+              })}
             </ScrollView>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row' }}>
-              <View style={{ width: LEFT_COL, borderRightWidth: 1, borderRightColor: APP_COLORS.border }}>
-                {(properties ?? []).map((p) => (
-                  <View key={p.id} style={styles.propertyCell}>
-                    <View style={[styles.propertyDot, { backgroundColor: p.color }]} />
-                    <Text style={styles.propertyName} numberOfLines={2}>
-                      {p.name}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+          {/* ── Grid: sidebar + horizontal scroll ── */}
+          <View style={styles.gridContainer} onLayout={handleGridLayout}>
 
-              <ScrollView
-                horizontal
-                onScroll={handleContentScroll}
-                scrollEventThrottle={16}
-                showsHorizontalScrollIndicator={false}
-                contentOffset={{ x: initialScrollX, y: 0 }}
-              >
-                <View style={{ width: TOTAL_DAYS * DAY_WIDTH }}>
+            {/* Fixed property sidebar */}
+            <View style={[styles.sidebar, { width: SIDEBAR_WIDTH }]}>
+              {(properties ?? []).map((p) => (
+                <View key={p.id} style={[styles.propertyCell, { height: ROW_HEIGHT }]}>
+                  <View style={[styles.colorBar, { backgroundColor: p.color }]} />
+                  <Text
+                    style={styles.propertyName}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.65}
+                  >
+                    {p.name}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Scrollable day columns */}
+            <ScrollView
+              horizontal
+              ref={contentScrollRef}
+              onScroll={handleContentScroll}
+              scrollEventThrottle={16}
+              showsHorizontalScrollIndicator={false}
+              style={{ flex: 1 }}
+            >
+              <View style={{ width: TOTAL_DAYS * DAY_WIDTH }}>
+
+                {/* Today vertical red line */}
+                {todayDayIndex >= 0 && (
                   <View
                     style={[
                       styles.todayLine,
                       {
-                        left: PAST_DAYS * DAY_WIDTH + DAY_WIDTH / 2 - 1,
-                        height: (properties ?? []).length * ROW_HEIGHT,
+                        left: todayDayIndex * DAY_WIDTH + DAY_WIDTH / 2 - 1,
+                        height: numProps * ROW_HEIGHT,
                       },
                     ]}
                   />
+                )}
 
-                  {(properties ?? []).map((property) => (
-                    <View key={property.id} style={styles.propertyRow}>
+                {/* Property rows */}
+                {(properties ?? []).map((property) => {
+                  const rowResas = getResaForProperty(property.id);
+                  return (
+                    <View key={property.id} style={[styles.propertyRow, { height: ROW_HEIGHT }]}>
+
+                      {/* Column tinting (weekend / today) */}
                       {days.map((day, i) => (
                         <View
                           key={i}
                           style={[
-                            styles.gridLine,
-                            { left: i * DAY_WIDTH },
-                            isToday(day) && styles.gridLineToday,
+                            styles.dayCol,
+                            { left: i * DAY_WIDTH, height: ROW_HEIGHT },
+                            isWeekend(day) && styles.dayColWE,
+                            isToday(day) && styles.dayColToday,
                           ]}
                         />
                       ))}
 
-                      {getResaForProperty(property.id).map((resa) => {
+                      {/* Vertical grid lines */}
+                      {days.map((_, i) => (
+                        <View
+                          key={`gl-${i}`}
+                          style={[styles.gridLine, { left: i * DAY_WIDTH, height: ROW_HEIGHT }]}
+                        />
+                      ))}
+
+                      {/* Reservation blocks */}
+                      {rowResas.map((resa) => {
                         const { left, width } = getBlockGeometry(resa, startDate);
                         if (width <= 0) return null;
+                        const isPending = resa.status === 'pending';
+                        const sourceConf = SOURCE_CONFIG[resa.source ?? 'manual'];
+                        const blockH = ROW_HEIGHT - BLOCK_PADDING * 2;
+
                         return (
                           <TouchableOpacity
                             key={resa.id}
                             style={[
                               styles.resaBlock,
-                              { left, width, backgroundColor: property.color },
+                              {
+                                left,
+                                width,
+                                height: blockH,
+                                top: BLOCK_PADDING,
+                                backgroundColor: property.color,
+                                opacity: isPending ? 0.58 : 1,
+                              },
                             ]}
-                            onPress={() => router.push(`/(app)/reservations/${resa.id}`)}
-                            activeOpacity={0.85}
+                            onPress={() => setSelectedResa({ ...resa, property })}
+                            activeOpacity={0.82}
                           >
                             <Text style={styles.resaName} numberOfLines={1}>
                               {resa.guest_name}
                             </Text>
-                            {width > 72 && (
+                            {width > 68 && (
                               <Text style={styles.resaNights}>{resa.nb_nights}n</Text>
+                            )}
+                            {sourceConf && width > 52 && (
+                              <View style={[styles.sourceBadge, { backgroundColor: sourceConf.bg }]}>
+                                <Text style={styles.sourceBadgeText}>{sourceConf.label}</Text>
+                              </View>
                             )}
                           </TouchableOpacity>
                         );
                       })}
                     </View>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-          </ScrollView>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
 
+          {/* ── Legend ── */}
           <View style={styles.legend}>
-            <View style={[styles.legendDot, { backgroundColor: APP_COLORS.danger }]} />
-            <Text style={styles.legendText}>Aujourd'hui</Text>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendLine, { backgroundColor: APP_COLORS.danger }]} />
+              <Text style={styles.legendText}>Aujourd'hui</Text>
+            </View>
+            <View style={styles.legendSep} />
+            {[
+              { label: 'AB', bg: '#FF5A5F', name: 'Airbnb' },
+              { label: 'BK', bg: '#003580', name: 'Booking' },
+              { label: 'AV', bg: '#FF6600', name: 'Abritel' },
+            ].map(s => (
+              <View key={s.label} style={styles.legendItem}>
+                <View style={[styles.sourceBadge, { backgroundColor: s.bg }]}>
+                  <Text style={styles.sourceBadgeText}>{s.label}</Text>
+                </View>
+                <Text style={styles.legendText}>{s.name}</Text>
+              </View>
+            ))}
+            <View style={styles.legendSep} />
+            <View style={styles.legendItem}>
+              <View style={[styles.legendBlock]} />
+              <Text style={styles.legendText}>En attente</Text>
+            </View>
           </View>
         </View>
+      )}
+
+      {/* ── Reservation preview bottom sheet ── */}
+      {selectedResa && (
+        <ReservationPreviewSheet
+          resa={selectedResa}
+          onClose={() => setSelectedResa(null)}
+          onViewDetail={() => {
+            setSelectedResa(null);
+            router.push(`/(app)/reservations/${selectedResa.id}`);
+          }}
+        />
       )}
     </SafeAreaView>
   );
 }
 
+// ── Styles ──────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
-  appbar: { backgroundColor: APP_COLORS.primary },
-  appbarTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
-  container: { flex: 1 },
-  headerRow: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: APP_COLORS.background,
+  },
+
+  // Month nav
+  monthNav: {
+    height: MONTH_NAV_HEIGHT,
     flexDirection: 'row',
-    height: HEADER_HEIGHT,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    backgroundColor: APP_COLORS.primary,
   },
-  monthHeader: {
-    height: MONTH_ROW_HEIGHT,
+  navBtn: {
+    width: 36,
+    height: 36,
     justifyContent: 'center',
-    paddingHorizontal: 6,
-    borderRightWidth: 1,
-    borderRightColor: APP_COLORS.border,
-    backgroundColor: APP_COLORS.primary + '10',
+    alignItems: 'center',
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
-  monthLabel: {
-    fontSize: 10,
+  navArrow: {
+    fontSize: 22,
+    color: '#FFFFFF',
+    lineHeight: 26,
+    fontWeight: '300',
+  },
+  monthTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 16,
     fontWeight: '700',
-    color: APP_COLORS.primary,
+    color: '#FFFFFF',
     textTransform: 'capitalize',
+    letterSpacing: 0.3,
+  },
+  todayBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginLeft: 6,
+  },
+  todayBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Calendar wrapper
+  calendarWrapper: {
+    flex: 1,
+    backgroundColor: APP_COLORS.surface,
+  },
+
+  // Day header row
+  dayHeaderRow: {
+    height: DAY_HEADER_HEIGHT,
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1.5,
+    borderBottomColor: APP_COLORS.border,
   },
   dayHeader: {
     width: DAY_WIDTH,
-    height: DAY_ROW_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
     borderRightWidth: 1,
     borderRightColor: APP_COLORS.border,
+    gap: 2,
+  },
+  dayHeaderWE: {
+    backgroundColor: '#F3F4F6',
   },
   dayHeaderToday: {
-    backgroundColor: APP_COLORS.primary + '15',
+    backgroundColor: APP_COLORS.primary + '12',
   },
   dayNum: {
     fontSize: 15,
     fontWeight: '600',
     color: APP_COLORS.textPrimary,
   },
-  dayLabel: {
-    fontSize: 10,
-    color: APP_COLORS.textSecondary,
-    textTransform: 'capitalize',
-  },
   dayNumToday: {
+    color: APP_COLORS.primary,
+    fontWeight: '800',
+  },
+  dayLabel: {
+    fontSize: 9,
+    color: APP_COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  dayLabelWE: {
+    color: '#9CA3AF',
+  },
+  dayLabelToday: {
     color: APP_COLORS.primary,
     fontWeight: '700',
   },
+
+  // Grid
+  gridContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+
+  // Sidebar
+  sidebar: {
+    borderRightWidth: 1.5,
+    borderRightColor: APP_COLORS.border,
+    backgroundColor: '#FAFAFA',
+  },
   propertyCell: {
-    height: ROW_HEIGHT,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
     borderBottomWidth: 1,
     borderBottomColor: APP_COLORS.border,
-    gap: 4,
+    paddingRight: 6,
+    overflow: 'hidden',
   },
-  propertyDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  colorBar: {
+    width: 4,
+    alignSelf: 'stretch',
+    marginRight: 6,
   },
   propertyName: {
-    fontSize: 10,
-    color: APP_COLORS.textSecondary,
-    textAlign: 'center',
-    fontWeight: '500',
+    flex: 1,
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: APP_COLORS.textPrimary,
+    lineHeight: 13,
   },
+
+  // Grid content
   propertyRow: {
-    height: ROW_HEIGHT,
     position: 'relative',
     borderBottomWidth: 1,
     borderBottomColor: APP_COLORS.border,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  dayCol: {
+    position: 'absolute',
+    top: 0,
+    width: DAY_WIDTH,
+  },
+  dayColWE: {
+    backgroundColor: '#F9FAFB',
+  },
+  dayColToday: {
+    backgroundColor: APP_COLORS.primary + '09',
   },
   gridLine: {
     position: 'absolute',
     top: 0,
     width: 1,
-    height: ROW_HEIGHT,
     backgroundColor: APP_COLORS.border,
-  },
-  gridLineToday: {
-    backgroundColor: APP_COLORS.primary + '18',
-    width: DAY_WIDTH,
   },
   todayLine: {
     position: 'absolute',
     top: 0,
     width: 2,
     backgroundColor: APP_COLORS.danger,
+    opacity: 0.75,
     zIndex: 10,
-    opacity: 0.7,
   },
+
+  // Reservation blocks
   resaBlock: {
     position: 'absolute',
-    top: 10,
-    height: ROW_HEIGHT - 20,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    justifyContent: 'center',
+    borderRadius: 5,
+    paddingHorizontal: 5,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.18,
-    shadowRadius: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    overflow: 'hidden',
   },
   resaName: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#FFFFFF',
     flex: 1,
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   resaNights: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.85)',
+    fontSize: 9.5,
+    color: 'rgba(255,255,255,0.82)',
     fontWeight: '500',
   },
+  sourceBadge: {
+    borderRadius: 3,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    minWidth: 18,
+    alignItems: 'center',
+  },
+  sourceBadgeText: {
+    fontSize: 7.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+
+  // Legend
   legend: {
+    height: LEGEND_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 8,
     borderTopWidth: 1,
     borderTopColor: APP_COLORS.border,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   legendText: {
+    fontSize: 10,
+    color: APP_COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  legendLine: {
+    width: 3,
+    height: 14,
+    borderRadius: 2,
+  },
+  legendBlock: {
+    width: 14,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: '#888',
+    opacity: 0.45,
+  },
+  legendSep: {
+    width: 1,
+    height: 16,
+    backgroundColor: APP_COLORS.border,
+    marginHorizontal: 2,
+  },
+});
+
+// ── Preview Sheet Styles ─────────────────────────────────────────────────────────
+
+const sheet = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  container: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 32,
+    overflow: 'hidden',
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: APP_COLORS.border,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingRight: 16,
+  },
+  colorStrip: {
+    width: 5,
+    alignSelf: 'stretch',
+    borderRadius: 3,
+  },
+  guestName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: APP_COLORS.textPrimary,
+  },
+  propertyName: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
+    marginTop: 2,
+  },
+  sourceBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  sourceBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: APP_COLORS.border,
+  },
+  dateBlock: {
+    flex: 1,
+  },
+  dateLabel: {
     fontSize: 11,
     color: APP_COLORS.textSecondary,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  dateValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: APP_COLORS.textPrimary,
+    textTransform: 'capitalize',
+  },
+  nightsPill: {
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.primary + '12',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginHorizontal: 8,
+  },
+  nightsNum: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: APP_COLORS.primary,
+    lineHeight: 24,
+  },
+  nightsLabel: {
+    fontSize: 10,
+    color: APP_COLORS.primary,
+    fontWeight: '500',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  guestsText: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  btnClose: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: APP_COLORS.border,
+    alignItems: 'center',
+  },
+  btnCloseText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: APP_COLORS.textSecondary,
+  },
+  btnDetail: {
+    flex: 2,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: APP_COLORS.primary,
+    alignItems: 'center',
+  },
+  btnDetailText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

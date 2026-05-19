@@ -77,6 +77,16 @@ export function useUpcomingActivity(limit = 5) {
   });
 }
 
+export function useFutureTurnovers() {
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
+  return useQuery({
+    queryKey: [RESERVATIONS_KEY, userId, 'futureTurnovers'],
+    queryFn: () => reservationsService.getFutureTurnovers(userId!, '2026-10-30'),
+    enabled: !!userId,
+    refetchInterval: 5 * 60 * 1000,
+  });
+}
+
 export function useOccupiedToday() {
   const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   const today = new Date().toISOString().slice(0, 10);

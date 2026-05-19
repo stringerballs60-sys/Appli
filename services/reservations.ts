@@ -200,6 +200,40 @@ export const reservationsService = {
     if (error) throw error;
   },
 
+  async getFutureTurnovers(
+    userId: string,
+    maxDate: string
+  ): Promise<{ dep: Reservation; arr: Reservation }[]> {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('*, property:properties(*)')
+      .eq('user_id', userId)
+      .gte('check_out', today)
+      .neq('status', 'cancelled')
+      .order('check_out');
+    if (error) throw error;
+
+    const reservations = data ?? [];
+    const result: { dep: Reservation; arr: Reservation }[] = [];
+    const seen = new Set<string>();
+
+    reservations.forEach(dep => {
+      if (dep.check_out > maxDate) return;
+      const key = `${dep.property_id}::${dep.check_out}`;
+      if (seen.has(key)) return;
+      const arr = reservations.find(
+        r => r.id !== dep.id && r.property_id === dep.property_id && r.check_in === dep.check_out
+      );
+      if (arr) {
+        seen.add(key);
+        result.push({ dep, arr });
+      }
+    });
+
+    return result;
+  },
+
   async getUpcomingActivity(
     userId: string,
     limit = 5

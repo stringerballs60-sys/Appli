@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
-import { useTodayActivity, useUpcomingActivity, usePendingCheckInTime, useOccupiedToday } from '@/hooks/useReservations';
+import { useTodayActivity, useUpcomingActivity, usePendingCheckInTime, useOccupiedToday, useFutureTurnovers } from '@/hooks/useReservations';
 import { useLowStockAlerts } from '@/hooks/useInventory';
 import { useActiveProperties, useUpdateCleaningStatus } from '@/hooks/useProperties';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -126,31 +126,14 @@ function OccupiedCard({
 }
 
 function TurnoverCard({
-  allDepartures,
-  allArrivals,
+  turnovers,
   today,
   onPressItem,
 }: {
-  allDepartures: Reservation[];
-  allArrivals: Reservation[];
+  turnovers: { dep: Reservation; arr: Reservation }[];
   today: string;
-  onPressItem?: (dep: Reservation, arr: Reservation | null) => void;
+  onPressItem?: (dep: Reservation, arr: Reservation) => void;
 }) {
-  const seen = new Set<string>();
-  const turnovers = allDepartures
-    .filter((dep) => allArrivals.some((arr) => arr.property_id === dep.property_id && arr.check_in === dep.check_out))
-    .filter((dep) => {
-      const key = `${dep.property_id}-${dep.check_out}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .map((dep) => ({
-      dep,
-      arr: allArrivals.find((arr) => arr.property_id === dep.property_id && arr.check_in === dep.check_out) ?? null,
-    }))
-    .sort((a, b) => a.dep.check_out.localeCompare(b.dep.check_out));
-
   return (
     <Surface style={styles.statusCard} elevation={1}>
       <View style={styles.statusCardHeader}>
@@ -193,7 +176,7 @@ function TurnoverSheet({
   onViewArr,
 }: {
   dep: Reservation;
-  arr: Reservation | null;
+  arr: Reservation;
   onClose: () => void;
   onViewDep: () => void;
   onViewArr: () => void;
@@ -387,10 +370,11 @@ export default function DashboardScreen() {
     ]);
   };
 
-  const [turnoverDetail, setTurnoverDetail] = useState<{ dep: Reservation; arr: Reservation | null } | null>(null);
+  const [turnoverDetail, setTurnoverDetail] = useState<{ dep: Reservation; arr: Reservation } | null>(null);
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
   const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(20);
+  const { data: futureTurnovers } = useFutureTurnovers();
   const { data: occupiedToday } = useOccupiedToday();
   const { data: lowStock, isLoading: stockLoading } = useLowStockAlerts();
   const { data: pendingCallList } = usePendingCheckInTime(3);
@@ -530,8 +514,7 @@ export default function DashboardScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <TurnoverCard
-                  allDepartures={[...(todayData?.checkOuts ?? []), ...(upcomingActivity?.departures ?? [])]}
-                  allArrivals={allArrivals}
+                  turnovers={futureTurnovers ?? []}
                   today={today}
                   onPressItem={(dep, arr) => setTurnoverDetail({ dep, arr })}
                 />
@@ -631,10 +614,8 @@ export default function DashboardScreen() {
             router.push(`/(app)/reservations/${turnoverDetail.dep.id}`);
           }}
           onViewArr={() => {
-            if (turnoverDetail.arr) {
-              setTurnoverDetail(null);
-              router.push(`/(app)/reservations/${turnoverDetail.arr.id}`);
-            }
+            setTurnoverDetail(null);
+            router.push(`/(app)/reservations/${turnoverDetail.arr.id}`);
           }}
         />
       )}

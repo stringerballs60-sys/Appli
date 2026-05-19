@@ -370,7 +370,7 @@ export default function CalendarScreen() {
                         styles.dayIndicator,
                         isDeparture && { backgroundColor: '#F59E0B' },
                         isArrival   && { backgroundColor: '#EA580C' },
-                        isTurnover  && { backgroundColor: '#EF4444' },
+                        isTurnover  && { backgroundColor: '#7C3AED' },
                       ]} />
                     )}
                   </View>
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF4ED',
   },
   dayHeaderTurnover: {
-    backgroundColor: '#FFF1F2',
+    backgroundColor: '#F5F3FF',
   },
   dayIndicator: {
     position: 'absolute',
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   dayLabelTurnover: {
-    color: '#991B1B',
+    color: '#5B21B6',
     fontWeight: '700',
   },
   dayLabelToday: {
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF4ED',
   },
   dayColTurnover: {
-    backgroundColor: '#FFF1F2',
+    backgroundColor: '#F5F3FF',
   },
   dayColToday: {
     backgroundColor: APP_COLORS.primary + '0B',

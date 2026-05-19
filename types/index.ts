@@ -264,3 +264,16 @@ export interface Membership {
   ownerId: string;
   role: 'cleaner';
 }
+
+export type MemoPriority = 'normal' | 'urgent' | 'info';
+export type MemoStatus = 'pending' | 'done';
+
+export interface Memo {
+  id: string;
+  user_id: string;
+  text: string;
+  status: MemoStatus;
+  priority: MemoPriority;
+  created_at: string;
+  completed_at: string | null;
+}

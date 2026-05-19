@@ -80,6 +80,28 @@ export async function scheduleUpcomingNotifications(
   }
 }
 
+export async function scheduleMemoReminder(pendingCount: number): Promise<void> {
+  if (pendingCount === 0) return;
+  const granted = await requestNotificationPermissions();
+  if (!granted) return;
+
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 8, 0, 0);
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '📝 KAZA – Mémo',
+      body: `${pendingCount} note${pendingCount > 1 ? 's' : ''} en attente dans votre mémo`,
+      data: { type: 'memo' },
+      ...(Platform.OS === 'android' ? { channelId: 'kaza-reminders' } : {}),
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: tomorrow,
+    },
+  });
+}
+
 export async function scheduleCleaningAlerts(
   urgent: Array<{ name: string; checkIn: string }>
 ): Promise<void> {

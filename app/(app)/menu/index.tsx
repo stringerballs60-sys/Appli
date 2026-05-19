@@ -6,8 +6,19 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { APP_COLORS } from '@/constants/colors';
 import { FONTS } from '@/constants/typography';
 import { useAuthStore } from '@/stores/authStore';
+import { usePendingMemos } from '@/hooks/useMemos';
 
 const ALL_MENU_ITEMS = [
+  {
+    key: 'memo',
+    label: 'Mémo',
+    subtitle: 'Notes rapides et rappels',
+    icon: 'note-text-outline',
+    color: '#D4AF37',
+    route: '/(app)/memo',
+    managerOnly: false,
+    showBadge: true,
+  },
   {
     key: 'tasks',
     label: 'Tâches',
@@ -16,6 +27,7 @@ const ALL_MENU_ITEMS = [
     color: '#7C3AED',
     route: '/(app)/tasks',
     managerOnly: false,
+    showBadge: false,
   },
   {
     key: 'inventory',
@@ -25,6 +37,7 @@ const ALL_MENU_ITEMS = [
     color: '#0891B2',
     route: '/(app)/inventory',
     managerOnly: true,
+    showBadge: false,
   },
   {
     key: 'roles',
@@ -34,15 +47,17 @@ const ALL_MENU_ITEMS = [
     color: '#059669',
     route: '/(app)/roles',
     managerOnly: true,
+    showBadge: false,
   },
   {
     key: 'settings',
     label: 'Paramètres',
     subtitle: 'Profil et déconnexion',
-    icon: 'cog',
+    icon: 'cog-outline',
     color: '#64748B',
     route: '/(app)/settings',
     managerOnly: false,
+    showBadge: false,
   },
 ];
 
@@ -51,13 +66,16 @@ export default function MenuScreen() {
   const membership = useAuthStore((s) => s.membership);
   const isManager = !membership;
   const menuItems = ALL_MENU_ITEMS.filter((item) => isManager || !item.managerOnly);
+  const { data: pendingMemos } = usePendingMemos();
+  const pendingCount = pendingMemos?.length ?? 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Menu</Text>
         {!isManager && (
           <View style={styles.roleBadge}>
+            <MaterialCommunityIcons name="broom" size={12} color="rgba(255,255,255,0.9)" />
             <Text style={styles.roleBadgeText}>Femme de ménage</Text>
           </View>
         )}
@@ -65,25 +83,39 @@ export default function MenuScreen() {
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item.key}
-              onPress={() => router.push(item.route as any)}
-              activeOpacity={0.7}
-            >
-              <Surface style={styles.menuCard} elevation={1}>
-                <View style={[styles.iconBox, { backgroundColor: item.color + '18' }]}>
-                  <MaterialCommunityIcons name={item.icon as any} size={28} color={item.color} />
-                </View>
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardLabel}>{item.label}</Text>
-                  <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-                </View>
-                <MaterialCommunityIcons name="chevron-right" size={22} color={APP_COLORS.border} />
-              </Surface>
-            </TouchableOpacity>
-          ))}
+          {menuItems.map((item) => {
+            const badge = item.showBadge && pendingCount > 0 ? pendingCount : 0;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                onPress={() => router.push(item.route as any)}
+                activeOpacity={0.7}
+              >
+                <Surface style={styles.menuCard} elevation={2}>
+                  <View style={[styles.colorStrip, { backgroundColor: item.color }]} />
+
+                  <View style={[styles.iconBox, { backgroundColor: item.color + '18' }]}>
+                    <MaterialCommunityIcons name={item.icon as any} size={26} color={item.color} />
+                  </View>
+
+                  <View style={styles.cardContent}>
+                    <Text style={styles.cardLabel}>{item.label}</Text>
+                    <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+                  </View>
+
+                  {badge > 0 && (
+                    <View style={[styles.badge, { backgroundColor: item.color }]}>
+                      <Text style={styles.badgeText}>{badge}</Text>
+                    </View>
+                  )}
+
+                  <MaterialCommunityIcons name="chevron-right" size={20} color={APP_COLORS.border} />
+                </Surface>
+              </TouchableOpacity>
+            );
+          })}
         </View>
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -101,10 +133,13 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
   roleBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: 12,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
   },
   roleBadgeText: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' },
   scroll: { flex: 1 },
@@ -114,18 +149,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    padding: 16,
+    overflow: 'hidden',
     gap: 14,
+    paddingRight: 16,
+    paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+  },
+  colorStrip: {
+    width: 5,
+    alignSelf: 'stretch',
+    borderRadius: 0,
+    flexShrink: 0,
   },
   iconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   cardContent: { flex: 1 },
-  cardLabel: { fontSize: 16, fontWeight: '700', color: APP_COLORS.textPrimary },
+  cardLabel: { fontSize: 15, fontWeight: '700', color: APP_COLORS.textPrimary },
   cardSubtitle: { fontSize: 12, color: APP_COLORS.textSecondary, marginTop: 2 },
+  badge: {
+    borderRadius: 10,
+    minWidth: 22,
+    height: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    flexShrink: 0,
+  },
+  badgeText: { fontSize: 11, fontWeight: '800', color: '#FFFFFF' },
 });

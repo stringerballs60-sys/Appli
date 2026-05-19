@@ -119,7 +119,8 @@ function ReservationPreviewSheet({ resa, onClose, onViewDetail }: PreviewSheetPr
           {/* Meta row */}
           <View style={sheet.metaRow}>
             <View style={[sheet.statusPill, {
-              backgroundColor: isPending ? APP_COLORS.warning + '22' : APP_COLORS.success + '22'
+              backgroundColor: isPending ? APP_COLORS.warning + '22' : APP_COLORS.success + '22',
+              borderColor: isPending ? APP_COLORS.warning : APP_COLORS.success,
             }]}>
               <View style={[sheet.statusDot, {
                 backgroundColor: isPending ? APP_COLORS.warning : APP_COLORS.success
@@ -387,7 +388,7 @@ export default function CalendarScreen() {
                               },
                             ]}
                             onPress={() => setSelectedResa({ ...resa, property })}
-                            activeOpacity={0.82}
+                            activeOpacity={0.7}
                           >
                             <Text style={styles.resaName} numberOfLines={1}>
                               {resa.guest_name}
@@ -635,8 +636,8 @@ const styles = StyleSheet.create({
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     overflow: 'hidden',
   },
   resaName: {
@@ -715,8 +716,8 @@ const sheet = StyleSheet.create({
   },
   container: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
     paddingBottom: 32,
     overflow: 'hidden',
   },
@@ -817,7 +818,8 @@ const sheet = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    borderRadius: 8,
+    borderRadius: 999,
+    borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
@@ -844,7 +846,7 @@ const sheet = StyleSheet.create({
     flex: 1,
     paddingVertical: 13,
     borderRadius: 12,
-    backgroundColor: APP_COLORS.border,
+    backgroundColor: '#F1F3F5',
     alignItems: 'center',
   },
   btnCloseText: {

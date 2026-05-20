@@ -59,7 +59,20 @@ export default function PropertyDetailScreen() {
       onSuccess: (data) => {
         const r = data?.results?.[0];
         if (r?.success) {
-          setSyncResult(`${r.upserted ?? 0} réservation(s) importée(s)`);
+          const n = r.upserted ?? 0;
+          if (n > 0) {
+            setSyncResult(`${n} réservation(s) importée(s)`);
+          } else {
+            const log = (r.parse_log as string[] | undefined)?.join('\n') ?? '';
+            const detail = [
+              `ICS taille: ${r.ics_length ?? '?'} octets`,
+              `VEVENT: ${r.raw_vevent_count ?? 0}`,
+              `VFREEBUSY: ${r.raw_vfreebusy_count ?? 0}`,
+              `Parsés: ${r.total ?? 0}`,
+              log ? `\n${log}` : '',
+            ].filter(Boolean).join('\n');
+            Alert.alert('0 réservation importée', detail);
+          }
         } else {
           setSyncResult(r?.error ?? 'Erreur de synchronisation');
         }

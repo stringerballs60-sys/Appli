@@ -17,54 +17,89 @@ interface ICalEvent {
 }
 
 function parseICSDate(raw: string): string {
-  // Handles: 20260520 | 20260520T100000Z | 20260520T100000
   const digits = raw.replace(/\D/g, '');
   return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
 }
 
-function parseICS(text: string): { events: ICalEvent[]; debugLines: string[] } {
-  // Unfold RFC 5545 line continuations
+function parseICS(text: string): {
+  events: ICalEvent[];
+  raw_vevent_count: number;
+  raw_vfreebusy_count: number;
+  parseLog: string[];
+} {
   const unfolded = text
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .replace(/\n[ \t]/g, '');
 
+  const lines = unfolded.split('\n');
   const events: ICalEvent[] = [];
-  const debugLines: string[] = [];
-  let inEvent = false;
-  let cur: Partial<ICalEvent> = {};
-  let eventCount = 0;
+  const parseLog: string[] = [];
 
-  for (const line of unfolded.split('\n')) {
+  // Count raw blocks
+  const raw_vevent_count = lines.filter((l) => l.trim() === 'BEGIN:VEVENT').length;
+  const raw_vfreebusy_count = lines.filter((l) => l.trim() === 'BEGIN:VFREEBUSY').length;
+
+  parseLog.push(`ICS lines=${lines.length} VEVENT=${raw_vevent_count} VFREEBUSY=${raw_vfreebusy_count}`);
+
+  // Parse VEVENT blocks
+  let inEvent = false;
+  let inFreebusy = false;
+  let cur: Partial<ICalEvent> = {};
+  let evIdx = 0;
+
+  for (const line of lines) {
     const trimmed = line.trim();
+
     if (trimmed === 'BEGIN:VEVENT') {
       inEvent = true;
-      eventCount++;
+      evIdx++;
       cur = { status: 'CONFIRMED', summary: '' };
-      debugLines.push(`--- VEVENT #${eventCount} ---`);
     } else if (trimmed === 'END:VEVENT') {
-      debugLines.push(`  uid=${cur.uid ?? 'MISSING'} dtstart=${cur.dtstart ?? 'MISSING'} dtend=${cur.dtend ?? 'MISSING'} summary="${cur.summary}" status=${cur.status}`);
-      if (cur.uid && cur.dtstart && cur.dtend) {
-        events.push(cur as ICalEvent);
-        debugLines.push('  => ACCEPTED');
-      } else {
-        debugLines.push('  => REJECTED (missing uid/dtstart/dtend)');
-      }
+      const accepted = !!(cur.uid && cur.dtstart && cur.dtend);
+      parseLog.push(
+        `VEVENT#${evIdx} uid=${cur.uid ?? 'MISSING'} dtstart=${cur.dtstart ?? 'MISSING'} dtend=${cur.dtend ?? 'MISSING'} summary="${cur.summary}" => ${accepted ? 'OK' : 'REJECTED'}`
+      );
+      if (accepted) events.push(cur as ICalEvent);
       inEvent = false;
-    } else if (inEvent) {
+    } else if (trimmed === 'BEGIN:VFREEBUSY') {
+      inFreebusy = true;
+      evIdx++;
+      cur = { status: 'CONFIRMED', summary: 'Réservation' };
+    } else if (trimmed === 'END:VFREEBUSY') {
+      // FREEBUSY:20260801T000000Z/20260805T000000Z — synthesize an event per period
+      const accepted = !!(cur.dtstart && cur.dtend);
+      parseLog.push(
+        `VFREEBUSY#${evIdx} dtstart=${cur.dtstart ?? 'MISSING'} dtend=${cur.dtend ?? 'MISSING'} => ${accepted ? 'OK' : 'REJECTED'}`
+      );
+      if (accepted) {
+        cur.uid = cur.uid ?? `freebusy-${cur.dtstart}-${cur.dtend}`;
+        events.push(cur as ICalEvent);
+      }
+      inFreebusy = false;
+    } else if (inEvent || inFreebusy) {
       const colon = trimmed.indexOf(':');
       if (colon === -1) continue;
       const key = trimmed.slice(0, colon).split(';')[0].toUpperCase();
       const val = trimmed.slice(colon + 1);
-      if (key === 'DTSTART') { cur.dtstart = parseICSDate(val); debugLines.push(`  DTSTART raw="${val}" parsed="${cur.dtstart}"`);
-      } else if (key === 'DTEND') { cur.dtend = parseICSDate(val); debugLines.push(`  DTEND raw="${val}" parsed="${cur.dtend}"`);
-      } else if (key === 'SUMMARY') { cur.summary = val; debugLines.push(`  SUMMARY="${val}"`);
-      } else if (key === 'UID') { cur.uid = val; debugLines.push(`  UID="${val}"`);
-      } else if (key === 'STATUS') { cur.status = val.toUpperCase(); debugLines.push(`  STATUS="${val}"`);
+
+      if (key === 'DTSTART') cur.dtstart = parseICSDate(val);
+      else if (key === 'DTEND') cur.dtend = parseICSDate(val);
+      else if (key === 'SUMMARY') cur.summary = val;
+      else if (key === 'UID') cur.uid = val;
+      else if (key === 'STATUS') cur.status = val.toUpperCase();
+      else if (key === 'FREEBUSY' && inFreebusy) {
+        // FREEBUSY:20260801T000000Z/20260805T000000Z
+        const slash = val.indexOf('/');
+        if (slash !== -1) {
+          cur.dtstart = parseICSDate(val.slice(0, slash));
+          cur.dtend = parseICSDate(val.slice(slash + 1));
+        }
       }
     }
   }
-  return { events, debugLines };
+
+  return { events, raw_vevent_count, raw_vfreebusy_count, parseLog };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -107,9 +142,8 @@ serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const { property_id, debug = false } = body as { property_id?: string; debug?: boolean };
+    const { property_id } = body as { property_id?: string };
 
-    // Fetch properties with an iCal URL
     let q = supabase
       .from('properties')
       .select('id, user_id, ical_url, property_type')
@@ -125,12 +159,17 @@ serve(async (req) => {
     for (const prop of properties ?? []) {
       try {
         const res = await fetch(prop.ical_url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Kaza/1.0)' },
           signal: AbortSignal.timeout(15_000),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status} for ${prop.ical_url}`);
 
         const icsText = await res.text();
-        const { events, debugLines } = parseICS(icsText);
+        console.log(`[sync-ical] prop=${prop.id} ics_length=${icsText.length} first100="${icsText.slice(0, 100).replace(/\n/g, '|')}"`);
+
+        const { events, raw_vevent_count, raw_vfreebusy_count, parseLog } = parseICS(icsText);
+        console.log(`[sync-ical] parsed=${events.length} log=${JSON.stringify(parseLog)}`);
+
         const source = detectSource(prop.ical_url);
         const category = categoryForSource(source, prop.property_type);
 
@@ -138,10 +177,8 @@ serve(async (req) => {
         let cancelled = 0;
         let skipped = 0;
         const upsertErrors: string[] = [];
-        const skippedReasons: string[] = [];
 
         for (const ev of events) {
-          // Cancel events explicitly marked CANCELLED
           if (ev.status === 'CANCELLED') {
             await supabase
               .from('reservations')
@@ -152,11 +189,9 @@ serve(async (req) => {
             continue;
           }
 
-          // Skip "Available" or empty events some platforms export
           const sl = ev.summary.toLowerCase();
           if (sl === 'available' || sl === 'open' || sl === 'libre') {
             skipped++;
-            skippedReasons.push(`uid=${ev.uid} summary="${ev.summary}"`);
             continue;
           }
 
@@ -188,7 +223,7 @@ serve(async (req) => {
             );
 
           if (upsertErr) {
-            console.error('upsert error', upsertErr.message, ev.uid);
+            console.error(`[sync-ical] upsert error uid=${ev.uid}: ${upsertErr.message} code=${upsertErr.code}`);
             upsertErrors.push(`uid=${ev.uid}: ${upsertErr.message} (code=${upsertErr.code})`);
           } else {
             upserted++;
@@ -198,22 +233,21 @@ serve(async (req) => {
         const result: Record<string, unknown> = {
           property_id: prop.id,
           success: true,
+          ics_length: icsText.length,
+          raw_vevent_count,
+          raw_vfreebusy_count,
           total: events.length,
           upserted,
           cancelled,
           skipped,
+          parse_log: parseLog,
         };
 
         if (upsertErrors.length > 0) result.upsert_errors = upsertErrors;
-        if (skippedReasons.length > 0) result.skipped_reasons = skippedReasons;
-
-        if (debug) {
-          result.ics_preview = icsText.slice(0, 3000);
-          result.parse_debug = debugLines;
-        }
 
         results.push(result);
       } catch (err: any) {
+        console.error(`[sync-ical] fetch error prop=${prop.id}: ${err.message}`);
         results.push({ property_id: prop.id, success: false, error: err.message });
       }
     }

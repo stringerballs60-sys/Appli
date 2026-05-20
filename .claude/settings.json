@@ -5,8 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /home/user/Appli && git checkout kaza 2>/dev/null || true",
-            "statusMessage": "Basculement sur la branche kaza..."
+            "command": "cd /home/user/Appli && git checkout claude/rework-kaza-apk-PvDtY 2>/dev/null || true",
+            "statusMessage": "Basculement sur la branche claude/rework-kaza-apk-PvDtY..."
           }
         ]
       }

@@ -1,12 +1,16 @@
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, ActivityIndicator, Appbar, Surface } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, ActivityIndicator } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLinenForProperty, useUpsertLinen } from '@/hooks/useInventory';
 import { useProperty } from '@/hooks/useProperties';
 import { StepperInput } from '@/components/ui/StepperInput';
 import { APP_COLORS } from '@/constants/colors';
+import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
+import { FONTS } from '@/constants/typography';
 import { LINEN_TYPE_LABELS } from '@/constants/labels';
 import { LinenType } from '@/types';
 
@@ -43,20 +47,24 @@ export default function LinenInventoryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.BackAction onPress={() => router.back()} iconColor="#FFFFFF" />
-        <Appbar.Content
-          title={t('inventory.linen')}
-          titleStyle={styles.appbarTitle}
-          subtitle={property?.name}
-          subtitleStyle={styles.appbarSubtitle}
-        />
-      </Appbar.Header>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <LinearGradient
+        colors={GRADIENTS.navyHeader as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="arrow-left" size={22} color="rgba(248,245,239,0.8)" />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>{t('inventory.linen')}</Text>
+          {property && <Text style={styles.subtitle}>{property.name}</Text>}
+        </View>
+      </LinearGradient>
 
-      {/* Column headers */}
       <View style={styles.tableHeader}>
-        <Text style={[styles.colHeader, styles.colType]}>Type</Text>
+        <Text style={[styles.colHeader, styles.colTypeHeader]}>Type</Text>
         <Text style={styles.colHeader}>{t('inventory.inProperty')}</Text>
         <Text style={styles.colHeader}>{t('inventory.dirty')}</Text>
         <Text style={styles.colHeader}>{t('inventory.cleanStock')}</Text>
@@ -66,7 +74,7 @@ export default function LinenInventoryScreen() {
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
           {ALL_LINEN_TYPES.map((type) => {
             const item = getLinenItem(type);
             const inProp = item?.qty_in_property ?? 0;
@@ -76,10 +84,7 @@ export default function LinenInventoryScreen() {
             const isLow = inProp + clean < target;
 
             return (
-              <View
-                key={type}
-                style={[styles.row, isLow && styles.rowLow]}
-              >
+              <View key={type} style={[styles.row, isLow && styles.rowLow]}>
                 <View style={styles.colType}>
                   <Text style={styles.linenLabel} numberOfLines={2}>
                     {LINEN_TYPE_LABELS[type]}
@@ -89,29 +94,16 @@ export default function LinenInventoryScreen() {
                   )}
                 </View>
                 <View style={styles.colStepper}>
-                  <StepperInput
-                    value={inProp}
-                    onChange={(v) => handleUpdate(type, 'qty_in_property', v)}
-                  />
+                  <StepperInput value={inProp} onChange={(v) => handleUpdate(type, 'qty_in_property', v)} />
                 </View>
                 <View style={styles.colStepper}>
-                  <StepperInput
-                    value={dirty}
-                    onChange={(v) => handleUpdate(type, 'qty_dirty_washing', v)}
-                  />
+                  <StepperInput value={dirty} onChange={(v) => handleUpdate(type, 'qty_dirty_washing', v)} />
                 </View>
                 <View style={styles.colStepper}>
-                  <StepperInput
-                    value={clean}
-                    onChange={(v) => handleUpdate(type, 'qty_clean_stock', v)}
-                  />
+                  <StepperInput value={clean} onChange={(v) => handleUpdate(type, 'qty_clean_stock', v)} />
                 </View>
                 <View style={styles.colStepper}>
-                  <StepperInput
-                    value={target}
-                    onChange={(v) => handleUpdate(type, 'target_rotation', v)}
-                    min={1}
-                  />
+                  <StepperInput value={target} onChange={(v) => handleUpdate(type, 'target_rotation', v)} min={1} />
                 </View>
               </View>
             );
@@ -124,38 +116,49 @@ export default function LinenInventoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
-  appbar: { backgroundColor: APP_COLORS.primary },
-  appbarTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
-  appbarSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+  safeArea: { flex: 1, backgroundColor: APP_COLORS.primaryDark },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  backBtn: { padding: 2 },
+  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: APP_COLORS.accent, letterSpacing: 1 },
+  subtitle: { fontSize: 12, color: 'rgba(248,245,239,0.65)', marginTop: 2 },
+  scroll: { flex: 1, backgroundColor: APP_COLORS.background },
   tableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    backgroundColor: APP_COLORS.surfaceElevated,
     borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border,
+    borderBottomColor: APP_COLORS.borderLight,
   },
   colHeader: {
     flex: 1,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    color: APP_COLORS.textSecondary,
+    color: APP_COLORS.textTertiary,
     textAlign: 'center',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  colType: { flex: 2, textAlign: 'left' },
+  colTypeHeader: { flex: 2, textAlign: 'left' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: APP_COLORS.surfaceElevated,
     borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border,
+    borderBottomColor: APP_COLORS.borderLight,
   },
-  rowLow: { backgroundColor: '#FEF2F2' },
+  rowLow: { backgroundColor: APP_COLORS.dangerLight },
+  colType: { flex: 2 },
   linenLabel: { fontSize: 13, fontWeight: '500', color: APP_COLORS.textPrimary },
   lowAlert: { fontSize: 10, color: APP_COLORS.danger, fontWeight: '600', marginTop: 2 },
   colStepper: { flex: 1, alignItems: 'center' },

@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { APP_COLORS } from '@/constants/colors';
+import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
 import { useReservations } from '@/hooks/useReservations';
 import { useActiveProperties } from '@/hooks/useProperties';
@@ -46,15 +48,7 @@ function LoadBar({ count, max, totalMinutes }: { count: number; max: number; tot
       {Array.from({ length: Math.max(count, max) }).map((_, i) => (
         <View
           key={i}
-          style={[
-            lb.dot,
-            {
-              backgroundColor:
-                i < count
-                  ? overCount ? '#DC2626' : APP_COLORS.primary
-                  : APP_COLORS.border,
-            },
-          ]}
+          style={[lb.dot, { backgroundColor: i < count ? (overCount ? '#DC2626' : APP_COLORS.primary) : APP_COLORS.borderLight }]}
         />
       ))}
     </View>
@@ -74,10 +68,9 @@ function TaskCard({ task, onPress }: { task: CleaningTask; onPress: () => void }
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={task.depReservationId ? 0.75 : 1}>
-      <View style={[card.container, isPast && card.past, task.isOverdue && card.overdue]}>
+      <View style={[card.container, SHADOWS.sm, isPast && card.past, task.isOverdue && card.overdue]}>
         <View style={[card.strip, { backgroundColor: task.property.color }]} />
         <View style={card.body}>
-          {/* Row 1: property name + badges */}
           <View style={card.topRow}>
             <Text style={card.propName} numberOfLines={1}>{task.property.name}</Text>
             {task.isOverdue && (
@@ -90,37 +83,31 @@ function TaskCard({ task, onPress }: { task: CleaningTask; onPress: () => void }
             </View>
           </View>
 
-          {/* Row 2: time slot + duration */}
           <View style={card.midRow}>
-            <MaterialCommunityIcons name="clock-outline" size={12} color={APP_COLORS.textSecondary} />
+            <MaterialCommunityIcons name="clock-outline" size={12} color={APP_COLORS.textTertiary} />
             <Text style={card.meta}>{task.suggestedStartTime} – {task.suggestedEndTime}</Text>
             <View style={card.pill}>
               <Text style={card.pillText}>{formatDuration(task.estimatedMinutes)}</Text>
             </View>
             {task.guestCount > 0 && (
               <View style={card.guestPill}>
-                <MaterialCommunityIcons name="account-group" size={10} color={APP_COLORS.textSecondary} />
+                <MaterialCommunityIcons name="account-group" size={10} color={APP_COLORS.textTertiary} />
                 <Text style={card.meta}>{task.guestCount} pers.</Text>
               </View>
             )}
           </View>
 
-          {/* Row 3: reason */}
           <View style={card.bottomRow}>
             <Text style={[card.reason, { color: task.isOverdue ? '#DC2626' : cfg.color }]}>{task.reason}</Text>
             {task.nextCheckIn && (
               <>
                 <Text style={card.sep}>·</Text>
-                <Text style={card.meta}>
-                  arrivée {format(parseISO(task.nextCheckIn), 'd MMM', { locale: fr })}
-                </Text>
+                <Text style={card.meta}>arrivée {format(parseISO(task.nextCheckIn), 'd MMM', { locale: fr })}</Text>
               </>
             )}
           </View>
         </View>
-        {task.depReservationId
-          ? <MaterialCommunityIcons name="chevron-right" size={16} color={APP_COLORS.border} />
-          : null}
+        {task.depReservationId ? <MaterialCommunityIcons name="chevron-right" size={16} color={APP_COLORS.border} /> : null}
       </View>
     </TouchableOpacity>
   );
@@ -130,39 +117,24 @@ const card = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: APP_COLORS.surfaceElevated,
+    borderRadius: RADII.md,
     overflow: 'hidden',
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
   },
   past: { opacity: 0.45 },
   overdue: { borderWidth: 1.5, borderColor: '#FECACA' },
-  overdueTag: {
-    backgroundColor: '#DC2626',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
+  overdueTag: { backgroundColor: '#DC2626', borderRadius: RADII.xs, paddingHorizontal: 5, paddingVertical: 2 },
   overdueTagText: { fontSize: 9, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 },
   strip: { width: 5, alignSelf: 'stretch' },
   body: { flex: 1, paddingHorizontal: 12, paddingVertical: 11, gap: 4 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   propName: { flex: 1, fontSize: 14, fontWeight: '700', color: APP_COLORS.textPrimary },
-  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  badge: { borderRadius: RADII.xs, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   midRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   meta: { fontSize: 11, color: APP_COLORS.textSecondary },
-  pill: {
-    backgroundColor: APP_COLORS.primary + '14',
-    borderRadius: 5,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
+  pill: { backgroundColor: APP_COLORS.primaryPale, borderRadius: RADII.xs, paddingHorizontal: 6, paddingVertical: 2 },
   pillText: { fontSize: 10, fontWeight: '700', color: APP_COLORS.primary },
   guestPill: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -185,26 +157,13 @@ function HelpBanner({ taskCount, arrivalsOnDay, departuresOnDay, totalMinutes }:
   return (
     <View style={[help.container, { backgroundColor: bg, borderColor: border }]}>
       <MaterialCommunityIcons name="account-plus" size={16} color={color} />
-      <Text style={[help.text, { color }]}>
-        {hard ? 'Aide nécessaire' : 'Aide recommandée'} · {detail}
-      </Text>
+      <Text style={[help.text, { color }]}>{hard ? 'Aide nécessaire' : 'Aide recommandée'} · {detail}</Text>
     </View>
   );
 }
 const help = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F3E8FF',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#DDD6FE',
-  },
-  text: { fontSize: 12, fontWeight: '600', color: '#7C3AED', flex: 1 },
+  container: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: RADII.sm, paddingHorizontal: 12, paddingVertical: 7, marginBottom: 8, borderWidth: 1 },
+  text: { fontSize: 12, fontWeight: '600', flex: 1 },
 });
 
 export default function CleaningPlannerScreen() {
@@ -235,65 +194,58 @@ export default function CleaningPlannerScreen() {
   const isLoading = resLoading || propLoading;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#FFFFFF" />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <LinearGradient
+        colors={GRADIENTS.navyHeader as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <MaterialCommunityIcons name="arrow-left" size={22} color="rgba(248,245,239,0.8)" />
         </TouchableOpacity>
-        <View style={styles.headerTitles}>
-          <Text style={styles.headerTitle}>Planning ménage</Text>
-          <Text style={styles.headerSub}>Jusqu'au 30 oct. 2026</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>Planning ménage</Text>
+          <Text style={styles.subtitle}>Jusqu'au 30 oct. 2026</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => router.push('/(app)/settings')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <MaterialCommunityIcons name="cog-outline" size={22} color="rgba(255,255,255,0.8)" />
+        <TouchableOpacity onPress={() => router.push('/(app)/settings')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <MaterialCommunityIcons name="cog-outline" size={22} color="rgba(248,245,239,0.7)" />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: 60 }} color={APP_COLORS.primary} />
       ) : (
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-
           {/* Summary pills */}
           <View style={styles.summaryRow}>
-            <View style={styles.summaryPill}>
+            <View style={[styles.summaryPill, { backgroundColor: '#EDE9FE' }]}>
               <MaterialCommunityIcons name="broom" size={13} color="#8B5CF6" />
-              <Text style={[styles.summaryText, { color: '#8B5CF6' }]}>
-                {totalPending} ménage{totalPending !== 1 ? 's' : ''}
-              </Text>
+              <Text style={[styles.summaryText, { color: '#8B5CF6' }]}>{totalPending} ménage{totalPending !== 1 ? 's' : ''}</Text>
             </View>
-            <View style={styles.summaryPill}>
+            <View style={[styles.summaryPill, { backgroundColor: APP_COLORS.primaryPale }]}>
               <MaterialCommunityIcons name="clock-outline" size={13} color={APP_COLORS.primary} />
-              <Text style={[styles.summaryText, { color: APP_COLORS.primary }]}>
-                ~{totalHours}h de travail
-              </Text>
+              <Text style={[styles.summaryText, { color: APP_COLORS.primary }]}>~{totalHours}h</Text>
             </View>
             {critiques > 0 && (
               <View style={[styles.summaryPill, { backgroundColor: '#FEF2F2' }]}>
                 <MaterialCommunityIcons name="alert-circle" size={13} color="#DC2626" />
-                <Text style={[styles.summaryText, { color: '#DC2626' }]}>
-                  {critiques} critique{critiques !== 1 ? 's' : ''}
-                </Text>
+                <Text style={[styles.summaryText, { color: '#DC2626' }]}>{critiques} critique{critiques !== 1 ? 's' : ''}</Text>
               </View>
             )}
             {daysWithHelp > 0 && (
               <View style={[styles.summaryPill, { backgroundColor: '#F3E8FF' }]}>
                 <MaterialCommunityIcons name="account-plus" size={13} color="#7C3AED" />
-                <Text style={[styles.summaryText, { color: '#7C3AED' }]}>
-                  {daysWithHelp}j chargé{daysWithHelp !== 1 ? 's' : ''}
-                </Text>
+                <Text style={[styles.summaryText, { color: '#7C3AED' }]}>{daysWithHelp}j chargé{daysWithHelp !== 1 ? 's' : ''}</Text>
               </View>
             )}
           </View>
 
           {/* Capacity info */}
           <View style={styles.capacityInfo}>
-            <MaterialCommunityIcons name="information-outline" size={13} color={APP_COLORS.textSecondary} />
+            <MaterialCommunityIcons name="information-outline" size={13} color={APP_COLORS.textTertiary} />
             <Text style={styles.capacityText}>
-              Capacité : {maxPerDay} ménage{maxPerDay !== 1 ? 's' : ''}/jour · Ménages planifiés au plus tôt après le départ
+              Capacité : {maxPerDay} ménage{maxPerDay !== 1 ? 's' : ''}/jour · Planifiés au plus tôt après le départ
             </Text>
           </View>
 
@@ -318,21 +270,10 @@ export default function CleaningPlannerScreen() {
 
                 return (
                   <View key={date} style={styles.daySection}>
-                    {/* Day header */}
-                    <View style={[
-                      styles.dayHeader,
-                      overload && styles.dayHeaderOverload,
-                      isToday && styles.dayHeaderToday,
-                    ]}>
+                    <View style={[styles.dayHeader, overload && styles.dayHeaderOverload, isToday && styles.dayHeaderToday]}>
                       <View style={styles.dayHeaderLeft}>
-                        <Text style={[
-                          styles.dayName,
-                          isToday && styles.dayNameToday,
-                          isPast && styles.dayPast,
-                        ]}>
-                          {isToday
-                            ? "Aujourd'hui"
-                            : format(parseISO(date), 'EEEE d MMMM', { locale: fr })}
+                        <Text style={[styles.dayName, isToday && styles.dayNameToday, isPast && styles.dayPast]}>
+                          {isToday ? "Aujourd'hui" : format(parseISO(date), 'EEEE d MMMM', { locale: fr })}
                         </Text>
                         {overload && (
                           <View style={styles.overloadBadge}>
@@ -344,26 +285,15 @@ export default function CleaningPlannerScreen() {
                       <LoadBar count={load} max={maxPerDay} totalMinutes={dayMinutes} />
                     </View>
 
-                    {/* Help banner (Rule 4) */}
                     {needsHelp && (
-                      <HelpBanner
-                        taskCount={load}
-                        arrivalsOnDay={arrivalsOnDay}
-                        departuresOnDay={departuresOnDay}
-                        totalMinutes={dayMinutes}
-                      />
+                      <HelpBanner taskCount={load} arrivalsOnDay={arrivalsOnDay} departuresOnDay={departuresOnDay} totalMinutes={dayMinutes} />
                     )}
 
-                    {/* Tasks */}
                     {dayTasks.map((task, i) => (
                       <TaskCard
                         key={task.depReservationId || `${task.property.id}-${i}`}
                         task={task}
-                        onPress={() => {
-                          if (task.depReservationId) {
-                            router.push(`/(app)/reservations/${task.depReservationId}` as any);
-                          }
-                        }}
+                        onPress={() => { if (task.depReservationId) router.push(`/(app)/reservations/${task.depReservationId}` as any); }}
                       />
                     ))}
                   </View>
@@ -380,84 +310,29 @@ export default function CleaningPlannerScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
-  header: {
-    backgroundColor: APP_COLORS.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerTitles: { flex: 1 },
-  headerTitle: { fontSize: 20, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
-  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 1 },
-  scroll: { flex: 1 },
-  summaryRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 4,
-  },
-  summaryPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#EDE9FE',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
+  safeArea: { flex: 1, backgroundColor: APP_COLORS.primaryDark },
+  header: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 18, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  backBtn: { padding: 2 },
+  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: APP_COLORS.accent, letterSpacing: 1 },
+  subtitle: { fontSize: 11, color: 'rgba(248,245,239,0.65)', marginTop: 2 },
+  scroll: { flex: 1, backgroundColor: APP_COLORS.background },
+  summaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
+  summaryPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: RADII.full, paddingHorizontal: 12, paddingVertical: 6 },
   summaryText: { fontSize: 12, fontWeight: '700' },
-  capacityInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 4,
-  },
-  capacityText: { fontSize: 11, color: APP_COLORS.textSecondary, flex: 1, lineHeight: 16 },
+  capacityInfo: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 4 },
+  capacityText: { fontSize: 11, color: APP_COLORS.textTertiary, flex: 1, lineHeight: 16 },
   timeline: { paddingHorizontal: 16, paddingTop: 8 },
   daySection: { marginBottom: 22 },
-  dayHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    paddingBottom: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border,
-  },
+  dayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 7, borderBottomWidth: 1, borderBottomColor: APP_COLORS.borderLight },
   dayHeaderOverload: { borderBottomColor: '#FECACA' },
-  dayHeaderToday: { borderBottomColor: APP_COLORS.primary },
+  dayHeaderToday: { borderBottomColor: APP_COLORS.accent },
   dayHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dayName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: APP_COLORS.textPrimary,
-    textTransform: 'capitalize',
-  },
+  dayName: { fontSize: 13, fontWeight: '700', color: APP_COLORS.textPrimary, textTransform: 'capitalize' },
   dayNameToday: { color: APP_COLORS.primary },
-  dayPast: { color: APP_COLORS.textSecondary },
-  overloadBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
+  dayPast: { color: APP_COLORS.textTertiary },
+  overloadBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FEF2F2', borderRadius: RADII.xs, paddingHorizontal: 6, paddingVertical: 2 },
   overloadText: { fontSize: 10, color: '#DC2626', fontWeight: '700' },
-  empty: {
-    alignItems: 'center',
-    paddingTop: 80,
-    gap: 12,
-    paddingHorizontal: 40,
-  },
+  empty: { alignItems: 'center', paddingTop: 80, gap: 12, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: APP_COLORS.textPrimary },
   emptyText: { fontSize: 13, color: APP_COLORS.textSecondary, textAlign: 'center' },
 });

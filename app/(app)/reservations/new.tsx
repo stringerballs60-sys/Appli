@@ -27,7 +27,7 @@ const emptyForm = (): ReservationFormData => ({
   guest_phone: '',
   check_in: '',
   check_out: '',
-  check_in_time: '',
+  check_in_time: '16:00',
   check_in_time_confirmed: false,
   nb_couples: 0,
   nb_solo_adults: 1,

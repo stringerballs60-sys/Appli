@@ -216,22 +216,51 @@ export function computeCleaningPlan(
     else if (daysUntilArrival <= 7) urgency = 'normal';
     else urgency = 'relaxed';
 
+    // Suggest cleaning date: today if urgent, otherwise 7 days before arrival
+    let suggestedDate: string = today;
+    let isOverdue: boolean;
+    if (daysUntilArrival <= 7) {
+      suggestedDate = today;
+      isOverdue = true;
+    } else {
+      // Schedule 7 days before arrival, respecting maxPerDay capacity
+      const idealDate = addDaysStr(nextArr.check_in, -7);
+      const deadline = addDaysStr(nextArr.check_in, -1);
+      let cursor = idealDate >= today ? idealDate : today;
+      let found = false;
+      while (cursor <= deadline) {
+        if ((daySlotCount.get(cursor) ?? 0) < maxPerDay) {
+          suggestedDate = cursor;
+          found = true;
+          break;
+        }
+        cursor = addDaysStr(cursor, 1);
+      }
+      if (!found) suggestedDate = idealDate >= today ? idealDate : today;
+      isOverdue = false;
+    }
+
+    // Priority based on suggestedDate proximity
+    const daysUntilSuggested2 = Math.max(0, Math.round(
+      (new Date(suggestedDate).getTime() - new Date(today).getTime()) / 86400000
+    ));
     let priority: CleaningPriority;
-    if (daysUntilArrival <= 2) priority = 'critique';
-    else if (daysUntilArrival <= 10) priority = 'recommande';
+    if (daysUntilSuggested2 <= 2) priority = 'critique';
+    else if (daysUntilSuggested2 <= 10) priority = 'recommande';
     else priority = 'flexible';
 
     let reason: string;
-    if (lastDep) {
+    if (isOverdue && lastDep) {
       const daysSinceDep = Math.round(
         (new Date(today).getTime() - new Date(lastDep.check_out).getTime()) / 86400000
       );
       reason = `En retard de ${daysSinceDep}j · arrivée dans ${daysUntilArrival}j`;
-    } else {
+    } else if (isOverdue) {
       reason = `Préparation requise · arrivée dans ${daysUntilArrival}j`;
+    } else {
+      reason = `Logement à préparer · arrivée dans ${daysUntilArrival}j`;
     }
 
-    const suggestedDate = today;
     daySlotCount.set(suggestedDate, (daySlotCount.get(suggestedDate) ?? 0) + 1);
     dayMinutes.set(suggestedDate, (dayMinutes.get(suggestedDate) ?? 0) + estimatedMinutes);
 
@@ -250,7 +279,7 @@ export function computeCleaningPlan(
       reason,
       helpNeeded: (dayMinutes.get(suggestedDate) ?? 0) > 240,
       guestCount,
-      isOverdue: true,
+      isOverdue,
     });
   }
 

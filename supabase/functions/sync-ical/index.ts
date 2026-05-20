@@ -134,9 +134,7 @@ function classifyEvent(
     category = 'DIRECT_OWN';
   }
 
-  // Airbnb hides guest names in iCal — use a labelled placeholder
-  const platformLabel = source.charAt(0).toUpperCase() + source.slice(1);
-  const guestName = sl === 'reserved' ? `Réservation ${platformLabel}` : ev.summary;
+  const guestName = sl === 'reserved' ? 'À renseigner' : ev.summary;
 
   return { guestName, category, eventSource: source };
 }

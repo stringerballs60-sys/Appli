@@ -26,6 +26,7 @@ import {
   subMonths,
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { useReservationsForMonth } from '@/hooks/useReservations';
 import { useActiveProperties } from '@/hooks/useProperties';
 import { APP_COLORS } from '@/constants/colors';
@@ -41,12 +42,35 @@ const BLOCK_PADDING = 7;
 const MAX_DATE = new Date(2026, 9, 30); // 30 octobre 2026 — limite absolue
 
 // ── Platform config ───────────────────────────────────────────────────────────
-const SOURCE_CFG: Record<string, { label: string; bg: string } | null> = {
-  airbnb:  { label: 'A', bg: '#FF5A5F' },
-  booking: { label: 'B', bg: '#003580' },
-  abritel: { label: 'V', bg: '#FF6600' },
+const SOURCE_CFG: Record<string, { bg: string; icon?: string; label?: string } | null> = {
+  airbnb:  { bg: '#FF5A5F', icon: 'airbnb' },
+  booking: { bg: '#003580', label: 'B' },
+  abritel: { bg: '#FF6600', label: 'V' },
   manual:  null,
 };
+
+function SourceBadge({ source, size = 15, style }: { source: string; size?: number; style?: any }) {
+  const cfg = SOURCE_CFG[source ?? 'manual'];
+  if (!cfg) return null;
+  return (
+    <View style={[{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: cfg.bg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.55)',
+    }, style]}>
+      {cfg.icon ? (
+        <FontAwesome5 name={cfg.icon} size={size * 0.6} color="#FFFFFF" brand />
+      ) : (
+        <Text style={{ fontSize: size * 0.5, fontWeight: '900', color: '#FFFFFF' }}>{cfg.label}</Text>
+      )}
+    </View>
+  );
+}
 
 function getBlockGeometry(resa: Reservation, startDate: Date) {
   const checkIn = parseISO(resa.check_in);
@@ -68,7 +92,6 @@ interface PreviewSheetProps {
 
 function ReservationPreviewSheet({ resa, onClose, onViewDetail }: PreviewSheetProps) {
   const property = resa.property as Property | undefined;
-  const sourceConf = SOURCE_CFG[resa.source ?? 'manual'];
   const today = new Date().toISOString().slice(0, 10);
 
   const isOngoing = resa.check_in <= today && resa.check_out > today;
@@ -103,11 +126,7 @@ function ReservationPreviewSheet({ resa, onClose, onViewDetail }: PreviewSheetPr
               <Text style={sheet.guestName} numberOfLines={1}>{resa.guest_name}</Text>
               {property && <Text style={sheet.propertyName}>{property.name}</Text>}
             </View>
-            {sourceConf && (
-              <View style={[sheet.sourceDot, { backgroundColor: sourceConf.bg }]}>
-                <Text style={sheet.sourceDotText}>{sourceConf.label}</Text>
-              </View>
-            )}
+            <SourceBadge source={resa.source ?? 'manual'} size={32} />
           </View>
 
           {/* Date range */}
@@ -473,7 +492,6 @@ export default function CalendarScreen() {
                         const { left, width } = getBlockGeometry(resa, startDate);
                         if (width <= 0) return null;
                         const isPending = resa.status === 'pending';
-                        const sourceConf = SOURCE_CFG[resa.source ?? 'manual'];
                         const blockH = ROW_HEIGHT - BLOCK_PADDING * 2;
 
                         return (
@@ -499,10 +517,8 @@ export default function CalendarScreen() {
                             {width > 68 && (
                               <Text style={styles.resaNights}>{resa.nb_nights}n</Text>
                             )}
-                            {sourceConf && width > 42 && (
-                              <View style={[styles.sourceDot, { backgroundColor: sourceConf.bg }]}>
-                                <Text style={styles.sourceDotText}>{sourceConf.label}</Text>
-                              </View>
+                            {width > 42 && (
+                              <SourceBadge source={resa.source ?? 'manual'} size={15} />
                             )}
                           </TouchableOpacity>
                         );

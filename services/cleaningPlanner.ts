@@ -8,11 +8,11 @@ export interface CleaningTask {
   property: Property;
   checkOut: string;
   nextCheckIn: string | null;
-  isOverdue: boolean; // guests already left, cleaning not done yet
+  isOverdue: boolean;
   windowDays: number;
   suggestedDate: string;
-  suggestedStartTime: string; // "HH:MM"
-  suggestedEndTime: string;   // "HH:MM"
+  suggestedStartTime: string;
+  suggestedEndTime: string;
   estimatedMinutes: number;
   priority: CleaningPriority;
   urgency: CleaningUrgency;
@@ -43,21 +43,54 @@ function addMinutesToTime(start: string, minutes: number): string {
 }
 
 function estimateDuration(guestCount: number, nbBathrooms: number): number {
-  // Calibrated on real data:
-  //   3 guests (1 couple + sofa) = 2h (120min) → 40min/guest
-  //   6 guests (F5 Padru)        = 4h (240min) → 40min/guest
   const base = Math.max(80, guestCount * 40);
-
-  // +20min per extra bathroom beyond the first
   const extraBathrooms = Math.max(0, (nbBathrooms ?? 1) - 1);
   return base + extraBathrooms * 20;
 }
 
 function suggestStartTime(urgency: CleaningUrgency): string {
-  // Turnovers: start right after typical checkout (10h)
-  // Others: suggest morning start
   if (urgency === 'turnover') return '10:00';
   return '09:00';
+}
+
+// Pick the best date for a cleaning task.
+// - Group co-scheduling: if a group preferred date falls in the window, use it (bypass maxPerDay).
+// - Consolidation: otherwise prefer the most-loaded day that still has capacity,
+//   to leave other days completely free.
+function pickDate(
+  from: string,
+  deadline: string,
+  daySlotCount: Map<string, number>,
+  maxPerDay: number,
+  groupPreferredDate: string | null,
+): string {
+  // Group co-scheduling: bypass maxPerDay, same trip = same day
+  if (groupPreferredDate && groupPreferredDate >= from && groupPreferredDate <= deadline) {
+    return groupPreferredDate;
+  }
+
+  // Consolidation: pick most-loaded day that still has room (fill before opening new days)
+  let bestDate = from;
+  let bestLoad = -1;
+  let cursor = from;
+  while (cursor <= deadline) {
+    const load = daySlotCount.get(cursor) ?? 0;
+    if (load < maxPerDay && load > bestLoad) {
+      bestDate = cursor;
+      bestLoad = load;
+    }
+    cursor = addDaysStr(cursor, 1);
+  }
+  return bestDate;
+}
+
+function computePriority(suggestedDate: string, today: string): CleaningPriority {
+  const days = Math.max(0, Math.round(
+    (new Date(suggestedDate).getTime() - new Date(today).getTime()) / 86400000
+  ));
+  if (days <= 2) return 'critique';
+  if (days <= 10) return 'recommande';
+  return 'flexible';
 }
 
 export function computeCleaningPlan(
@@ -74,109 +107,56 @@ export function computeCleaningPlan(
     .filter((r) => r.check_out >= today && r.check_out <= horizonDate)
     .sort((a, b) => a.check_out.localeCompare(b.check_out));
 
-  // Track per-day slot count and total minutes
   const daySlotCount = new Map<string, number>();
   const dayMinutes = new Map<string, number>();
-  // Track dates already used by group, to co-schedule same-group properties
-  const groupDates = new Map<string, string>(); // group_name → suggestedDate
+  // group_name → preferred date for co-scheduling
+  const groupDates = new Map<string, string>();
 
   const tasks: CleaningTask[] = [];
 
+  // ── Pass 1: future departures ──────────────────────────────────────────────
   for (const dep of departures) {
     const property = propMap.get(dep.property_id);
     if (!property || !property.is_active) continue;
 
-    // Find next arrival for same property on or after check_out
     const nextArr = active
-      .filter(
-        (r) =>
-          r.property_id === dep.property_id &&
-          r.check_in >= dep.check_out &&
-          r.id !== dep.id
-      )
+      .filter((r) => r.property_id === dep.property_id && r.check_in >= dep.check_out && r.id !== dep.id)
       .sort((a, b) => a.check_in.localeCompare(b.check_in))[0];
 
     const checkIn = nextArr?.check_in ?? null;
     const windowDays = checkIn
-      ? Math.round(
-          (new Date(checkIn).getTime() - new Date(dep.check_out).getTime()) / 86400000
-        )
+      ? Math.round((new Date(checkIn).getTime() - new Date(dep.check_out).getTime()) / 86400000)
       : 99;
 
-    // Guest count from departure reservation
-    const guestCount =
-      (dep.nb_couples ?? 0) * 2 + (dep.nb_solo_adults ?? 0) + (dep.nb_children ?? 0);
-
+    const guestCount = (dep.nb_couples ?? 0) * 2 + (dep.nb_solo_adults ?? 0) + (dep.nb_children ?? 0);
     const estimatedMinutes = estimateDuration(guestCount, property.nb_bathrooms ?? 1);
 
-    // Urgency (based on the gap between checkout and next checkin)
     let urgency: CleaningUrgency;
     if (windowDays === 0) urgency = 'turnover';
     else if (windowDays <= 1) urgency = 'urgent';
     else if (windowDays <= 3) urgency = 'normal';
     else urgency = 'relaxed';
 
-    // Reason
     let reason: string;
     if (urgency === 'turnover') reason = 'Turn-over le jour même';
     else if (urgency === 'urgent') reason = `Fenêtre courte (${windowDays}j)`;
     else if (urgency === 'normal') reason = 'Anticipation dernière minute';
     else reason = 'Logement libre — planifier tôt';
 
-    // Suggested date: always as early as possible (J or J+1 max)
-    // This keeps the property "ready to book" for last-minute reservations
     let suggestedDate = dep.check_out;
 
     if (windowDays > 0) {
       const deadline = checkIn ? addDaysStr(checkIn, -1) : horizonDate;
       const group = property.group_name?.trim() || null;
-
-      // If same group already has a scheduled date that fits this window, prefer it
-      if (group && groupDates.has(group)) {
-        const groupDate = groupDates.get(group)!;
-        if (groupDate >= dep.check_out && groupDate <= deadline) {
-          suggestedDate = groupDate;
-        }
-      }
-
-      // If suggestedDate (possibly from group) is overloaded, find next available slot
-      if ((daySlotCount.get(suggestedDate) ?? 0) >= maxPerDay) {
-        let cursor = suggestedDate;
-        let found = false;
-        while (cursor <= deadline) {
-          if ((daySlotCount.get(cursor) ?? 0) < maxPerDay) {
-            suggestedDate = cursor;
-            found = true;
-            break;
-          }
-          cursor = addDaysStr(cursor, 1);
-        }
-        if (!found) suggestedDate = dep.check_out;
-      }
-
+      const groupPreferred = group ? (groupDates.get(group) ?? null) : null;
+      suggestedDate = pickDate(dep.check_out, deadline, daySlotCount, maxPerDay, groupPreferred);
       if (group) groupDates.set(group, suggestedDate);
     }
 
-    // Priority based on how soon the cleaning needs to happen (suggestedDate vs today)
-    const daysUntilSuggested = Math.max(0, Math.round(
-      (new Date(suggestedDate).getTime() - new Date(today).getTime()) / 86400000
-    ));
-    let priority: CleaningPriority;
-    if (daysUntilSuggested <= 2) priority = 'critique';
-    else if (daysUntilSuggested <= 10) priority = 'recommande';
-    else priority = 'flexible';
-
-    // Update day load
     daySlotCount.set(suggestedDate, (daySlotCount.get(suggestedDate) ?? 0) + 1);
     dayMinutes.set(suggestedDate, (dayMinutes.get(suggestedDate) ?? 0) + estimatedMinutes);
 
-    // Help needed: if this day accumulates > 4h of cleaning solo
-    const dayTotal = dayMinutes.get(suggestedDate)!;
-    const helpNeeded = dayTotal > 240;
-
     const startTime = suggestStartTime(urgency);
-    const endTime = addMinutesToTime(startTime, estimatedMinutes);
-
     tasks.push({
       depReservationId: dep.id,
       property,
@@ -185,23 +165,25 @@ export function computeCleaningPlan(
       windowDays,
       suggestedDate,
       suggestedStartTime: startTime,
-      suggestedEndTime: endTime,
+      suggestedEndTime: addMinutesToTime(startTime, estimatedMinutes),
       estimatedMinutes,
-      priority,
+      priority: computePriority(suggestedDate, today),
       urgency,
       reason,
-      helpNeeded,
+      helpNeeded: (dayMinutes.get(suggestedDate) ?? 0) > 240,
       guestCount,
       isOverdue: false,
     });
   }
 
-  // --- Pass 2: properties with cleaning_status = 'to_do' not covered above ---
-  // Catches guests who already left (check_out < today) and properties needing prep
+  // ── Pass 2: properties with cleaning_status = 'to_do' not covered above ───
+  const URGENT_DAYS = 3;
+  const PLANNING_WINDOW = 14;
+  const GROUP_PLANNING_WINDOW = 30;
+
   for (const property of properties) {
     if (!property.is_active || property.cleaning_status !== 'to_do') continue;
 
-    // Skip if a future task already covers the next arrival for this property
     const nextArr = active
       .filter((r) => r.property_id === property.id && r.check_in >= today)
       .sort((a, b) => a.check_in.localeCompare(b.check_in))[0];
@@ -212,7 +194,6 @@ export function computeCleaningPlan(
     );
     if (alreadyCovered) continue;
 
-    // Most recent past departure to estimate duration
     const lastDep = active
       .filter((r) => r.property_id === property.id && r.check_out < today)
       .sort((a, b) => b.check_out.localeCompare(a.check_out))[0];
@@ -232,56 +213,28 @@ export function computeCleaningPlan(
     else if (daysUntilArrival <= 7) urgency = 'normal';
     else urgency = 'relaxed';
 
-    // Suggest cleaning date:
-    // - ≤ 3 days until arrival → urgent, plan today
-    // - > 3 days → find first quiet day in the 14 days before arrival (not earlier)
-    const URGENT_DAYS = 3;
-    const PLANNING_WINDOW = 14;
+    const group = property.group_name?.trim() || null;
     let suggestedDate: string = today;
     let isOverdue: boolean;
+
     if (daysUntilArrival <= URGENT_DAYS) {
       suggestedDate = today;
       isOverdue = true;
     } else {
-      const searchStart = addDaysStr(nextArr.check_in, -PLANNING_WINDOW);
-      const earliestDate = searchStart >= today ? searchStart : today;
+      // Group gets wider window to maximize chance of overlap with other group members
+      const window = group ? GROUP_PLANNING_WINDOW : PLANNING_WINDOW;
+      const searchStart = addDaysStr(nextArr.check_in, -window);
+      const from = searchStart >= today ? searchStart : today;
       const deadline = addDaysStr(nextArr.check_in, -1);
-      const group = property.group_name?.trim() || null;
-
-      // Prefer group date if it falls in this window
-      if (group && groupDates.has(group)) {
-        const groupDate = groupDates.get(group)!;
-        if (groupDate >= earliestDate && groupDate <= deadline) {
-          suggestedDate = groupDate;
-        }
-      }
-
-      if ((daySlotCount.get(suggestedDate) ?? 0) >= maxPerDay || suggestedDate < earliestDate) {
-        let cursor = earliestDate;
-        let found = false;
-        while (cursor <= deadline) {
-          if ((daySlotCount.get(cursor) ?? 0) < maxPerDay) {
-            suggestedDate = cursor;
-            found = true;
-            break;
-          }
-          cursor = addDaysStr(cursor, 1);
-        }
-        if (!found) suggestedDate = earliestDate;
-      }
-
-      if (group) groupDates.set(group, suggestedDate);
+      const groupPreferred = group ? (groupDates.get(group) ?? null) : null;
+      suggestedDate = pickDate(from, deadline, daySlotCount, maxPerDay, groupPreferred);
       isOverdue = false;
     }
 
-    // Priority based on suggestedDate proximity
-    const daysUntilSuggested2 = Math.max(0, Math.round(
-      (new Date(suggestedDate).getTime() - new Date(today).getTime()) / 86400000
-    ));
-    let priority: CleaningPriority;
-    if (daysUntilSuggested2 <= 2) priority = 'critique';
-    else if (daysUntilSuggested2 <= 10) priority = 'recommande';
-    else priority = 'flexible';
+    if (group) groupDates.set(group, suggestedDate);
+
+    daySlotCount.set(suggestedDate, (daySlotCount.get(suggestedDate) ?? 0) + 1);
+    dayMinutes.set(suggestedDate, (dayMinutes.get(suggestedDate) ?? 0) + estimatedMinutes);
 
     let reason: string;
     if (isOverdue && lastDep) {
@@ -291,12 +244,11 @@ export function computeCleaningPlan(
       reason = `En retard de ${daysSinceDep}j · arrivée dans ${daysUntilArrival}j`;
     } else if (isOverdue) {
       reason = `Préparation requise · arrivée dans ${daysUntilArrival}j`;
+    } else if (group) {
+      reason = `Groupe ${group} · arrivée dans ${daysUntilArrival}j`;
     } else {
       reason = `Logement à préparer · arrivée dans ${daysUntilArrival}j`;
     }
-
-    daySlotCount.set(suggestedDate, (daySlotCount.get(suggestedDate) ?? 0) + 1);
-    dayMinutes.set(suggestedDate, (dayMinutes.get(suggestedDate) ?? 0) + estimatedMinutes);
 
     tasks.push({
       depReservationId: lastDep?.id ?? '',
@@ -308,7 +260,7 @@ export function computeCleaningPlan(
       suggestedStartTime: '09:00',
       suggestedEndTime: addMinutesToTime('09:00', estimatedMinutes),
       estimatedMinutes,
-      priority,
+      priority: computePriority(suggestedDate, today),
       urgency,
       reason,
       helpNeeded: (dayMinutes.get(suggestedDate) ?? 0) > 240,
@@ -329,7 +281,6 @@ export function computeCleaningPlan(
       helpNeeded: (finalDayMinutes.get(t.suggestedDate) ?? 0) > 240,
     }))
     .sort((a, b) => {
-      // Overdue tasks always first (today), then by date
       if (a.isOverdue && !b.isOverdue) return -1;
       if (!a.isOverdue && b.isOverdue) return 1;
       return a.suggestedDate.localeCompare(b.suggestedDate);

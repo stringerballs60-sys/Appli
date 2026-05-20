@@ -25,6 +25,7 @@
     "expo-router": "~6.0.23",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
+    "expo-updates": "^55.0.23",
     "i18next": "^26.0.8",
     "react": "19.1.0",
     "react-i18next": "^17.0.6",

@@ -31,6 +31,7 @@ export default function NewPropertyScreen() {
     nb_bathrooms: 1,
     is_active: true,
     color: PROPERTY_COLORS[0],
+    ical_url: '',
   });
   const [error, setError] = useState('');
 
@@ -199,6 +200,23 @@ export default function NewPropertyScreen() {
           </View>
         </View>
 
+        <SectionHeader title="Synchronisation calendrier" />
+        <View style={styles.section}>
+          <TextInput
+            label="Lien iCal (Airbnb, Booking…)"
+            value={form.ical_url}
+            onChangeText={(v) => set('ical_url', v)}
+            mode="outlined"
+            style={styles.input}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={styles.icalHint}>
+            Airbnb : Calendrier → Paramètres → Lien d'exportation{'\n'}
+            Booking.com : Extranet → Calendrier → Exporter
+          </Text>
+        </View>
+
         <Button
           mode="contained"
           onPress={handleSubmit}
@@ -300,6 +318,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: APP_COLORS.textSecondary,
     flex: 1,
+  },
+  icalHint: {
+    fontSize: 11,
+    color: APP_COLORS.textSecondary,
+    lineHeight: 16,
+    marginTop: 2,
   },
   switchRow: {
     flexDirection: 'row',

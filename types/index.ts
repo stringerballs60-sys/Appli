@@ -62,6 +62,7 @@ export interface Property {
   color: string;
   cleaning_status: 'ready' | 'to_do';
   cleaning_status_date: string | null;
+  ical_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -100,7 +101,8 @@ export interface Reservation {
   beds_crib_used: number;
   linen_calculation: LinenCalculation | null;
   notes: string | null;
-  source?: ReservationSource;
+  source: ReservationSource;
+  ical_uid: string | null;
   created_at: string;
   updated_at: string;
   property?: Property;
@@ -161,6 +163,7 @@ export type PropertyFormData = {
   nb_bathrooms: number;
   is_active: boolean;
   color: string;
+  ical_url: string;
 };
 
 export type ReservationFormData = {

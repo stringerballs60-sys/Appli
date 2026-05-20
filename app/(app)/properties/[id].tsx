@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useProperty, useUpdateProperty, useTogglePropertyActive } from '@/hooks/useProperties';
+import { useProperty, useUpdateProperty, useTogglePropertyActive, useSyncIcal } from '@/hooks/useProperties';
 import { useReservations } from '@/hooks/useReservations';
 import { PropertyBadge } from '@/components/ui/PropertyBadge';
 import { ReservationCard } from '@/components/reservation/ReservationCard';
@@ -27,6 +27,8 @@ export default function PropertyDetailScreen() {
   });
   const { mutateAsync: updateProperty, isPending: updating } = useUpdateProperty();
   const { mutateAsync: toggleActive } = useTogglePropertyActive();
+  const { mutate: syncIcal, isPending: syncing } = useSyncIcal();
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<PropertyFormData>>({});
@@ -47,8 +49,23 @@ export default function PropertyDetailScreen() {
       nb_bathrooms: property.nb_bathrooms,
       is_active: property.is_active,
       color: property.color,
+      ical_url: property.ical_url ?? '',
     });
     setEditing(true);
+  };
+
+  const handleSync = () => {
+    syncIcal(id, {
+      onSuccess: (data) => {
+        const r = data?.results?.[0];
+        if (r?.success) {
+          setSyncResult(`${r.upserted ?? 0} réservation(s) importée(s)`);
+        } else {
+          setSyncResult(r?.error ?? 'Erreur de synchronisation');
+        }
+      },
+      onError: (e: any) => setSyncResult(e.message ?? 'Erreur'),
+    });
   };
 
   const handleSave = async () => {
@@ -174,6 +191,36 @@ export default function PropertyDetailScreen() {
               </>
             )}
 
+            {/* iCal sync */}
+            <SectionHeader title="Synchronisation calendrier" />
+            <View style={styles.icalCard}>
+              {property.ical_url ? (
+                <>
+                  <View style={styles.icalUrlRow}>
+                    <MaterialCommunityIcons name="calendar-sync" size={16} color={APP_COLORS.primary} />
+                    <Text style={styles.icalUrlText} numberOfLines={1}>{property.ical_url}</Text>
+                  </View>
+                  <Button
+                    mode="contained"
+                    onPress={handleSync}
+                    loading={syncing}
+                    disabled={syncing}
+                    icon="sync"
+                    buttonColor={APP_COLORS.primary}
+                    style={{ borderRadius: 8 }}
+                  >
+                    Synchroniser maintenant
+                  </Button>
+                </>
+              ) : (
+                <View style={styles.icalEmpty}>
+                  <MaterialCommunityIcons name="calendar-remove-outline" size={28} color={APP_COLORS.textSecondary} />
+                  <Text style={styles.icalEmptyText}>Aucun lien iCal configuré</Text>
+                  <Text style={styles.icalEmptyHint}>Modifiez le logement pour ajouter un lien Airbnb ou Booking.</Text>
+                </View>
+              )}
+            </View>
+
             {/* Toggle active */}
             <View style={styles.dangerZone}>
               <Button
@@ -262,6 +309,23 @@ export default function PropertyDetailScreen() {
               />
             </View>
 
+            <SectionHeader title="Synchronisation calendrier" />
+            <View style={styles.section}>
+              <TextInput
+                label="Lien iCal (Airbnb, Booking…)"
+                value={form.ical_url ?? ''}
+                onChangeText={(v) => set('ical_url', v)}
+                mode="outlined"
+                style={styles.input}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={styles.icalHint}>
+                Airbnb : Calendrier → Paramètres → Lien d'exportation{'\n'}
+                Booking.com : Extranet → Calendrier → Exporter
+              </Text>
+            </View>
+
             <Button mode="contained" onPress={handleSave} loading={updating} style={styles.saveButton}>
               {t('common.save')}
             </Button>
@@ -273,6 +337,9 @@ export default function PropertyDetailScreen() {
 
       <Snackbar visible={!!error} onDismiss={() => setError('')} duration={3000}>
         {error}
+      </Snackbar>
+      <Snackbar visible={!!syncResult} onDismiss={() => setSyncResult(null)} duration={3000}>
+        {syncResult ?? ''}
       </Snackbar>
     </SafeAreaView>
   );
@@ -309,4 +376,17 @@ const styles = StyleSheet.create({
   colorSwatch: { width: 40, height: 40, borderRadius: 20 },
   colorSwatchSelected: { borderWidth: 3, borderColor: APP_COLORS.textPrimary },
   saveButton: { marginHorizontal: 16, marginTop: 8, backgroundColor: APP_COLORS.primary, borderRadius: 8 },
+  icalCard: {
+    backgroundColor: '#FFFFFF', marginHorizontal: 16, borderRadius: 12,
+    padding: 16, marginBottom: 8, gap: 12,
+  },
+  icalUrlRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: APP_COLORS.background, borderRadius: 8, padding: 10,
+  },
+  icalUrlText: { flex: 1, fontSize: 12, color: APP_COLORS.textSecondary, fontFamily: 'monospace' },
+  icalEmpty: { alignItems: 'center', gap: 6, paddingVertical: 8 },
+  icalEmptyText: { fontSize: 14, fontWeight: '600', color: APP_COLORS.textSecondary },
+  icalEmptyHint: { fontSize: 12, color: APP_COLORS.textSecondary, textAlign: 'center', lineHeight: 17 },
+  icalHint: { fontSize: 11, color: APP_COLORS.textSecondary, lineHeight: 16 },
 });

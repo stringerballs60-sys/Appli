@@ -25,6 +25,7 @@ const TASK_TYPE_CONFIG: Record<TaskType, { icon: string; color: string; label: s
 const STATUS_CONFIG: Record<TaskStatus, { color: string; label: string }> = {
   [TaskStatus.PENDING]:    { color: APP_COLORS.textTertiary, label: 'À faire' },
   [TaskStatus.IN_PROGRESS]:{ color: APP_COLORS.warning,      label: 'En cours' },
+  [TaskStatus.PAUSED]:     { color: APP_COLORS.primary,      label: 'En pause' },
   [TaskStatus.DONE]:       { color: APP_COLORS.success,       label: 'Terminée' },
 };
 

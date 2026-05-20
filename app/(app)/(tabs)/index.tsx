@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Alert, Modal, Pressable } from 'react-native';
-import { Text, Surface, ActivityIndicator } from 'react-native-paper';
+import { Text, ActivityIndicator } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,6 +12,7 @@ import { useLowStockAlerts } from '@/hooks/useInventory';
 import { useActiveProperties, useUpdateCleaningStatus } from '@/hooks/useProperties';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { APP_COLORS } from '@/constants/colors';
+import { SHADOWS, RADII, GRADIENTS } from '@/constants/theme';
 import { formatDateLong, formatDateShort } from '@/utils/dateHelpers';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -46,11 +48,13 @@ function TodayCard({
   onPressItem?: (r: Reservation) => void;
 }) {
   return (
-    <Surface style={styles.todayCard} elevation={1}>
-      <View style={styles.todayCardHeader}>
-        <MaterialCommunityIcons name={icon as any} size={18} color={iconColor} />
-        <Text style={[styles.todayCardTitle, { color: iconColor }]}>{title}</Text>
-        <View style={[styles.countBadge, { backgroundColor: iconColor }]}>
+    <View style={[styles.card, SHADOWS.sm]}>
+      <View style={styles.cardHeader}>
+        <View style={[styles.cardIconWrap, { backgroundColor: iconColor + '15' }]}>
+          <MaterialCommunityIcons name={icon as any} size={15} color={iconColor} />
+        </View>
+        <Text style={[styles.cardTitle, { color: iconColor }]}>{title}</Text>
+        <View style={[styles.countPill, { backgroundColor: iconColor }]}>
           <Text style={styles.countText}>{reservations.length}</Text>
         </View>
       </View>
@@ -60,27 +64,27 @@ function TodayCard({
         reservations.map((r) => (
           <TouchableOpacity
             key={r.id}
-            style={styles.todayItem}
+            style={styles.cardItem}
             onPress={() => onPressItem?.(r)}
             activeOpacity={onPressItem ? 0.6 : 1}
           >
             {r.property && (
-              <View style={[styles.dot, { backgroundColor: r.property.color }]} />
+              <View style={[styles.propStripe, { backgroundColor: r.property.color }]} />
             )}
             <View style={{ flex: 1 }}>
-              <Text style={styles.todayGuestName} numberOfLines={1}>{r.guest_name}</Text>
-              <Text style={styles.todayPropertyName} numberOfLines={1}>
+              <Text style={styles.guestName} numberOfLines={1}>{r.guest_name}</Text>
+              <Text style={styles.propName} numberOfLines={1}>
                 {r.property?.name}
                 {dateField ? ` · ${formatDateShort(r[dateField])}` : ''}
               </Text>
             </View>
             {onPressItem && (
-              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textTertiary} />
             )}
           </TouchableOpacity>
         ))
       )}
-    </Surface>
+    </View>
   );
 }
 
@@ -98,11 +102,13 @@ function OccupiedCard({
     return true;
   });
   return (
-    <Surface style={styles.statusCard} elevation={1}>
-      <View style={styles.statusCardHeader}>
-        <MaterialCommunityIcons name="home-account" size={18} color={APP_COLORS.primary} />
-        <Text style={[styles.statusCardTitle, { color: APP_COLORS.primary }]}>Occupés</Text>
-        <View style={[styles.countBadge, { backgroundColor: APP_COLORS.primary }]}>
+    <View style={[styles.card, SHADOWS.sm]}>
+      <View style={styles.cardHeader}>
+        <View style={[styles.cardIconWrap, { backgroundColor: APP_COLORS.primaryPale }]}>
+          <MaterialCommunityIcons name="home-account" size={15} color={APP_COLORS.primary} />
+        </View>
+        <Text style={[styles.cardTitle, { color: APP_COLORS.primary }]}>Occupés</Text>
+        <View style={[styles.countPill, { backgroundColor: APP_COLORS.primary }]}>
           <Text style={styles.countText}>{unique.length}</Text>
         </View>
       </View>
@@ -112,17 +118,17 @@ function OccupiedCard({
         unique.map((r) => (
           <TouchableOpacity
             key={r.id}
-            style={styles.statusItem}
+            style={styles.cardItem}
             onPress={() => onPressItem?.(r)}
             activeOpacity={0.6}
           >
-            {r.property && <View style={[styles.dot, { backgroundColor: r.property.color }]} />}
-            <Text style={styles.statusItemText} numberOfLines={1}>{r.property?.name}</Text>
-            <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+            {r.property && <View style={[styles.propStripe, { backgroundColor: r.property.color }]} />}
+            <Text style={[styles.guestName, { flex: 1 }]} numberOfLines={1}>{r.property?.name}</Text>
+            <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textTertiary} />
           </TouchableOpacity>
         ))
       )}
-    </Surface>
+    </View>
   );
 }
 
@@ -140,37 +146,39 @@ function TurnoverCard({
   const first = turnovers[0];
   const extra = turnovers.length - 1;
   return (
-    <Surface style={styles.statusCard} elevation={1}>
-      <View style={styles.statusCardHeader}>
-        <MaterialCommunityIcons name="swap-horizontal" size={18} color={APP_COLORS.warning} />
-        <Text style={[styles.statusCardTitle, { color: APP_COLORS.warning }]}>Turn-over</Text>
-        <View style={[styles.countBadge, { backgroundColor: APP_COLORS.warning }]}>
+    <View style={[styles.card, SHADOWS.sm]}>
+      <View style={styles.cardHeader}>
+        <View style={[styles.cardIconWrap, { backgroundColor: APP_COLORS.warningLight }]}>
+          <MaterialCommunityIcons name="swap-horizontal" size={15} color={APP_COLORS.warning} />
+        </View>
+        <Text style={[styles.cardTitle, { color: APP_COLORS.warning }]}>Turn-over</Text>
+        <View style={[styles.countPill, { backgroundColor: APP_COLORS.warning }]}>
           <Text style={styles.countText}>{turnovers.length}</Text>
         </View>
       </View>
       {!first ? (
         <Text style={styles.emptyText}>Aucun turn-over</Text>
       ) : (
-        <View style={styles.statusItem}>
-          {first.dep.property && <View style={[styles.dot, { backgroundColor: first.dep.property.color }]} />}
+        <View style={styles.cardItem}>
+          {first.dep.property && <View style={[styles.propStripe, { backgroundColor: first.dep.property.color }]} />}
           <TouchableOpacity style={{ flex: 1 }} onPress={() => onPressItem?.(first.dep, first.arr)} activeOpacity={0.6}>
-            <Text style={styles.statusItemText} numberOfLines={1}>{first.dep.property?.name}</Text>
+            <Text style={styles.guestName} numberOfLines={1}>{first.dep.property?.name}</Text>
             {first.dep.check_out !== today && (
-              <Text style={styles.todayPropertyName}>{formatNextIn(first.dep.check_out, today)}</Text>
+              <Text style={styles.propName}>{formatNextIn(first.dep.check_out, today)}</Text>
             )}
           </TouchableOpacity>
           {extra > 0 ? (
-            <TouchableOpacity style={styles.extraBadge} onPress={onShowAll} activeOpacity={0.7}>
-              <Text style={styles.extraBadgeText}>+{extra}</Text>
+            <TouchableOpacity style={styles.extraPill} onPress={onShowAll} activeOpacity={0.7}>
+              <Text style={styles.extraPillText}>+{extra}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={() => onPressItem?.(first.dep, first.arr)} activeOpacity={0.6}>
-              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
       )}
-    </Surface>
+    </View>
   );
 }
 
@@ -187,30 +195,30 @@ function TurnoverListModal({
 }) {
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={tsheet.overlay} onPress={onClose}>
-        <Pressable style={[tsheet.container, { paddingBottom: 24 }]} onPress={() => {}}>
-          <View style={tsheet.handle} />
-          <View style={[tsheet.header, { paddingLeft: 20, paddingBottom: 12 }]}>
+      <Pressable style={sheet.overlay} onPress={onClose}>
+        <Pressable style={[sheet.container, { paddingBottom: 24 }]} onPress={() => {}}>
+          <View style={sheet.handle} />
+          <View style={[sheet.header, { paddingLeft: 20, paddingBottom: 12 }]}>
             <MaterialCommunityIcons name="swap-horizontal" size={20} color={APP_COLORS.warning} />
             <View style={{ flex: 1, paddingLeft: 10 }}>
-              <Text style={tsheet.propertyName}>Tous les turn-overs</Text>
-              <Text style={tsheet.subTitle}>{turnovers.length} à venir</Text>
+              <Text style={sheet.title}>Tous les turn-overs</Text>
+              <Text style={sheet.subtitle}>{turnovers.length} à venir</Text>
             </View>
           </View>
-          <View style={tsheet.divider} />
+          <View style={sheet.divider} />
           {turnovers.map(({ dep, arr }) => (
             <TouchableOpacity
               key={dep.id}
-              style={styles.listModalItem}
+              style={sheet.listItem}
               onPress={() => { onClose(); onPressItem(dep, arr); }}
               activeOpacity={0.7}
             >
-              {dep.property && <View style={[styles.listModalStrip, { backgroundColor: dep.property.color }]} />}
+              {dep.property && <View style={[sheet.strip, { backgroundColor: dep.property.color }]} />}
               <View style={{ flex: 1, paddingLeft: 12 }}>
-                <Text style={styles.statusItemText} numberOfLines={1}>{dep.property?.name}</Text>
-                <Text style={styles.todayPropertyName}>{formatNextIn(dep.check_out, today)}</Text>
+                <Text style={styles.guestName} numberOfLines={1}>{dep.property?.name}</Text>
+                <Text style={styles.propName}>{formatNextIn(dep.check_out, today)}</Text>
               </View>
-              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textTertiary} />
             </TouchableOpacity>
           ))}
         </Pressable>
@@ -238,68 +246,68 @@ function TurnoverSheet({
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={tsheet.overlay} onPress={onClose}>
-        <Pressable style={tsheet.container} onPress={() => {}}>
-          <View style={tsheet.handle} />
+      <Pressable style={sheet.overlay} onPress={onClose}>
+        <Pressable style={sheet.container} onPress={() => {}}>
+          <View style={sheet.handle} />
 
-          <View style={tsheet.header}>
-            {property && <View style={[tsheet.colorStrip, { backgroundColor: property.color }]} />}
+          <View style={sheet.header}>
+            {property && <View style={[sheet.strip, { backgroundColor: property.color }]} />}
             <View style={{ flex: 1, paddingLeft: 12 }}>
-              <Text style={tsheet.propertyName}>{property?.name ?? 'Logement'}</Text>
-              <Text style={tsheet.subTitle}>Turn-over</Text>
+              <Text style={sheet.title}>{property?.name ?? 'Logement'}</Text>
+              <Text style={sheet.subtitle}>Turn-over</Text>
             </View>
-            <View style={[tsheet.cleaningPill, { backgroundColor: cleaningColor + '22', borderColor: cleaningColor }]}>
-              <Text style={[tsheet.cleaningPillText, { color: cleaningColor }]}>
+            <View style={[sheet.pill, { backgroundColor: cleaningColor + '15', borderColor: cleaningColor + '50' }]}>
+              <Text style={[sheet.pillText, { color: cleaningColor }]}>
                 {cleaningReady ? '✓ Prêt' : 'À faire'}
               </Text>
             </View>
           </View>
 
-          <View style={tsheet.divider} />
+          <View style={sheet.divider} />
 
-          <View style={tsheet.guestBlock}>
-            <View style={[tsheet.guestBadge, { backgroundColor: APP_COLORS.warning + '18' }]}>
-              <MaterialCommunityIcons name="logout" size={14} color={APP_COLORS.warning} />
-              <Text style={[tsheet.guestBadgeLabel, { color: APP_COLORS.warning }]}>DÉPART</Text>
+          <View style={sheet.guestBlock}>
+            <View style={[sheet.badge, { backgroundColor: APP_COLORS.warningLight }]}>
+              <MaterialCommunityIcons name="logout" size={12} color={APP_COLORS.warning} />
+              <Text style={[sheet.badgeLabel, { color: APP_COLORS.warning }]}>DÉPART</Text>
             </View>
-            <Text style={tsheet.guestName} numberOfLines={1}>{dep.guest_name}</Text>
-            <Text style={tsheet.guestDate}>
+            <Text style={sheet.guestName} numberOfLines={1}>{dep.guest_name}</Text>
+            <Text style={sheet.guestDate}>
               {format(parseISO(dep.check_out), 'EEE d MMM', { locale: fr })} · {dep.nb_nights} nuits
             </Text>
           </View>
 
           {arr && (
             <>
-              <View style={tsheet.swapRow}>
-                <View style={tsheet.swapLine} />
-                <View style={tsheet.swapIcon}>
-                  <MaterialCommunityIcons name="swap-vertical" size={16} color={APP_COLORS.primary} />
+              <View style={sheet.swapRow}>
+                <View style={sheet.swapLine} />
+                <View style={sheet.swapCircle}>
+                  <MaterialCommunityIcons name="swap-vertical" size={15} color={APP_COLORS.primary} />
                 </View>
-                <View style={tsheet.swapLine} />
+                <View style={sheet.swapLine} />
               </View>
 
-              <View style={tsheet.guestBlock}>
-                <View style={[tsheet.guestBadge, { backgroundColor: APP_COLORS.success + '18' }]}>
-                  <MaterialCommunityIcons name="login" size={14} color={APP_COLORS.success} />
-                  <Text style={[tsheet.guestBadgeLabel, { color: APP_COLORS.success }]}>ARRIVÉE</Text>
+              <View style={sheet.guestBlock}>
+                <View style={[sheet.badge, { backgroundColor: APP_COLORS.successLight }]}>
+                  <MaterialCommunityIcons name="login" size={12} color={APP_COLORS.success} />
+                  <Text style={[sheet.badgeLabel, { color: APP_COLORS.success }]}>ARRIVÉE</Text>
                 </View>
-                <Text style={tsheet.guestName} numberOfLines={1}>{arr.guest_name}</Text>
-                <Text style={tsheet.guestDate}>
+                <Text style={sheet.guestName} numberOfLines={1}>{arr.guest_name}</Text>
+                <Text style={sheet.guestDate}>
                   {format(parseISO(arr.check_in), 'EEE d MMM', { locale: fr })} · {arr.nb_nights} nuits
                 </Text>
               </View>
             </>
           )}
 
-          <View style={tsheet.actions}>
-            <TouchableOpacity style={tsheet.btnSecondary} onPress={onViewDep}>
+          <View style={sheet.actions}>
+            <TouchableOpacity style={sheet.btnOutline} onPress={onViewDep}>
               <MaterialCommunityIcons name="logout" size={14} color={APP_COLORS.warning} />
-              <Text style={[tsheet.btnSecondaryText, { color: APP_COLORS.warning }]}>Voir le départ</Text>
+              <Text style={[sheet.btnOutlineText, { color: APP_COLORS.warning }]}>Voir le départ</Text>
             </TouchableOpacity>
             {arr && (
-              <TouchableOpacity style={tsheet.btnPrimary} onPress={onViewArr}>
+              <TouchableOpacity style={[sheet.btnFill, SHADOWS.navy]} onPress={onViewArr}>
                 <MaterialCommunityIcons name="login" size={14} color="#FFFFFF" />
-                <Text style={tsheet.btnPrimaryText}>Voir l'arrivée</Text>
+                <Text style={sheet.btnFillText}>Voir l'arrivée</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -336,7 +344,6 @@ function CleaningStatusCard({
       return { property: p, nextArrival, urgent };
     })
     .sort((a, b) => {
-      // to_do first, then urgent, then by next arrival
       if (a.property.cleaning_status !== b.property.cleaning_status) {
         return a.property.cleaning_status === 'to_do' ? -1 : 1;
       }
@@ -352,19 +359,22 @@ function CleaningStatusCard({
   const readyCount = active.filter((a) => a.property.cleaning_status === 'ready').length;
   const first = todoItems[0];
   const extra = todoItems.length - 1;
+  const cleaningColor = '#7C3AED';
 
   return (
-    <Surface style={styles.statusCard} elevation={1}>
-      <View style={styles.statusCardHeader}>
-        <MaterialCommunityIcons name="broom" size={18} color="#8B5CF6" />
-        <Text style={[styles.statusCardTitle, { color: '#8B5CF6' }]}>Ménage</Text>
+    <View style={[styles.card, SHADOWS.sm]}>
+      <View style={styles.cardHeader}>
+        <View style={[styles.cardIconWrap, { backgroundColor: '#7C3AED15' }]}>
+          <MaterialCommunityIcons name="broom" size={15} color={cleaningColor} />
+        </View>
+        <Text style={[styles.cardTitle, { color: cleaningColor }]}>Ménage</Text>
         {todoItems.length > 0 && (
-          <View style={[styles.countBadge, { backgroundColor: first?.urgent ? APP_COLORS.danger : '#8B5CF6' }]}>
+          <View style={[styles.countPill, { backgroundColor: first?.urgent ? APP_COLORS.danger : cleaningColor }]}>
             <Text style={styles.countText}>{todoItems.length}</Text>
           </View>
         )}
         {readyCount > 0 && (
-          <Text style={{ fontSize: 10, color: APP_COLORS.success, fontWeight: '700' }}>
+          <Text style={{ fontSize: 10, color: APP_COLORS.success, fontWeight: '700', marginLeft: 2 }}>
             {readyCount} ✓
           </Text>
         )}
@@ -374,32 +384,32 @@ function CleaningStatusCard({
       ) : todoItems.length === 0 ? (
         <Text style={[styles.emptyText, { color: APP_COLORS.success }]}>Tous les logements sont prêts ✓</Text>
       ) : (
-        <View style={styles.statusItem}>
-          {first.property && <View style={[styles.dot, { backgroundColor: first.property.color }]} />}
+        <View style={styles.cardItem}>
+          {first.property && <View style={[styles.propStripe, { backgroundColor: first.property.color }]} />}
           <TouchableOpacity style={{ flex: 1 }} onPress={() => onToggle(first.property)} activeOpacity={0.6}>
-            <Text style={styles.statusItemText} numberOfLines={1}>{first.property.name}</Text>
+            <Text style={styles.guestName} numberOfLines={1}>{first.property.name}</Text>
             {first.nextArrival && (
-              <Text style={[styles.todayPropertyName, first.urgent && { color: APP_COLORS.danger }]}>
+              <Text style={[styles.propName, first.urgent && { color: APP_COLORS.danger }]}>
                 {first.urgent ? '⚠ ' : ''}Check-in {formatNextIn(first.nextArrival.check_in, today)}
               </Text>
             )}
           </TouchableOpacity>
           {extra > 0 ? (
             <TouchableOpacity
-              style={[styles.extraBadge, { backgroundColor: '#8B5CF622', borderColor: '#8B5CF655' }]}
+              style={[styles.extraPill, { backgroundColor: cleaningColor + '18', borderColor: cleaningColor + '40' }]}
               onPress={onShowAll}
               activeOpacity={0.7}
             >
-              <Text style={[styles.extraBadgeText, { color: '#8B5CF6' }]}>+{extra}</Text>
+              <Text style={[styles.extraPillText, { color: cleaningColor }]}>+{extra}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={onShowAll} activeOpacity={0.6}>
-              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
       )}
-    </Surface>
+    </View>
   );
 }
 
@@ -441,42 +451,46 @@ function CleaningListModal({
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={tsheet.overlay} onPress={onClose}>
-        <Pressable style={[tsheet.container, { paddingBottom: 24 }]} onPress={() => {}}>
-          <View style={tsheet.handle} />
-          <View style={[tsheet.header, { paddingLeft: 20, paddingBottom: 12 }]}>
-            <MaterialCommunityIcons name="broom" size={20} color="#8B5CF6" />
+      <Pressable style={sheet.overlay} onPress={onClose}>
+        <Pressable style={[sheet.container, { paddingBottom: 24 }]} onPress={() => {}}>
+          <View style={sheet.handle} />
+          <View style={[sheet.header, { paddingLeft: 20, paddingBottom: 12 }]}>
+            <MaterialCommunityIcons name="broom" size={20} color="#7C3AED" />
             <View style={{ flex: 1, paddingLeft: 10 }}>
-              <Text style={tsheet.propertyName}>Statut ménage</Text>
-              <Text style={tsheet.subTitle}>{todoCount} à faire · {active.length - todoCount} prêt{active.length - todoCount > 1 ? 's' : ''}</Text>
+              <Text style={sheet.title}>Statut ménage</Text>
+              <Text style={sheet.subtitle}>{todoCount} à faire · {active.length - todoCount} prêt{active.length - todoCount > 1 ? 's' : ''}</Text>
             </View>
           </View>
-          <View style={tsheet.divider} />
+          <View style={sheet.divider} />
           {active.map(({ property: p, nextArrival, urgent }) => {
             const isDone = p.cleaning_status === 'ready';
             return (
               <TouchableOpacity
                 key={p.id}
-                style={styles.listModalItem}
+                style={sheet.listItem}
                 onPress={() => { onClose(); onToggle(p); }}
                 activeOpacity={0.7}
               >
-                <View style={[styles.listModalStrip, { backgroundColor: p.color }]} />
+                <View style={[sheet.strip, { backgroundColor: p.color }]} />
                 <View style={{ flex: 1, paddingLeft: 12 }}>
-                  <Text style={styles.statusItemText} numberOfLines={1}>{p.name}</Text>
+                  <Text style={styles.guestName} numberOfLines={1}>{p.name}</Text>
                   {nextArrival && (
-                    <Text style={[styles.todayPropertyName, urgent && { color: APP_COLORS.danger }]}>
+                    <Text style={[styles.propName, urgent && { color: APP_COLORS.danger }]}>
                       {urgent ? '⚠ ' : ''}Check-in {formatNextIn(nextArrival.check_in, today)}
                     </Text>
                   )}
                 </View>
-                <View style={[styles.cleaningBadge, { backgroundColor: isDone ? '#D1FAE5' : urgent ? '#FEE2E2' : '#FEF3C7' }]}>
+                <View style={[styles.cleaningBadge, {
+                  backgroundColor: isDone ? APP_COLORS.successLight : urgent ? APP_COLORS.dangerLight : APP_COLORS.warningLight,
+                }]}>
                   <MaterialCommunityIcons
                     name={isDone ? 'check-circle' : 'clock-outline'}
-                    size={13}
-                    color={isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : '#B45309'}
+                    size={12}
+                    color={isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : APP_COLORS.warning}
                   />
-                  <Text style={[styles.cleaningBadgeText, { color: isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : '#B45309' }]}>
+                  <Text style={[styles.cleaningBadgeText, {
+                    color: isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : APP_COLORS.warning,
+                  }]}>
                     {isDone ? 'Prêt' : 'À faire'}
                   </Text>
                 </View>
@@ -534,8 +548,6 @@ export default function DashboardScreen() {
     ...(upcomingActivity?.arrivals ?? []),
   ];
 
-  // Auto-sync cleaning status from calendar:
-  // occupied → ready | past departure after last cleaning → to_do
   useEffect(() => {
     if (!properties || !occupiedToday || !recentDepartures) return;
 
@@ -545,13 +557,11 @@ export default function DashboardScreen() {
       if (!prop.is_active) return;
 
       if (occupiedPropIds.has(prop.id)) {
-        // Guest is there → auto ready
         if (prop.cleaning_status !== 'ready') {
           updateCleaningStatus({ id: prop.id, status: 'ready', date: today });
         }
       } else {
-        // Not occupied → check if there's a departure after last cleaning
-        if (prop.cleaning_status !== 'ready') return; // already to_do, skip
+        if (prop.cleaning_status !== 'ready') return;
         const lastDep = recentDepartures
           .filter((r) => r.property_id === prop.id)
           .sort((a, b) => b.check_out.localeCompare(a.check_out))[0];
@@ -595,31 +605,41 @@ export default function DashboardScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* ── Header ─────────────────────────────────────────────── */}
+        <LinearGradient
+          colors={GRADIENTS.navyHeader as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
           <View>
             <Text style={styles.greeting}>KAZA</Text>
-            <Text style={styles.date}>{formatDateLong(today)}</Text>
+            <Text style={styles.headerDate} numberOfLines={1}>
+              {formatDateLong(today)}
+            </Text>
           </View>
           <View style={styles.headerRight}>
-            <View style={styles.headerLogoContainer}>
+            <View style={styles.logoWrap}>
               <Image
                 source={require('@/assets/icon.png')}
-                style={styles.headerLogo}
+                style={styles.logo}
                 resizeMode="contain"
               />
             </View>
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <MaterialCommunityIcons name="logout" size={20} color="rgba(255,255,255,0.85)" />
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="logout" size={19} color="rgba(248,245,239,0.75)" />
             </TouchableOpacity>
           </View>
-        </View>
+        </LinearGradient>
 
         {isLoading ? (
-          <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
+          <ActivityIndicator style={{ marginTop: 48 }} color={APP_COLORS.primary} />
         ) : (
           <>
+            {/* Memo banner */}
             {pendingMemoCount > 0 && !memoBannerDismissed && (
               <TouchableOpacity
                 style={styles.memoBanner}
@@ -627,7 +647,7 @@ export default function DashboardScreen() {
                 activeOpacity={0.8}
               >
                 <View style={styles.memoBannerStrip} />
-                <MaterialCommunityIcons name="note-text-outline" size={16} color="#D4AF37" />
+                <MaterialCommunityIcons name="note-text-outline" size={15} color={APP_COLORS.accent} />
                 <Text style={styles.memoBannerText} numberOfLines={1}>
                   {pendingMemoCount} note{pendingMemoCount > 1 ? 's' : ''} en attente dans le mémo
                 </Text>
@@ -635,12 +655,14 @@ export default function DashboardScreen() {
                   onPress={(e) => { e.stopPropagation(); setMemoBannerDismissed(true); }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <MaterialCommunityIcons name="close" size={14} color="#B8973A" />
+                  <MaterialCommunityIcons name="close" size={13} color={APP_COLORS.accentDark} />
                 </TouchableOpacity>
               </TouchableOpacity>
             )}
+
+            {/* Aujourd'hui */}
             <SectionHeader title={t('dashboard.today')} />
-            <View style={styles.todayRow}>
+            <View style={styles.row}>
               <View style={{ flex: 1 }}>
                 <TodayCard
                   title={t('dashboard.todayCheckins')}
@@ -663,8 +685,9 @@ export default function DashboardScreen() {
               </View>
             </View>
 
+            {/* À venir */}
             <SectionHeader title={t('dashboard.upcoming')} />
-            <View style={styles.todayRow}>
+            <View style={styles.row}>
               <View style={{ flex: 1 }}>
                 <TodayCard
                   title="3 prochains check-in"
@@ -681,7 +704,7 @@ export default function DashboardScreen() {
                   title="3 prochains check-out"
                   reservations={(upcomingActivity?.departures ?? []).slice(0, 3)}
                   icon="calendar-arrow-left"
-                  iconColor="#8B5CF6"
+                  iconColor="#7C3AED"
                   emptyLabel={t('dashboard.noUpcoming')}
                   dateField="check_out"
                   onPressItem={(r) => router.push(`/(app)/reservations/${r.id}`)}
@@ -689,8 +712,9 @@ export default function DashboardScreen() {
               </View>
             </View>
 
+            {/* Statut logements */}
             <SectionHeader title="Statut logements" />
-            <View style={styles.todayRow}>
+            <View style={styles.row}>
               <View style={{ flex: 1 }}>
                 <OccupiedCard
                   reservations={occupiedToday ?? []}
@@ -706,7 +730,7 @@ export default function DashboardScreen() {
                 />
               </View>
             </View>
-            <View style={styles.cleaningWrapper}>
+            <View style={styles.fullRow}>
               <CleaningStatusCard
                 properties={properties ?? []}
                 today={today}
@@ -716,10 +740,11 @@ export default function DashboardScreen() {
               />
             </View>
 
+            {/* À appeler */}
             {pendingCallList && pendingCallList.length > 0 && (
               <>
-                <SectionHeader title={`📞 À appeler (${pendingCallList.length})`} />
-                <View style={styles.callAlertBox}>
+                <SectionHeader title={`Appels à passer (${pendingCallList.length})`} />
+                <View style={styles.callBox}>
                   {pendingCallList.map((r) => {
                     const daysUntil = Math.round(
                       (new Date(r.check_in).getTime() - new Date(today).getTime()) / 86400000
@@ -737,10 +762,10 @@ export default function DashboardScreen() {
                           <View style={[styles.callDot, { backgroundColor: r.property.color }]} />
                         )}
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.callGuestName}>{r.guest_name}</Text>
-                          <Text style={styles.callPropertyName}>{r.property?.name}</Text>
+                          <Text style={styles.guestName}>{r.guest_name}</Text>
+                          <Text style={styles.propName}>{r.property?.name}</Text>
                         </View>
-                        <View style={styles.callDateBadge}>
+                        <View style={styles.callDatePill}>
                           <Text style={styles.callDateText}>{label}</Text>
                         </View>
                         {r.guest_phone ? (
@@ -755,25 +780,26 @@ export default function DashboardScreen() {
               </>
             )}
 
+            {/* Stocks */}
             {lowStock && lowStock.length > 0 && (
               <>
                 <SectionHeader title={t('dashboard.lowStock')} />
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.stockRow}
+                  contentContainerStyle={styles.stockScroll}
                 >
                   {lowStock.map((c) => (
-                    <Surface key={c.id} style={styles.stockAlert} elevation={1}>
-                      <MaterialCommunityIcons name="alert-circle" size={18} color={APP_COLORS.danger} />
-                      <Text style={styles.stockItemName} numberOfLines={1}>{c.item_name}</Text>
-                      <Text style={styles.stockPropertyName} numberOfLines={1}>
+                    <View key={c.id} style={[styles.stockCard, SHADOWS.sm]}>
+                      <MaterialCommunityIcons name="alert-circle" size={17} color={APP_COLORS.danger} />
+                      <Text style={styles.stockName} numberOfLines={1}>{c.item_name}</Text>
+                      <Text style={styles.stockProp} numberOfLines={1}>
                         {(c.property as any)?.name ?? ''}
                       </Text>
                       <Text style={styles.stockQty}>
                         {c.current_stock} {c.unit}
                       </Text>
-                    </Surface>
+                    </View>
                   ))}
                 </ScrollView>
               </>
@@ -781,14 +807,14 @@ export default function DashboardScreen() {
 
             {(!lowStock || lowStock.length === 0) && (
               <View style={styles.allGoodRow}>
-                <MaterialCommunityIcons name="check-circle" size={16} color={APP_COLORS.success} />
+                <MaterialCommunityIcons name="check-circle" size={15} color={APP_COLORS.success} />
                 <Text style={styles.allGoodText}>{t('dashboard.noLowStock')}</Text>
               </View>
             )}
           </>
         )}
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
 
       {showTurnoverList && (
@@ -829,148 +855,156 @@ export default function DashboardScreen() {
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
-  container: { flex: 1 },
+  safeArea: { flex: 1, backgroundColor: APP_COLORS.primaryDark },
+  scroll: { flex: 1, backgroundColor: APP_COLORS.background },
+
+  // Header
   header: {
-    backgroundColor: APP_COLORS.primary,
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingTop: 18,
+    paddingBottom: 22,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  greeting: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
-  date: {
+  greeting: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: APP_COLORS.accent,
+    letterSpacing: 2,
+    fontFamily: 'Montserrat-Bold',
+  },
+  headerDate: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
+    color: 'rgba(248,245,239,0.72)',
+    marginTop: 3,
     textTransform: 'capitalize',
   },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerLogoContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 6,
-    backgroundColor: '#F8F9FA',
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: RADII.sm,
+    backgroundColor: 'rgba(248,245,239,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(248,245,239,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
-  headerLogo: { width: 40, height: 40, borderRadius: 6 },
+  logo: { width: 38, height: 38, borderRadius: RADII.sm },
   logoutBtn: { padding: 4 },
-  todayRow: {
+
+  // Card grid
+  row: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 10,
   },
-  todayCard: {
-    borderRadius: 12,
-    padding: 10,
-    backgroundColor: '#FFFFFF',
-    gap: 6,
-  },
-  todayCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  todayCardTitle: { fontSize: 11, fontWeight: '700', flex: 1 },
-  countBadge: { borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1 },
-  countText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
-  todayItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  todayGuestName: { fontSize: 12, fontWeight: '600', color: APP_COLORS.textPrimary },
-  todayPropertyName: { fontSize: 10, color: APP_COLORS.textSecondary },
-  emptyText: { fontSize: 11, color: APP_COLORS.textSecondary, fontStyle: 'italic' },
-  statusCard: {
-    borderRadius: 12,
-    padding: 10,
-    backgroundColor: '#FFFFFF',
-    gap: 6,
-  },
-  statusCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  statusCardTitle: { fontSize: 11, fontWeight: '700', flex: 1 },
-  statusItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statusItemText: { fontSize: 12, fontWeight: '600', color: APP_COLORS.textPrimary, flex: 1 },
-  cleaningWrapper: {
+  fullRow: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 10,
   },
-  cleaningCard: {
-    borderRadius: 12,
+
+  // Base card
+  card: {
+    borderRadius: RADII.md,
     padding: 12,
-    backgroundColor: '#FFFFFF',
-    gap: 4,
+    backgroundColor: APP_COLORS.surfaceElevated,
+    gap: 8,
   },
-  cleaningRow: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderRadius: 8,
+    gap: 6,
   },
-  cleaningRowUrgent: {
-    backgroundColor: '#FFF1F2',
+  cardIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: RADII.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  cleaningPropertyName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: APP_COLORS.textPrimary,
+  cardTitle: { fontSize: 11, fontWeight: '700', flex: 1, letterSpacing: 0.1 },
+  countPill: {
+    borderRadius: RADII.full,
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    minWidth: 20,
+    alignItems: 'center',
   },
-  cleaningNextIn: {
-    fontSize: 10,
-    color: APP_COLORS.textSecondary,
-    marginTop: 1,
+  countText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF' },
+
+  // Card items
+  cardItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  propStripe: { width: 3, height: 30, borderRadius: 2, flexShrink: 0 },
+  guestName: { fontSize: 12, fontWeight: '600', color: APP_COLORS.textPrimary },
+  propName: { fontSize: 10, color: APP_COLORS.textSecondary, marginTop: 1 },
+  emptyText: { fontSize: 11, color: APP_COLORS.textTertiary, fontStyle: 'italic' },
+  extraPill: {
+    backgroundColor: APP_COLORS.warningLight,
+    borderRadius: RADII.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: APP_COLORS.warning + '40',
   },
+  extraPillText: { fontSize: 10, fontWeight: '700', color: APP_COLORS.warning },
+
+  // Cleaning badge (in modal list)
   cleaningBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderRadius: 20,
-    paddingHorizontal: 10,
+    borderRadius: RADII.full,
+    paddingHorizontal: 9,
     paddingVertical: 4,
   },
-  cleaningBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  stockRow: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
-  stockAlert: {
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: '#FEF2F2',
-    alignItems: 'center',
-    minWidth: 110,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  stockItemName: { fontSize: 13, fontWeight: '600', color: APP_COLORS.textPrimary, textAlign: 'center' },
-  stockPropertyName: { fontSize: 11, color: APP_COLORS.textSecondary, textAlign: 'center' },
-  stockQty: { fontSize: 12, color: APP_COLORS.danger, fontWeight: '600' },
-  allGoodRow: {
+  cleaningBadgeText: { fontSize: 10, fontWeight: '700' },
+
+  // Memo banner
+  memoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  allGoodText: { fontSize: 13, color: APP_COLORS.success },
-  callAlertBox: {
-    backgroundColor: '#FFFFFF',
+    gap: 8,
     marginHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    marginTop: 14,
+    marginBottom: 2,
+    paddingVertical: 11,
+    paddingRight: 12,
+    backgroundColor: APP_COLORS.accentPale,
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: APP_COLORS.accent + '50',
+    overflow: 'hidden',
+    ...SHADOWS.xs,
+  },
+  memoBannerStrip: {
+    width: 4,
+    alignSelf: 'stretch',
+    backgroundColor: APP_COLORS.accent,
+  },
+  memoBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: APP_COLORS.accentDark,
+  },
+
+  // Call list
+  callBox: {
+    backgroundColor: APP_COLORS.surfaceElevated,
+    marginHorizontal: 16,
+    borderRadius: RADII.md,
+    marginBottom: 10,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: APP_COLORS.accent + '35',
+    ...SHADOWS.xs,
   },
   callRow: {
     flexDirection: 'row',
@@ -979,81 +1013,64 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#FEF3C7',
+    borderBottomColor: APP_COLORS.borderLight,
   },
-  callDot: { width: 9, height: 9, borderRadius: 5, flexShrink: 0 },
-  callGuestName: { fontSize: 13, fontWeight: '700', color: APP_COLORS.textPrimary },
-  callPropertyName: { fontSize: 11, color: APP_COLORS.textSecondary },
-  callDateBadge: { backgroundColor: '#FEF3C7', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  callDateText: { fontSize: 11, fontWeight: '700', color: '#B45309' },
-  extraBadge: {
-    backgroundColor: APP_COLORS.warning + '22',
-    borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+  callDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  callDatePill: {
+    backgroundColor: APP_COLORS.accentPale,
+    borderRadius: RADII.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: 1,
-    borderColor: APP_COLORS.warning + '55',
+    borderColor: APP_COLORS.accent + '30',
   },
-  extraBadgeText: { fontSize: 11, fontWeight: '700', color: APP_COLORS.warning },
-  listModalItem: {
+  callDateText: { fontSize: 10, fontWeight: '700', color: APP_COLORS.accentDark },
+
+  // Stock alerts
+  stockScroll: { paddingHorizontal: 16, paddingBottom: 10, gap: 8 },
+  stockCard: {
+    borderRadius: RADII.md,
+    padding: 12,
+    backgroundColor: APP_COLORS.dangerLight,
+    alignItems: 'center',
+    minWidth: 110,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: APP_COLORS.danger + '30',
+  },
+  stockName: { fontSize: 12, fontWeight: '600', color: APP_COLORS.textPrimary, textAlign: 'center' },
+  stockProp: { fontSize: 10, color: APP_COLORS.textSecondary, textAlign: 'center' },
+  stockQty: { fontSize: 12, color: APP_COLORS.danger, fontWeight: '700' },
+  allGoodRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border,
+    paddingVertical: 12,
   },
-  listModalStrip: { width: 4, height: '100%', borderRadius: 2, minHeight: 36 },
-  memoBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 4,
-    paddingVertical: 10,
-    paddingRight: 12,
-    backgroundColor: '#FFFBEB',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F0CC6A',
-    overflow: 'hidden',
-  },
-  memoBannerStrip: {
-    width: 4,
-    alignSelf: 'stretch',
-    backgroundColor: '#D4AF37',
-  },
-  memoBannerText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#92700A',
-  },
+  allGoodText: { fontSize: 12, color: APP_COLORS.success },
 });
 
-const tsheet = StyleSheet.create({
+// ── Bottom sheet styles ───────────────────────────────────────────────────────
+
+const sheet = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(5, 14, 26, 0.62)',
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: APP_COLORS.surfaceElevated,
+    borderTopLeftRadius: RADII.xl,
+    borderTopRightRadius: RADII.xl,
     paddingBottom: 36,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 12,
+    ...SHADOWS.lg,
   },
   handle: {
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: APP_COLORS.border,
     alignSelf: 'center',
     marginTop: 12,
     marginBottom: 4,
@@ -1064,31 +1081,33 @@ const tsheet = StyleSheet.create({
     paddingVertical: 14,
     paddingRight: 16,
   },
-  colorStrip: {
+  strip: {
     width: 5,
     alignSelf: 'stretch',
     borderRadius: 3,
+    minHeight: 36,
   },
-  propertyName: {
+  title: {
     fontSize: 17,
     fontWeight: '700',
     color: APP_COLORS.textPrimary,
+    fontFamily: 'Montserrat-SemiBold',
   },
-  subTitle: {
+  subtitle: {
     fontSize: 12,
     color: APP_COLORS.textSecondary,
     marginTop: 2,
   },
-  cleaningPill: {
-    borderRadius: 999,
+  pill: {
+    borderRadius: RADII.full,
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  cleaningPillText: { fontSize: 11, fontWeight: '700' },
+  pillText: { fontSize: 11, fontWeight: '700' },
   divider: {
     height: 1,
-    backgroundColor: APP_COLORS.border,
+    backgroundColor: APP_COLORS.borderLight,
     marginHorizontal: 16,
     marginBottom: 4,
   },
@@ -1097,17 +1116,17 @@ const tsheet = StyleSheet.create({
     paddingVertical: 12,
     gap: 3,
   },
-  guestBadge: {
+  badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     alignSelf: 'flex-start',
-    borderRadius: 6,
+    borderRadius: RADII.xs,
     paddingHorizontal: 8,
     paddingVertical: 3,
     marginBottom: 4,
   },
-  guestBadgeLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  badgeLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   guestName: { fontSize: 16, fontWeight: '700', color: APP_COLORS.textPrimary },
   guestDate: { fontSize: 12, color: APP_COLORS.textSecondary },
   swapRow: {
@@ -1116,12 +1135,12 @@ const tsheet = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 2,
   },
-  swapLine: { flex: 1, height: 1, backgroundColor: APP_COLORS.border },
-  swapIcon: {
+  swapLine: { flex: 1, height: 1, backgroundColor: APP_COLORS.borderLight },
+  swapCircle: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: APP_COLORS.primary + '12',
+    backgroundColor: APP_COLORS.primaryPale,
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 8,
@@ -1132,33 +1151,36 @@ const tsheet = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 8,
   },
-  btnSecondary: {
+  btnOutline: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 13,
-    borderRadius: 14,
-    backgroundColor: APP_COLORS.warning + '18',
+    borderRadius: RADII.md,
+    backgroundColor: APP_COLORS.warningLight,
     borderWidth: 1,
     borderColor: APP_COLORS.warning + '40',
   },
-  btnSecondaryText: { fontSize: 13, fontWeight: '700' },
-  btnPrimary: {
+  btnOutlineText: { fontSize: 13, fontWeight: '700' },
+  btnFill: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 13,
-    borderRadius: 14,
+    borderRadius: RADII.md,
     backgroundColor: APP_COLORS.primary,
-    shadowColor: APP_COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  btnPrimaryText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  btnFillText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: APP_COLORS.borderLight,
+  },
 });

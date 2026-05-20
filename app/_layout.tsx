@@ -36,11 +36,13 @@ const theme = {
   colors: {
     ...MD3LightTheme.colors,
     primary: APP_COLORS.primary,
-    primaryContainer: '#CBD5E1',
+    primaryContainer: APP_COLORS.primaryPale,
     secondary: APP_COLORS.accent,
-    secondaryContainer: '#F0FBD0',
+    secondaryContainer: APP_COLORS.accentPale,
     background: APP_COLORS.background,
     surface: APP_COLORS.surface,
+    surfaceVariant: APP_COLORS.backgroundAlt,
+    outline: APP_COLORS.border,
   },
   fonts: configureFonts({ config: fontConfig }),
 };

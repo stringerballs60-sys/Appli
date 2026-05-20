@@ -14,13 +14,21 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: APP_COLORS.primary,
-        tabBarInactiveTintColor: APP_COLORS.textSecondary,
+        tabBarInactiveTintColor: APP_COLORS.textTertiary,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: APP_COLORS.border,
-          elevation: 8,
+          backgroundColor: APP_COLORS.surfaceElevated,
+          borderTopColor: APP_COLORS.borderLight,
+          borderTopWidth: 1,
+          elevation: 12,
+          shadowColor: APP_COLORS.primaryDark,
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.08,
+          shadowRadius: 10,
+          height: 60,
+          paddingBottom: 8,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '500' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', letterSpacing: 0.2 },
+        tabBarIconStyle: { marginTop: 2 },
       }}
     >
       <Tabs.Screen

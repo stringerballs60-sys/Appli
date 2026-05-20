@@ -13,7 +13,7 @@ export const rolesService = {
       .eq('member_id', userId)
       .maybeSingle();
     if (!data) return null;
-    return { ownerId: data.owner_id, role: data.role as 'cleaner' };
+    return { ownerId: data.owner_id, role: data.role as 'cleaner' | 'comptable' };
   },
 
   async getTeamMembers(ownerId: string): Promise<TeamMember[]> {
@@ -31,6 +31,7 @@ export const rolesService = {
     password: string;
     fullName: string;
     ownerId: string;
+    role: 'cleaner' | 'comptable';
   }): Promise<void> {
     // Temporary client that won't displace the manager's session
     const tempClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -51,7 +52,7 @@ export const rolesService = {
       member_id: authData.user.id,
       member_name: params.fullName,
       member_email: params.email,
-      role: 'cleaner',
+      role: params.role,
     });
 
     if (teamError) throw teamError;

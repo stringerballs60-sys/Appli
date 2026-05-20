@@ -248,7 +248,7 @@ export type TaskFormData = {
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 
-export type UserRole = 'manager' | 'cleaner';
+export type UserRole = 'manager' | 'cleaner' | 'comptable';
 
 export interface TeamMember {
   id: string;
@@ -256,13 +256,13 @@ export interface TeamMember {
   member_id: string;
   member_name: string;
   member_email: string;
-  role: 'cleaner';
+  role: 'cleaner' | 'comptable';
   created_at: string;
 }
 
 export interface Membership {
   ownerId: string;
-  role: 'cleaner';
+  role: 'cleaner' | 'comptable';
 }
 
 export type MemoPriority = 'normal' | 'urgent' | 'info';

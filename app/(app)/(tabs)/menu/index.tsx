@@ -17,6 +17,7 @@ const ALL_MENU_ITEMS = [
     color: '#D4AF37',
     route: '/(app)/memo',
     managerOnly: false,
+    cleanerOnly: false,
     showBadge: true,
   },
   {
@@ -27,6 +28,7 @@ const ALL_MENU_ITEMS = [
     color: '#8B5CF6',
     route: '/(app)/cleaning',
     managerOnly: false,
+    cleanerOnly: true,
     showBadge: false,
   },
   {
@@ -37,6 +39,7 @@ const ALL_MENU_ITEMS = [
     color: '#7C3AED',
     route: '/(app)/tasks',
     managerOnly: false,
+    cleanerOnly: true,
     showBadge: false,
   },
   {
@@ -47,6 +50,7 @@ const ALL_MENU_ITEMS = [
     color: '#0891B2',
     route: '/(app)/inventory',
     managerOnly: true,
+    cleanerOnly: false,
     showBadge: false,
   },
   {
@@ -57,6 +61,7 @@ const ALL_MENU_ITEMS = [
     color: '#059669',
     route: '/(app)/roles',
     managerOnly: true,
+    cleanerOnly: false,
     showBadge: false,
   },
   {
@@ -67,6 +72,7 @@ const ALL_MENU_ITEMS = [
     color: '#64748B',
     route: '/(app)/settings',
     managerOnly: false,
+    cleanerOnly: false,
     showBadge: false,
   },
 ];
@@ -75,7 +81,12 @@ export default function MenuScreen() {
   const router = useRouter();
   const membership = useAuthStore((s) => s.membership);
   const isManager = !membership;
-  const menuItems = ALL_MENU_ITEMS.filter((item) => isManager || !item.managerOnly);
+  const isComptable = membership?.role === 'comptable';
+  const menuItems = ALL_MENU_ITEMS.filter((item) => {
+    if (item.managerOnly && !isManager) return false;
+    if (item.cleanerOnly && isComptable) return false;
+    return true;
+  });
   const { data: pendingMemos } = usePendingMemos();
   const pendingCount = pendingMemos?.length ?? 0;
 
@@ -85,8 +96,14 @@ export default function MenuScreen() {
         <Text style={styles.title}>Menu</Text>
         {!isManager && (
           <View style={styles.roleBadge}>
-            <MaterialCommunityIcons name="broom" size={12} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.roleBadgeText}>Femme de ménage</Text>
+            <MaterialCommunityIcons
+              name={isComptable ? 'calculator-variant-outline' : 'broom'}
+              size={12}
+              color="rgba(255,255,255,0.9)"
+            />
+            <Text style={styles.roleBadgeText}>
+              {isComptable ? 'Comptable' : 'Aide ménagère'}
+            </Text>
           </View>
         )}
       </View>

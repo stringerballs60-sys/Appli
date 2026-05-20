@@ -16,7 +16,7 @@ export default function AppLayout() {
       ]).then(([profileRes, membershipRes]) => {
         if (profileRes.data) setProfile(profileRes.data);
         if (membershipRes.data) {
-          setMembership({ ownerId: membershipRes.data.owner_id, role: membershipRes.data.role as 'cleaner' });
+          setMembership({ ownerId: membershipRes.data.owner_id, role: membershipRes.data.role as 'cleaner' | 'comptable' });
           setEffectiveUserId(membershipRes.data.owner_id);
         } else {
           setMembership(null);

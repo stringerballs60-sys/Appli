@@ -17,7 +17,7 @@ export function useInviteMember() {
   const qc = useQueryClient();
   const userId = useAuthStore((s) => s.user?.id);
   return useMutation({
-    mutationFn: (params: { email: string; password: string; fullName: string }) =>
+    mutationFn: (params: { email: string; password: string; fullName: string; role: 'cleaner' | 'comptable' }) =>
       rolesService.inviteMember({ ...params, ownerId: userId! }),
     onSuccess: () => qc.invalidateQueries({ queryKey: [TEAM_KEY] }),
   });

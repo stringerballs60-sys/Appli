@@ -17,6 +17,7 @@ import { fr } from 'date-fns/locale';
 import { Reservation, Property } from '@/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { scheduleUpcomingNotifications, scheduleCleaningAlerts } from '@/services/notifications';
+import { usePendingMemos } from '@/hooks/useMemos';
 
 function formatNextIn(date: string, today: string): string {
   const tomorrow = new Date(today);
@@ -422,6 +423,9 @@ export default function DashboardScreen() {
 
   const [turnoverDetail, setTurnoverDetail] = useState<{ dep: Reservation; arr: Reservation } | null>(null);
   const [showTurnoverList, setShowTurnoverList] = useState(false);
+  const [memoBannerDismissed, setMemoBannerDismissed] = useState(false);
+  const { data: pendingMemos } = usePendingMemos();
+  const pendingMemoCount = pendingMemos?.length ?? 0;
 
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
   const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(20);
@@ -505,6 +509,25 @@ export default function DashboardScreen() {
           <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
         ) : (
           <>
+            {pendingMemoCount > 0 && !memoBannerDismissed && (
+              <TouchableOpacity
+                style={styles.memoBanner}
+                onPress={() => router.push('/(app)/memo')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.memoBannerStrip} />
+                <MaterialCommunityIcons name="note-text-outline" size={16} color="#D4AF37" />
+                <Text style={styles.memoBannerText} numberOfLines={1}>
+                  {pendingMemoCount} note{pendingMemoCount > 1 ? 's' : ''} en attente dans le mémo
+                </Text>
+                <TouchableOpacity
+                  onPress={(e) => { e.stopPropagation(); setMemoBannerDismissed(true); }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <MaterialCommunityIcons name="close" size={14} color="#B8973A" />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            )}
             <SectionHeader title={t('dashboard.today')} />
             <View style={styles.todayRow}>
               <View style={{ flex: 1 }}>
@@ -859,6 +882,32 @@ const styles = StyleSheet.create({
     borderBottomColor: APP_COLORS.border,
   },
   listModalStrip: { width: 4, height: '100%', borderRadius: 2, minHeight: 36 },
+  memoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingVertical: 10,
+    paddingRight: 12,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0CC6A',
+    overflow: 'hidden',
+  },
+  memoBannerStrip: {
+    width: 4,
+    alignSelf: 'stretch',
+    backgroundColor: '#D4AF37',
+  },
+  memoBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#92700A',
+  },
 });
 
 const tsheet = StyleSheet.create({

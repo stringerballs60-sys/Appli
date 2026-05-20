@@ -60,7 +60,7 @@ export interface Property {
   nb_bathrooms: number;
   is_active: boolean;
   color: string;
-  cleaning_status: 'ready' | 'to_do';
+  cleaning_status: 'ready' | 'to_do' | 'in_progress' | 'occupied';
   cleaning_status_date: string | null;
   ical_url: string | null;
   group_name: string | null;
@@ -201,6 +201,7 @@ export enum TaskType {
 export enum TaskStatus {
   PENDING = 'pending',
   IN_PROGRESS = 'in_progress',
+  PAUSED = 'paused',
   DONE = 'done',
 }
 
@@ -233,12 +234,15 @@ export interface Task {
   title: string;
   scheduled_date: string;
   status: TaskStatus;
+  assigned_to: string | null;
   started_at: string | null;
+  paused_at: string | null;
   completed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
   property?: Pick<Property, 'id' | 'name' | 'color'>;
+  assigned_agent?: Pick<TeamMember, 'member_id' | 'member_name'>;
   checklist_items?: TaskChecklistItem[];
 }
 

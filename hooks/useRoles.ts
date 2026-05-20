@@ -23,6 +23,18 @@ export function useInviteMember() {
   });
 }
 
+export function useCleaners() {
+  const userId = useAuthStore((s) => s.user?.id);
+  return useQuery({
+    queryKey: [TEAM_KEY, userId, 'cleaners'],
+    queryFn: async () => {
+      const all = await rolesService.getTeamMembers(userId!);
+      return all.filter((m) => m.role === 'cleaner');
+    },
+    enabled: !!userId,
+  });
+}
+
 export function useRemoveMember() {
   const qc = useQueryClient();
   const userId = useAuthStore((s) => s.user?.id);

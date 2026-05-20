@@ -68,6 +68,31 @@ export function useFinishTask() {
   });
 }
 
+export function usePauseTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tasksService.pause(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [TASKS_KEY] }),
+  });
+}
+
+export function useResumeTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tasksService.resume(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [TASKS_KEY] }),
+  });
+}
+
+export function useAssignTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, agentId }: { id: string; agentId: string | null }) =>
+      tasksService.assign(id, agentId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [TASKS_KEY] }),
+  });
+}
+
 export function useAddChecklistItem() {
   const qc = useQueryClient();
   const userId = useAuthStore((s) => s.user?.id);

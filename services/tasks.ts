@@ -55,7 +55,18 @@ export const tasksService = {
     ]);
     if (taskRes.error) throw taskRes.error;
     if (itemsRes.error) throw itemsRes.error;
-    return { ...taskRes.data, checklist_items: itemsRes.data };
+
+    let assigned_agent = undefined;
+    if (taskRes.data.assigned_to) {
+      const { data: agentData } = await supabase
+        .from('team_members')
+        .select('member_id, member_name')
+        .eq('member_id', taskRes.data.assigned_to)
+        .maybeSingle();
+      if (agentData) assigned_agent = agentData;
+    }
+
+    return { ...taskRes.data, checklist_items: itemsRes.data, assigned_agent };
   },
 
   async create(userId: string, form: TaskFormData): Promise<Task> {
@@ -94,6 +105,30 @@ export const tasksService = {
     const { error } = await supabase
       .from('tasks')
       .update({ status: TaskStatus.DONE, completed_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async pause(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ status: TaskStatus.PAUSED, paused_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async resume(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ status: TaskStatus.IN_PROGRESS, paused_at: null })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async assign(id: string, agentId: string | null): Promise<void> {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ assigned_to: agentId })
       .eq('id', id);
     if (error) throw error;
   },

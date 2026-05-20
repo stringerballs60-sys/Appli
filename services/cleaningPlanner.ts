@@ -8,6 +8,7 @@ export interface CleaningTask {
   property: Property;
   checkOut: string;
   nextCheckIn: string | null;
+  isOverdue: boolean; // guests already left, cleaning not done yet
   windowDays: number;
   suggestedDate: string;
   suggestedStartTime: string; // "HH:MM"
@@ -172,6 +173,78 @@ export function computeCleaningPlan(
       reason,
       helpNeeded,
       guestCount,
+      isOverdue: false,
+    });
+  }
+
+  // --- Pass 2: properties with cleaning_status = 'to_do' not covered above ---
+  // Catches guests who already left (check_out < today) and properties needing prep
+  for (const property of properties) {
+    if (!property.is_active || property.cleaning_status !== 'to_do') continue;
+
+    // Skip if a future task already covers the next arrival for this property
+    const nextArr = active
+      .filter((r) => r.property_id === property.id && r.check_in >= today)
+      .sort((a, b) => a.check_in.localeCompare(b.check_in))[0];
+    if (!nextArr) continue;
+
+    const alreadyCovered = tasks.some(
+      (t) => t.property.id === property.id && t.suggestedDate < nextArr.check_in
+    );
+    if (alreadyCovered) continue;
+
+    // Most recent past departure to estimate duration
+    const lastDep = active
+      .filter((r) => r.property_id === property.id && r.check_out < today)
+      .sort((a, b) => b.check_out.localeCompare(a.check_out))[0];
+
+    const daysUntilArrival = Math.round(
+      (new Date(nextArr.check_in).getTime() - new Date(today).getTime()) / 86400000
+    );
+
+    const guestCount = lastDep
+      ? (lastDep.nb_couples ?? 0) * 2 + (lastDep.nb_solo_adults ?? 0) + (lastDep.nb_children ?? 0)
+      : 2;
+    const estimatedMinutes = estimateDuration(Math.max(guestCount, 2), property.nb_bathrooms ?? 1);
+
+    let urgency: CleaningUrgency;
+    if (daysUntilArrival <= 1) urgency = 'turnover';
+    else if (daysUntilArrival <= 3) urgency = 'urgent';
+    else if (daysUntilArrival <= 7) urgency = 'normal';
+    else urgency = 'relaxed';
+
+    const priority: CleaningPriority = daysUntilArrival <= 7 ? 'critique' : 'recommande';
+
+    let reason: string;
+    if (lastDep) {
+      const daysSinceDep = Math.round(
+        (new Date(today).getTime() - new Date(lastDep.check_out).getTime()) / 86400000
+      );
+      reason = `En retard de ${daysSinceDep}j · arrivée dans ${daysUntilArrival}j`;
+    } else {
+      reason = `Préparation requise · arrivée dans ${daysUntilArrival}j`;
+    }
+
+    const suggestedDate = today;
+    daySlotCount.set(suggestedDate, (daySlotCount.get(suggestedDate) ?? 0) + 1);
+    dayMinutes.set(suggestedDate, (dayMinutes.get(suggestedDate) ?? 0) + estimatedMinutes);
+
+    tasks.push({
+      depReservationId: lastDep?.id ?? '',
+      property,
+      checkOut: lastDep?.check_out ?? today,
+      nextCheckIn: nextArr.check_in,
+      windowDays: daysUntilArrival,
+      suggestedDate,
+      suggestedStartTime: '09:00',
+      suggestedEndTime: addMinutesToTime('09:00', estimatedMinutes),
+      estimatedMinutes,
+      priority,
+      urgency,
+      reason,
+      helpNeeded: (dayMinutes.get(suggestedDate) ?? 0) > 240,
+      guestCount,
+      isOverdue: true,
     });
   }
 
@@ -186,7 +259,12 @@ export function computeCleaningPlan(
       ...t,
       helpNeeded: (finalDayMinutes.get(t.suggestedDate) ?? 0) > 240,
     }))
-    .sort((a, b) => a.suggestedDate.localeCompare(b.suggestedDate));
+    .sort((a, b) => {
+      // Overdue tasks always first (today), then by date
+      if (a.isOverdue && !b.isOverdue) return -1;
+      if (!a.isOverdue && b.isOverdue) return 1;
+      return a.suggestedDate.localeCompare(b.suggestedDate);
+    });
 }
 
 export function groupTasksByDate(tasks: CleaningTask[]): Map<string, CleaningTask[]> {

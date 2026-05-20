@@ -70,16 +70,21 @@ const lb = StyleSheet.create({
 function TaskCard({ task, onPress }: { task: CleaningTask; onPress: () => void }) {
   const cfg = PRIORITY_CONFIG[task.priority];
   const today = new Date().toISOString().slice(0, 10);
-  const isPast = task.suggestedDate < today;
+  const isPast = !task.isOverdue && task.suggestedDate < today;
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.75}>
-      <View style={[card.container, isPast && card.past]}>
+    <TouchableOpacity onPress={onPress} activeOpacity={task.depReservationId ? 0.75 : 1}>
+      <View style={[card.container, isPast && card.past, task.isOverdue && card.overdue]}>
         <View style={[card.strip, { backgroundColor: task.property.color }]} />
         <View style={card.body}>
-          {/* Row 1: property name + priority badge */}
+          {/* Row 1: property name + badges */}
           <View style={card.topRow}>
             <Text style={card.propName} numberOfLines={1}>{task.property.name}</Text>
+            {task.isOverdue && (
+              <View style={card.overdueTag}>
+                <Text style={card.overdueTagText}>EN RETARD</Text>
+              </View>
+            )}
             <View style={[card.badge, { backgroundColor: cfg.bg }]}>
               <Text style={[card.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
             </View>
@@ -100,9 +105,9 @@ function TaskCard({ task, onPress }: { task: CleaningTask; onPress: () => void }
             )}
           </View>
 
-          {/* Row 3: reason + window info */}
+          {/* Row 3: reason */}
           <View style={card.bottomRow}>
-            <Text style={[card.reason, { color: cfg.color }]}>{task.reason}</Text>
+            <Text style={[card.reason, { color: task.isOverdue ? '#DC2626' : cfg.color }]}>{task.reason}</Text>
             {task.nextCheckIn && (
               <>
                 <Text style={card.sep}>·</Text>
@@ -113,7 +118,9 @@ function TaskCard({ task, onPress }: { task: CleaningTask; onPress: () => void }
             )}
           </View>
         </View>
-        <MaterialCommunityIcons name="chevron-right" size={16} color={APP_COLORS.border} />
+        {task.depReservationId
+          ? <MaterialCommunityIcons name="chevron-right" size={16} color={APP_COLORS.border} />
+          : null}
       </View>
     </TouchableOpacity>
   );
@@ -134,6 +141,14 @@ const card = StyleSheet.create({
     elevation: 2,
   },
   past: { opacity: 0.45 },
+  overdue: { borderWidth: 1.5, borderColor: '#FECACA' },
+  overdueTag: {
+    backgroundColor: '#DC2626',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  overdueTagText: { fontSize: 9, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 },
   strip: { width: 5, alignSelf: 'stretch' },
   body: { flex: 1, paddingHorizontal: 12, paddingVertical: 11, gap: 4 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -324,11 +339,15 @@ export default function CleaningPlannerScreen() {
                     {needsHelp && <HelpBanner totalMinutes={dayMinutes} />}
 
                     {/* Tasks */}
-                    {dayTasks.map((task) => (
+                    {dayTasks.map((task, i) => (
                       <TaskCard
-                        key={task.depReservationId}
+                        key={task.depReservationId || `${task.property.id}-${i}`}
                         task={task}
-                        onPress={() => router.push(`/(app)/reservations/${task.depReservationId}` as any)}
+                        onPress={() => {
+                          if (task.depReservationId) {
+                            router.push(`/(app)/reservations/${task.depReservationId}` as any);
+                          }
+                        }}
                       />
                     ))}
                   </View>

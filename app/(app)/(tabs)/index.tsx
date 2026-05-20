@@ -334,6 +334,8 @@ function CleaningStatusCard({
   in4days.setDate(in4days.getDate() + 4);
   const in3daysStr = in4days.toISOString().slice(0, 10);
 
+  const STATUS_ORDER: Record<string, number> = { to_do: 0, in_progress: 1, occupied: 2, ready: 3 };
+
   const active = properties
     .filter((p) => p.is_active)
     .map((p) => {
@@ -344,9 +346,9 @@ function CleaningStatusCard({
       return { property: p, nextArrival, urgent };
     })
     .sort((a, b) => {
-      if (a.property.cleaning_status !== b.property.cleaning_status) {
-        return a.property.cleaning_status === 'to_do' ? -1 : 1;
-      }
+      const oa = STATUS_ORDER[a.property.cleaning_status] ?? 9;
+      const ob = STATUS_ORDER[b.property.cleaning_status] ?? 9;
+      if (oa !== ob) return oa - ob;
       if (a.urgent && !b.urgent) return -1;
       if (!a.urgent && b.urgent) return 1;
       if (a.nextArrival && b.nextArrival) return a.nextArrival.check_in.localeCompare(b.nextArrival.check_in);
@@ -355,10 +357,12 @@ function CleaningStatusCard({
       return 0;
     });
 
-  const todoItems = active.filter((a) => a.property.cleaning_status === 'to_do');
-  const readyCount = active.filter((a) => a.property.cleaning_status === 'ready').length;
-  const first = todoItems[0];
-  const extra = todoItems.length - 1;
+  const todoItems    = active.filter((a) => a.property.cleaning_status === 'to_do');
+  const inProgItems  = active.filter((a) => a.property.cleaning_status === 'in_progress');
+  const readyCount   = active.filter((a) => a.property.cleaning_status === 'ready').length;
+  const urgentItems  = [...inProgItems, ...todoItems];
+  const first        = urgentItems[0];
+  const extra        = urgentItems.length - 1;
   const cleaningColor = '#7C3AED';
 
   return (
@@ -368,6 +372,11 @@ function CleaningStatusCard({
           <MaterialCommunityIcons name="broom" size={15} color={cleaningColor} />
         </View>
         <Text style={[styles.cardTitle, { color: cleaningColor }]}>Ménage</Text>
+        {inProgItems.length > 0 && (
+          <View style={[styles.countPill, { backgroundColor: APP_COLORS.primary }]}>
+            <Text style={styles.countText}>{inProgItems.length} ↻</Text>
+          </View>
+        )}
         {todoItems.length > 0 && (
           <View style={[styles.countPill, { backgroundColor: first?.urgent ? APP_COLORS.danger : cleaningColor }]}>
             <Text style={styles.countText}>{todoItems.length}</Text>
@@ -381,7 +390,7 @@ function CleaningStatusCard({
       </View>
       {active.length === 0 ? (
         <Text style={styles.emptyText}>Aucun logement actif</Text>
-      ) : todoItems.length === 0 ? (
+      ) : urgentItems.length === 0 ? (
         <Text style={[styles.emptyText, { color: APP_COLORS.success }]}>Tous les logements sont prêts ✓</Text>
       ) : (
         <View style={styles.cardItem}>
@@ -430,6 +439,14 @@ function CleaningListModal({
   in4days.setDate(in4days.getDate() + 4);
   const in3daysStr = in4days.toISOString().slice(0, 10);
 
+  const STATUS_ORDER_MODAL: Record<string, number> = { to_do: 0, in_progress: 1, occupied: 2, ready: 3 };
+  const STATUS_BADGE: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+    ready:       { label: 'Prêt',     color: APP_COLORS.success, bg: APP_COLORS.successLight, icon: 'check-circle'  },
+    to_do:       { label: 'À faire',  color: APP_COLORS.warning, bg: APP_COLORS.warningLight, icon: 'clock-alert'   },
+    in_progress: { label: 'En cours', color: APP_COLORS.primary, bg: APP_COLORS.primaryPale,  icon: 'broom'         },
+    occupied:    { label: 'Occupé',   color: APP_COLORS.danger,  bg: APP_COLORS.dangerLight,  icon: 'home-account'  },
+  };
+
   const active = properties
     .filter((p) => p.is_active)
     .map((p) => {
@@ -440,14 +457,19 @@ function CleaningListModal({
       return { property: p, nextArrival, urgent };
     })
     .sort((a, b) => {
-      if (a.property.cleaning_status !== b.property.cleaning_status) return a.property.cleaning_status === 'to_do' ? -1 : 1;
+      const oa = STATUS_ORDER_MODAL[a.property.cleaning_status] ?? 9;
+      const ob = STATUS_ORDER_MODAL[b.property.cleaning_status] ?? 9;
+      if (oa !== ob) return oa - ob;
       if (a.urgent && !b.urgent) return -1;
       if (!a.urgent && b.urgent) return 1;
       if (a.nextArrival && b.nextArrival) return a.nextArrival.check_in.localeCompare(b.nextArrival.check_in);
       return 0;
     });
 
-  const todoCount = active.filter((a) => a.property.cleaning_status === 'to_do').length;
+  const todoCount    = active.filter((a) => a.property.cleaning_status === 'to_do').length;
+  const inProgCount  = active.filter((a) => a.property.cleaning_status === 'in_progress').length;
+  const occupiedCount = active.filter((a) => a.property.cleaning_status === 'occupied').length;
+  const readyModalCount = active.filter((a) => a.property.cleaning_status === 'ready').length;
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
@@ -458,12 +480,18 @@ function CleaningListModal({
             <MaterialCommunityIcons name="broom" size={20} color="#7C3AED" />
             <View style={{ flex: 1, paddingLeft: 10 }}>
               <Text style={sheet.title}>Statut ménage</Text>
-              <Text style={sheet.subtitle}>{todoCount} à faire · {active.length - todoCount} prêt{active.length - todoCount > 1 ? 's' : ''}</Text>
+              <Text style={sheet.subtitle}>
+                {[
+                  todoCount > 0 && `${todoCount} à faire`,
+                  inProgCount > 0 && `${inProgCount} en cours`,
+                  occupiedCount > 0 && `${occupiedCount} occupé`,
+                  readyModalCount > 0 && `${readyModalCount} prêt`,
+                ].filter(Boolean).join(' · ')}
+              </Text>
             </View>
           </View>
           <View style={sheet.divider} />
           {active.map(({ property: p, nextArrival, urgent }) => {
-            const isDone = p.cleaning_status === 'ready';
             return (
               <TouchableOpacity
                 key={p.id}
@@ -480,20 +508,18 @@ function CleaningListModal({
                     </Text>
                   )}
                 </View>
-                <View style={[styles.cleaningBadge, {
-                  backgroundColor: isDone ? APP_COLORS.successLight : urgent ? APP_COLORS.dangerLight : APP_COLORS.warningLight,
-                }]}>
-                  <MaterialCommunityIcons
-                    name={isDone ? 'check-circle' : 'clock-outline'}
-                    size={12}
-                    color={isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : APP_COLORS.warning}
-                  />
-                  <Text style={[styles.cleaningBadgeText, {
-                    color: isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : APP_COLORS.warning,
-                  }]}>
-                    {isDone ? 'Prêt' : 'À faire'}
-                  </Text>
-                </View>
+                {(() => {
+                  const badge = STATUS_BADGE[p.cleaning_status];
+                  if (!badge) return null;
+                  const badgeColor = urgent && p.cleaning_status === 'to_do' ? APP_COLORS.danger : badge.color;
+                  const badgeBg = urgent && p.cleaning_status === 'to_do' ? APP_COLORS.dangerLight : badge.bg;
+                  return (
+                    <View style={[styles.cleaningBadge, { backgroundColor: badgeBg }]}>
+                      <MaterialCommunityIcons name={badge.icon as any} size={12} color={badgeColor} />
+                      <Text style={[styles.cleaningBadgeText, { color: badgeColor }]}>{badge.label}</Text>
+                    </View>
+                  );
+                })()}
               </TouchableOpacity>
             );
           })}

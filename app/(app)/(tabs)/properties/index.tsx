@@ -21,6 +21,13 @@ import { PROPERTY_TYPE_LABELS } from '@/constants/labels';
 const ORDER_KEY = 'kaza_properties_order';
 type FilterType = 'all' | 'active' | 'inactive' | PropertyType;
 
+const CLEANING_STATUS: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+  ready:       { label: 'Prêt',     color: APP_COLORS.success,  bg: APP_COLORS.successLight, icon: 'check-circle'  },
+  to_do:       { label: 'À faire',  color: APP_COLORS.warning,  bg: APP_COLORS.warningLight, icon: 'clock-alert'   },
+  in_progress: { label: 'En cours', color: APP_COLORS.primary,  bg: APP_COLORS.primaryPale,  icon: 'broom'         },
+  occupied:    { label: 'Occupé',   color: APP_COLORS.danger,   bg: APP_COLORS.dangerLight,  icon: 'home-account'  },
+};
+
 function PropertyCard({
   property,
   onPress,
@@ -44,7 +51,19 @@ function PropertyCard({
         <TouchableOpacity onPress={onPress} style={{ flex: 1 }}>
           <View style={styles.cardTop}>
             <Text style={styles.propertyName} numberOfLines={1}>{property.name}</Text>
-            <PropertyBadge type={property.property_type} size="small" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {(() => {
+                const s = CLEANING_STATUS[property.cleaning_status];
+                if (!s) return null;
+                return (
+                  <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
+                    <MaterialCommunityIcons name={s.icon as any} size={10} color={s.color} />
+                    <Text style={[styles.statusPillText, { color: s.color }]}>{s.label}</Text>
+                  </View>
+                );
+              })()}
+              <PropertyBadge type={property.property_type} size="small" />
+            </View>
           </View>
           {property.address ? (
             <View style={styles.infoRow}>
@@ -256,4 +275,6 @@ const styles = StyleSheet.create({
   inactivePillText: { fontSize: 10, color: APP_COLORS.textTertiary, fontWeight: '600' },
   noteIcon: { fontSize: 10 },
   noteText: { fontSize: 11, color: APP_COLORS.warning, flex: 1, fontStyle: 'italic' },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: RADII.full },
+  statusPillText: { fontSize: 9, fontWeight: '700' },
 });

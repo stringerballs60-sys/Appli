@@ -50,6 +50,7 @@ export default function PropertyDetailScreen() {
       is_active: property.is_active,
       color: property.color,
       ical_url: property.ical_url ?? '',
+      group_name: property.group_name ?? '',
     });
     setEditing(true);
   };
@@ -258,6 +259,13 @@ export default function PropertyDetailScreen() {
                 label={t('properties.address')}
                 value={form.address ?? ''}
                 onChangeText={(v) => set('address', v)}
+                mode="outlined"
+                style={styles.input}
+              />
+              <TextInput
+                label="Groupe / Zone (ex : Les Cortalines)"
+                value={form.group_name ?? ''}
+                onChangeText={(v) => set('group_name', v)}
                 mode="outlined"
                 style={styles.input}
               />

@@ -63,6 +63,7 @@ export interface Property {
   cleaning_status: 'ready' | 'to_do';
   cleaning_status_date: string | null;
   ical_url: string | null;
+  group_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -164,6 +165,7 @@ export type PropertyFormData = {
   is_active: boolean;
   color: string;
   ical_url: string;
+  group_name: string;
 };
 
 export type ReservationFormData = {

@@ -77,6 +77,8 @@ export function computeCleaningPlan(
   // Track per-day slot count and total minutes
   const daySlotCount = new Map<string, number>();
   const dayMinutes = new Map<string, number>();
+  // Track dates already used by group, to co-schedule same-group properties
+  const groupDates = new Map<string, string>(); // group_name → suggestedDate
 
   const tasks: CleaningTask[] = [];
 
@@ -127,18 +129,32 @@ export function computeCleaningPlan(
 
     if (windowDays > 0) {
       const deadline = checkIn ? addDaysStr(checkIn, -1) : horizonDate;
-      // Try earliest available day (J, J+1, ...)
-      let cursor = dep.check_out;
-      let found = false;
-      while (cursor <= deadline) {
-        if ((daySlotCount.get(cursor) ?? 0) < maxPerDay) {
-          suggestedDate = cursor;
-          found = true;
-          break;
+      const group = property.group_name?.trim() || null;
+
+      // If same group already has a scheduled date that fits this window, prefer it
+      if (group && groupDates.has(group)) {
+        const groupDate = groupDates.get(group)!;
+        if (groupDate >= dep.check_out && groupDate <= deadline) {
+          suggestedDate = groupDate;
         }
-        cursor = addDaysStr(cursor, 1);
       }
-      if (!found) suggestedDate = dep.check_out; // overloaded, put on checkOut anyway
+
+      // If suggestedDate (possibly from group) is overloaded, find next available slot
+      if ((daySlotCount.get(suggestedDate) ?? 0) >= maxPerDay) {
+        let cursor = suggestedDate;
+        let found = false;
+        while (cursor <= deadline) {
+          if ((daySlotCount.get(cursor) ?? 0) < maxPerDay) {
+            suggestedDate = cursor;
+            found = true;
+            break;
+          }
+          cursor = addDaysStr(cursor, 1);
+        }
+        if (!found) suggestedDate = dep.check_out;
+      }
+
+      if (group) groupDates.set(group, suggestedDate);
     }
 
     // Priority based on how soon the cleaning needs to happen (suggestedDate vs today)
@@ -230,17 +246,31 @@ export function computeCleaningPlan(
       const searchStart = addDaysStr(nextArr.check_in, -PLANNING_WINDOW);
       const earliestDate = searchStart >= today ? searchStart : today;
       const deadline = addDaysStr(nextArr.check_in, -1);
-      let cursor = earliestDate;
-      let found = false;
-      while (cursor <= deadline) {
-        if ((daySlotCount.get(cursor) ?? 0) < maxPerDay) {
-          suggestedDate = cursor;
-          found = true;
-          break;
+      const group = property.group_name?.trim() || null;
+
+      // Prefer group date if it falls in this window
+      if (group && groupDates.has(group)) {
+        const groupDate = groupDates.get(group)!;
+        if (groupDate >= earliestDate && groupDate <= deadline) {
+          suggestedDate = groupDate;
         }
-        cursor = addDaysStr(cursor, 1);
       }
-      if (!found) suggestedDate = earliestDate;
+
+      if ((daySlotCount.get(suggestedDate) ?? 0) >= maxPerDay || suggestedDate < earliestDate) {
+        let cursor = earliestDate;
+        let found = false;
+        while (cursor <= deadline) {
+          if ((daySlotCount.get(cursor) ?? 0) < maxPerDay) {
+            suggestedDate = cursor;
+            found = true;
+            break;
+          }
+          cursor = addDaysStr(cursor, 1);
+        }
+        if (!found) suggestedDate = earliestDate;
+      }
+
+      if (group) groupDates.set(group, suggestedDate);
       isOverdue = false;
     }
 

@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Reservation } from '@/types';
+import { getNotifPrefs } from './notificationPrefs';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -35,6 +36,8 @@ export async function scheduleUpcomingNotifications(
   const granted = await requestNotificationPermissions();
   if (!granted) return;
 
+  const { activityHour } = await getNotifPrefs();
+
   await Notifications.cancelAllScheduledNotificationsAsync();
 
   const now = new Date();
@@ -62,7 +65,7 @@ export async function scheduleUpcomingNotifications(
     if (parts.length === 0) continue;
 
     const [year, month, day] = date.split('-').map(Number);
-    const notifDate = new Date(year, month - 1, day, 8, 0, 0);
+    const notifDate = new Date(year, month - 1, day, activityHour, 0, 0);
     if (notifDate <= now) continue;
 
     await Notifications.scheduleNotificationAsync({
@@ -87,6 +90,8 @@ export async function scheduleCleaningAlerts(
   const granted = await requestNotificationPermissions();
   if (!granted) return;
 
+  const { cleaningHour } = await getNotifPrefs();
+
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
 
@@ -98,7 +103,7 @@ export async function scheduleCleaningAlerts(
     const pendingOnDay = urgent.filter((u) => u.checkIn >= dayStr);
     if (pendingOnDay.length === 0) continue;
 
-    const notifDate = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9, 0, 0);
+    const notifDate = new Date(d.getFullYear(), d.getMonth(), d.getDate(), cleaningHour, 0, 0);
     if (notifDate <= now) continue;
 
     const body = pendingOnDay
@@ -120,4 +125,28 @@ export async function scheduleCleaningAlerts(
       },
     });
   }
+}
+
+export async function scheduleMemoReminder(pendingCount: number): Promise<void> {
+  if (pendingCount === 0) return;
+  const granted = await requestNotificationPermissions();
+  if (!granted) return;
+
+  const { memoHour } = await getNotifPrefs();
+
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, memoHour, 0, 0);
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '📝 KAZA – Mémo',
+      body: `${pendingCount} note${pendingCount > 1 ? 's' : ''} en attente dans votre mémo`,
+      data: { type: 'memo' },
+      ...(Platform.OS === 'android' ? { channelId: 'kaza-reminders' } : {}),
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: tomorrow,
+    },
+  });
 }

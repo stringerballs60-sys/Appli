@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, Image, TouchableOpacity } from 'react-native';
 import { TextInput, Button, Text, HelperText, Switch } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
 import { APP_COLORS } from '@/constants/colors';
+import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
 
 const REMEMBER_ME_KEY = 'kaza_remember_me';
@@ -40,150 +42,143 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <LinearGradient
+      colors={GRADIENTS.navyHeader as [string, string, ...string[]]}
+      style={styles.gradient}
     >
-      <View style={styles.inner}>
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('@/assets/icon.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
-          <Text style={styles.title}>{t('auth.title')}</Text>
-          <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
-        </View>
-
-        <View style={styles.form}>
-          <TextInput
-            label={t('auth.email')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            mode="outlined"
-            style={styles.input}
-            left={<TextInput.Icon icon="email" />}
-          />
-          <TextInput
-            label={t('auth.password')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={secureText}
-            mode="outlined"
-            style={styles.input}
-            left={<TextInput.Icon icon="lock" />}
-            right={
-              <TextInput.Icon
-                icon={secureText ? 'eye' : 'eye-off'}
-                onPress={() => setSecureText(!secureText)}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.inner}>
+          <View style={styles.header}>
+            <View style={[styles.logoWrap, SHADOWS.md]}>
+              <Image
+                source={require('@/assets/icon.png')}
+                style={styles.logo}
+                resizeMode="contain"
               />
-            }
-          />
-          {error ? <HelperText type="error">{error}</HelperText> : null}
-
-          <View style={styles.rememberRow}>
-            <Text style={styles.rememberLabel}>{t('auth.rememberMe')}</Text>
-            <Switch
-              value={rememberMe}
-              onValueChange={setRememberMe}
-              color={APP_COLORS.primary}
-            />
+            </View>
+            <Text style={styles.appName}>KAZA</Text>
+            <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
           </View>
 
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            loading={loading}
-            disabled={loading}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
-            buttonColor={APP_COLORS.primary}
-            textColor="#FFFFFF"
-          >
-            {t('auth.login')}
-          </Button>
+          <View style={[styles.form, SHADOWS.lg]}>
+            <TextInput
+              label={t('auth.email')}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              mode="outlined"
+              style={styles.input}
+              outlineColor={APP_COLORS.border}
+              activeOutlineColor={APP_COLORS.primary}
+              left={<TextInput.Icon icon="email-outline" color={APP_COLORS.primaryLight} />}
+            />
+            <TextInput
+              label={t('auth.password')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={secureText}
+              mode="outlined"
+              style={styles.input}
+              outlineColor={APP_COLORS.border}
+              activeOutlineColor={APP_COLORS.primary}
+              left={<TextInput.Icon icon="lock-outline" color={APP_COLORS.primaryLight} />}
+              right={
+                <TextInput.Icon
+                  icon={secureText ? 'eye-outline' : 'eye-off-outline'}
+                  onPress={() => setSecureText(!secureText)}
+                  color={APP_COLORS.primaryLight}
+                />
+              }
+            />
+            {error ? <HelperText type="error">{error}</HelperText> : null}
 
-          <View style={styles.registerRow}>
-            <Text style={styles.registerHint}>{t('auth.noAccount')} </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.registerLink}>{t('auth.createAccount')}</Text>
-            </TouchableOpacity>
+            <View style={styles.rememberRow}>
+              <Text style={styles.rememberLabel}>{t('auth.rememberMe')}</Text>
+              <Switch
+                value={rememberMe}
+                onValueChange={setRememberMe}
+                color={APP_COLORS.accent}
+              />
+            </View>
+
+            <Button
+              mode="contained"
+              onPress={handleLogin}
+              loading={loading}
+              disabled={loading}
+              style={styles.button}
+              contentStyle={styles.buttonContent}
+              buttonColor={APP_COLORS.primary}
+              textColor="#FFFFFF"
+            >
+              {t('auth.login')}
+            </Button>
+
+            <View style={styles.registerRow}>
+              <Text style={styles.registerHint}>{t('auth.noAccount')} </Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+                <Text style={styles.registerLink}>{t('auth.createAccount')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: APP_COLORS.background,
-  },
+  gradient: { flex: 1 },
+  container: { flex: 1 },
   inner: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+    gap: 24,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+  header: { alignItems: 'center', gap: 10 },
+  logoWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: RADII.lg,
+    backgroundColor: APP_COLORS.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
     overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+    marginBottom: 4,
   },
-  logo: {
-    width: 80,
-    height: 80,
-  },
-  title: {
-    fontSize: 34,
+  logo: { width: 80, height: 80 },
+  appName: {
+    fontSize: 36,
     fontFamily: FONTS.titleBold,
-    color: APP_COLORS.primary,
-    marginBottom: 6,
-    letterSpacing: 1,
+    color: APP_COLORS.accent,
+    letterSpacing: 4,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
+    color: 'rgba(248,245,239,0.65)',
     fontFamily: FONTS.body,
-    color: APP_COLORS.textSecondary,
   },
   form: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: APP_COLORS.surfaceElevated,
+    borderRadius: RADII.lg,
     padding: 24,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    gap: 4,
   },
   input: {
-    marginBottom: 12,
-    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    backgroundColor: APP_COLORS.surface,
   },
   rememberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
     marginTop: 4,
   },
   rememberLabel: {
@@ -191,17 +186,13 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.body,
     color: APP_COLORS.textPrimary,
   },
-  button: {
-    borderRadius: 8,
-  },
-  buttonContent: {
-    paddingVertical: 6,
-  },
+  button: { borderRadius: RADII.sm, marginTop: 4 },
+  buttonContent: { paddingVertical: 6 },
   registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 14,
   },
   registerHint: {
     fontSize: 13,

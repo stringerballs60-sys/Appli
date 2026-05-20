@@ -1,5 +1,6 @@
-import { View, StyleSheet } from 'react-native';
-import { Text, IconButton } from 'react-native-paper';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { APP_COLORS } from '@/constants/colors';
 
 interface StepperInputProps {
@@ -15,23 +16,31 @@ export function StepperInput({ value, onChange, min = 0, max = 99, label }: Step
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={styles.controls}>
-        <IconButton
-          icon="minus"
-          size={18}
-          mode="contained-tonal"
+        <TouchableOpacity
+          style={[styles.btn, value <= min && styles.btnDisabled]}
           onPress={() => onChange(Math.max(min, value - 1))}
           disabled={value <= min}
-          style={styles.button}
-        />
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons
+            name="minus"
+            size={16}
+            color={value <= min ? APP_COLORS.border : APP_COLORS.primary}
+          />
+        </TouchableOpacity>
         <Text style={styles.value}>{value}</Text>
-        <IconButton
-          icon="plus"
-          size={18}
-          mode="contained-tonal"
+        <TouchableOpacity
+          style={[styles.btn, value >= max && styles.btnDisabled]}
           onPress={() => onChange(Math.min(max, value + 1))}
           disabled={value >= max}
-          style={styles.button}
-        />
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons
+            name="plus"
+            size={16}
+            color={value >= max ? APP_COLORS.border : APP_COLORS.primary}
+          />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -42,7 +51,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   label: {
     flex: 1,
@@ -52,15 +61,26 @@ const styles = StyleSheet.create({
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
-  button: {
-    margin: 0,
+  btn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: APP_COLORS.primaryPale,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: APP_COLORS.borderLight,
+  },
+  btnDisabled: {
+    backgroundColor: APP_COLORS.backgroundAlt,
+    borderColor: APP_COLORS.border,
   },
   value: {
     fontSize: 16,
-    fontWeight: '600',
-    minWidth: 28,
+    fontWeight: '700',
+    minWidth: 36,
     textAlign: 'center',
     color: APP_COLORS.textPrimary,
   },

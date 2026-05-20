@@ -60,8 +60,10 @@ export interface Property {
   nb_bathrooms: number;
   is_active: boolean;
   color: string;
-  cleaning_status: 'ready' | 'to_do';
+  cleaning_status: 'ready' | 'to_do' | 'in_progress' | 'occupied';
   cleaning_status_date: string | null;
+  ical_url: string | null;
+  group_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -100,7 +102,8 @@ export interface Reservation {
   beds_crib_used: number;
   linen_calculation: LinenCalculation | null;
   notes: string | null;
-  source?: ReservationSource;
+  source: ReservationSource;
+  ical_uid: string | null;
   created_at: string;
   updated_at: string;
   property?: Property;
@@ -161,6 +164,8 @@ export type PropertyFormData = {
   nb_bathrooms: number;
   is_active: boolean;
   color: string;
+  ical_url: string;
+  group_name: string;
 };
 
 export type ReservationFormData = {
@@ -196,6 +201,7 @@ export enum TaskType {
 export enum TaskStatus {
   PENDING = 'pending',
   IN_PROGRESS = 'in_progress',
+  PAUSED = 'paused',
   DONE = 'done',
 }
 
@@ -228,12 +234,15 @@ export interface Task {
   title: string;
   scheduled_date: string;
   status: TaskStatus;
+  assigned_to: string | null;
   started_at: string | null;
+  paused_at: string | null;
   completed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
   property?: Pick<Property, 'id' | 'name' | 'color'>;
+  assigned_agent?: Pick<TeamMember, 'member_id' | 'member_name'>;
   checklist_items?: TaskChecklistItem[];
 }
 
@@ -248,7 +257,7 @@ export type TaskFormData = {
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 
-export type UserRole = 'manager' | 'cleaner';
+export type UserRole = 'manager' | 'cleaner' | 'comptable';
 
 export interface TeamMember {
   id: string;
@@ -256,11 +265,24 @@ export interface TeamMember {
   member_id: string;
   member_name: string;
   member_email: string;
-  role: 'cleaner';
+  role: 'cleaner' | 'comptable';
   created_at: string;
 }
 
 export interface Membership {
   ownerId: string;
-  role: 'cleaner';
+  role: 'cleaner' | 'comptable';
+}
+
+export type MemoPriority = 'normal' | 'urgent' | 'info';
+export type MemoStatus = 'pending' | 'done';
+
+export interface Memo {
+  id: string;
+  user_id: string;
+  text: string;
+  status: MemoStatus;
+  priority: MemoPriority;
+  created_at: string;
+  completed_at: string | null;
 }

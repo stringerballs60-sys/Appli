@@ -17,7 +17,7 @@ export function PropertyBadge({ type, size = 'medium' }: PropertyBadgeProps) {
     <View
       style={[
         styles.badge,
-        { backgroundColor: color + '22', borderColor: color },
+        { backgroundColor: color + '15', borderColor: color + '40' },
         size === 'small' && styles.badgeSmall,
       ]}
     >
@@ -36,19 +36,20 @@ export function PropertyBadge({ type, size = 'medium' }: PropertyBadgeProps) {
 
 const styles = StyleSheet.create({
   badge: {
-    borderRadius: 6,
+    borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     alignSelf: 'flex-start',
   },
   badgeSmall: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
   },
   text: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   textSmall: {
     fontSize: 10,

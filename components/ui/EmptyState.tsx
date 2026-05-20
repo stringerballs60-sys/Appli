@@ -12,7 +12,9 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, subtitle }: EmptyStateProps) {
   return (
     <View style={styles.container}>
-      <MaterialCommunityIcons name={icon as any} size={64} color={APP_COLORS.border} />
+      <View style={styles.iconWrap}>
+        <MaterialCommunityIcons name={icon as any} size={36} color={APP_COLORS.primaryLight} />
+      </View>
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
@@ -25,17 +27,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-    gap: 12,
+    gap: 14,
+  },
+  iconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: APP_COLORS.primaryPale,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: APP_COLORS.textSecondary,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: APP_COLORS.textSecondary,
+    fontSize: 13,
+    color: APP_COLORS.textTertiary,
     textAlign: 'center',
+    lineHeight: 19,
   },
 });

@@ -58,6 +58,23 @@ export function useTogglePropertyActive() {
   });
 }
 
+export function useSyncIcal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (propertyId: string) => {
+      const { supabase } = await import('@/services/supabase');
+      const { data, error } = await supabase.functions.invoke('sync-ical', {
+        body: { property_id: propertyId },
+      });
+      if (error) throw error;
+      return data as { ok: boolean; results: { property_id: string; success: boolean; upserted?: number; cancelled?: number; error?: string }[] };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservations'] });
+    },
+  });
+}
+
 export function useUpdateCleaningStatus() {
   const qc = useQueryClient();
   return useMutation({

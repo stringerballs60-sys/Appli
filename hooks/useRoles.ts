@@ -17,9 +17,21 @@ export function useInviteMember() {
   const qc = useQueryClient();
   const userId = useAuthStore((s) => s.user?.id);
   return useMutation({
-    mutationFn: (params: { email: string; password: string; fullName: string }) =>
+    mutationFn: (params: { email: string; password: string; fullName: string; role: 'cleaner' | 'comptable' }) =>
       rolesService.inviteMember({ ...params, ownerId: userId! }),
     onSuccess: () => qc.invalidateQueries({ queryKey: [TEAM_KEY] }),
+  });
+}
+
+export function useCleaners() {
+  const userId = useAuthStore((s) => s.user?.id);
+  return useQuery({
+    queryKey: [TEAM_KEY, userId, 'cleaners'],
+    queryFn: async () => {
+      const all = await rolesService.getTeamMembers(userId!);
+      return all.filter((m) => m.role === 'cleaner');
+    },
+    enabled: !!userId,
   });
 }
 

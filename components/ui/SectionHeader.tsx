@@ -10,7 +10,10 @@ interface SectionHeaderProps {
 export function SectionHeader({ title, right }: SectionHeaderProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+      <View style={styles.leftGroup}>
+        <View style={styles.accent} />
+        <Text style={styles.title}>{title}</Text>
+      </View>
       {right}
     </View>
   );
@@ -21,15 +24,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: APP_COLORS.background,
+  },
+  leftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  accent: {
+    width: 3,
+    height: 14,
+    borderRadius: 2,
+    backgroundColor: APP_COLORS.accent,
   },
   title: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
     color: APP_COLORS.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
 });

@@ -9,11 +9,12 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const color = RESERVATION_STATUS_COLORS[status] ?? '#95A5A6';
+  const color = RESERVATION_STATUS_COLORS[status] ?? '#7A8A9A';
   const label = RESERVATION_STATUS_LABELS[status] ?? status;
 
   return (
-    <View style={[styles.badge, { backgroundColor: color + '22', borderColor: color }]}>
+    <View style={[styles.badge, { backgroundColor: color + '18', borderColor: color + '50' }]}>
+      <View style={[styles.dot, { backgroundColor: color }]} />
       <Text style={[styles.text, { color }]}>{label}</Text>
     </View>
   );
@@ -21,14 +22,23 @@ export function StatusBadge({ status }: StatusBadgeProps) {
 
 const styles = StyleSheet.create({
   badge: {
-    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     alignSelf: 'flex-start',
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
   },
   text: {
     fontSize: 11,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
 });

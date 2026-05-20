@@ -26,6 +26,7 @@ import {
   subMonths,
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { useReservationsForMonth } from '@/hooks/useReservations';
 import { useActiveProperties } from '@/hooks/useProperties';
 import { APP_COLORS } from '@/constants/colors';
@@ -38,15 +39,43 @@ const MONTH_NAV_HEIGHT = 54;
 const DAY_HEADER_HEIGHT = 54;
 const MIN_ROW_HEIGHT = 44;
 const BLOCK_PADDING = 7;
-const WINDOW_MONTHS = 3; // months shown in one render
+const MAX_DATE = new Date(2026, 9, 30); // 30 octobre 2026 — limite absolue
 
 // ── Platform config ───────────────────────────────────────────────────────────
-const SOURCE_CFG: Record<string, { label: string; bg: string } | null> = {
-  airbnb:  { label: 'A', bg: '#FF5A5F' },
-  booking: { label: 'B', bg: '#003580' },
-  abritel: { label: 'V', bg: '#FF6600' },
-  manual:  null,
-};
+function getPlatformCfg(category?: string, source?: string): { bg: string; icon?: string; label?: string } | null {
+  // Category takes priority — covers manual entries with Airbnb category
+  if (category?.startsWith('AIRBNB')) return { bg: '#FF5A5F', icon: 'airbnb' };
+  if (category === 'BOOKING') return { bg: '#003580', label: 'B' };
+  if (category === 'ABRITEL') return { bg: '#FF6600', label: 'V' };
+  // Fallback to source for uncategorised entries
+  if (source === 'airbnb') return { bg: '#FF5A5F', icon: 'airbnb' };
+  if (source === 'booking') return { bg: '#003580', label: 'B' };
+  if (source === 'abritel') return { bg: '#FF6600', label: 'V' };
+  return null;
+}
+
+function SourceBadge({ category, source, size = 15, style }: { category?: string; source?: string; size?: number; style?: any }) {
+  const cfg = getPlatformCfg(category, source);
+  if (!cfg) return null;
+  return (
+    <View style={[{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: cfg.bg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.55)',
+    }, style]}>
+      {cfg.icon ? (
+        <FontAwesome5 name={cfg.icon} size={size * 0.6} color="#FFFFFF" brand />
+      ) : (
+        <Text style={{ fontSize: size * 0.5, fontWeight: '900', color: '#FFFFFF' }}>{cfg.label}</Text>
+      )}
+    </View>
+  );
+}
 
 function getBlockGeometry(resa: Reservation, startDate: Date) {
   const checkIn = parseISO(resa.check_in);
@@ -68,7 +97,6 @@ interface PreviewSheetProps {
 
 function ReservationPreviewSheet({ resa, onClose, onViewDetail }: PreviewSheetProps) {
   const property = resa.property as Property | undefined;
-  const sourceConf = SOURCE_CFG[resa.source ?? 'manual'];
   const today = new Date().toISOString().slice(0, 10);
 
   const isOngoing = resa.check_in <= today && resa.check_out > today;
@@ -103,11 +131,7 @@ function ReservationPreviewSheet({ resa, onClose, onViewDetail }: PreviewSheetPr
               <Text style={sheet.guestName} numberOfLines={1}>{resa.guest_name}</Text>
               {property && <Text style={sheet.propertyName}>{property.name}</Text>}
             </View>
-            {sourceConf && (
-              <View style={[sheet.sourceDot, { backgroundColor: sourceConf.bg }]}>
-                <Text style={sheet.sourceDotText}>{sourceConf.label}</Text>
-              </View>
-            )}
+            <SourceBadge category={resa.category} source={resa.source} size={32} />
           </View>
 
           {/* Date range */}
@@ -183,8 +207,8 @@ export default function CalendarScreen() {
   const [gridHeight, setGridHeight] = useState(0);
 
   const startDate = windowStart;
-  const endDate = endOfMonth(addMonths(windowStart, WINDOW_MONTHS - 1));
-  const TOTAL_DAYS = differenceInDays(endDate, startDate) + 1;
+  const endDate = MAX_DATE; // limite fixe au 30 octobre 2026
+  const TOTAL_DAYS = Math.max(1, differenceInDays(endDate, startDate) + 1);
   const days = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(startDate, i));
 
   const from = format(startDate, 'yyyy-MM-dd');
@@ -202,20 +226,26 @@ export default function CalendarScreen() {
 
   const todayDayIndex = differenceInDays(new Date(), startDate);
 
-  // Jours avec à la fois une arrivée ET un départ (toutes propriétés confondues)
-  const turnoverDays = useMemo(() => {
+  // Catégorisation des jours par activité (toutes propriétés confondues)
+  const { arrivalDays, departureDays, turnoverDays } = useMemo(() => {
     const checkIns = new Set<string>();
     const checkOuts = new Set<string>();
     (reservations ?? []).forEach(r => {
       checkIns.add(r.check_in);
       checkOuts.add(r.check_out);
     });
-    const result = new Set<string>();
+    const arrivals = new Set<string>();
+    const departures = new Set<string>();
+    const turnovers = new Set<string>();
     days.forEach(day => {
       const d = format(day, 'yyyy-MM-dd');
-      if (checkIns.has(d) && checkOuts.has(d)) result.add(d);
+      const hasIn = checkIns.has(d);
+      const hasOut = checkOuts.has(d);
+      if (hasIn && hasOut) turnovers.add(d);
+      else if (hasIn) arrivals.add(d);
+      else if (hasOut) departures.add(d);
     });
-    return result;
+    return { arrivalDays: arrivals, departureDays: departures, turnoverDays: turnovers };
   }, [reservations, days]);
 
   // Scroll to today (or start of displayed month) when window changes
@@ -245,17 +275,12 @@ export default function CalendarScreen() {
   );
 
   const scrollToMonth = useCallback((targetMonth: Date) => {
-    // If target month is outside window, shift the window
     const targetStart = startOfMonth(targetMonth);
-    const windowEnd = endOfMonth(addMonths(windowStart, WINDOW_MONTHS - 1));
+    if (targetStart > MAX_DATE) return; // bloqué au 30 octobre
 
     if (targetStart < windowStart) {
       setWindowStart(targetStart);
-      return; // useEffect will scroll after re-render
-    }
-    if (targetStart > windowEnd) {
-      setWindowStart(subMonths(targetStart, WINDOW_MONTHS - 1));
-      return;
+      return; // useEffect scrolle après re-render
     }
 
     const offset = Math.max(0, differenceInDays(targetStart, startDate)) * DAY_WIDTH;
@@ -293,11 +318,12 @@ export default function CalendarScreen() {
         </Text>
 
         <TouchableOpacity
-          style={styles.navBtn}
+          style={[styles.navBtn, isSameMonth(displayedMonth, MAX_DATE) && styles.navBtnDisabled]}
           onPress={() => scrollToMonth(addMonths(displayedMonth, 1))}
+          disabled={isSameMonth(displayedMonth, MAX_DATE)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.navArrow}>›</Text>
+          <Text style={[styles.navArrow, isSameMonth(displayedMonth, MAX_DATE) && { opacity: 0.25 }]}>›</Text>
         </TouchableOpacity>
 
         {!isSameMonth(displayedMonth, new Date()) && (
@@ -326,7 +352,10 @@ export default function CalendarScreen() {
             >
               {days.map((day, i) => {
                 const isT = isToday(day);
-                const isTurnover = turnoverDays.has(format(day, 'yyyy-MM-dd'));
+                const d = format(day, 'yyyy-MM-dd');
+                const isArrival  = arrivalDays.has(d);
+                const isDeparture = departureDays.has(d);
+                const isTurnover = turnoverDays.has(d);
                 const isFirst = day.getDate() === 1;
                 return (
                   <View
@@ -334,7 +363,9 @@ export default function CalendarScreen() {
                     style={[
                       styles.dayHeader,
                       { width: DAY_WIDTH },
-                      isTurnover && styles.dayHeaderTurnover,
+                      isDeparture && styles.dayHeaderDeparture,
+                      isArrival   && styles.dayHeaderArrival,
+                      isTurnover  && styles.dayHeaderTurnover,
                       isT && styles.dayHeaderToday,
                       isFirst && styles.dayHeaderFirst,
                     ]}
@@ -349,9 +380,23 @@ export default function CalendarScreen() {
                         {format(day, 'd')}
                       </Text>
                     </View>
-                    <Text style={[styles.dayLabel, isTurnover && styles.dayLabelTurnover, isT && styles.dayLabelToday]}>
+                    <Text style={[
+                      styles.dayLabel,
+                      isDeparture && styles.dayLabelDeparture,
+                      isArrival   && styles.dayLabelArrival,
+                      isTurnover  && styles.dayLabelTurnover,
+                      isT && styles.dayLabelToday,
+                    ]}>
                       {format(day, 'EEE', { locale: fr })}
                     </Text>
+                    {(isDeparture || isArrival || isTurnover) && (
+                      <View style={[
+                        styles.dayIndicator,
+                        isDeparture && { backgroundColor: '#F59E0B' },
+                        isArrival   && { backgroundColor: '#EA580C' },
+                        isTurnover  && { backgroundColor: '#7C3AED' },
+                      ]} />
+                    )}
                   </View>
                 );
               })}
@@ -420,19 +465,27 @@ export default function CalendarScreen() {
                     ]}>
 
                       {/* Column backgrounds */}
-                      {days.map((day, i) => (
-                        (turnoverDays.has(format(day, 'yyyy-MM-dd')) || isToday(day)) ? (
+                      {days.map((day, i) => {
+                        const d = format(day, 'yyyy-MM-dd');
+                        const isArrival  = arrivalDays.has(d);
+                        const isDeparture = departureDays.has(d);
+                        const isTurnover = turnoverDays.has(d);
+                        const isT = isToday(day);
+                        if (!isArrival && !isDeparture && !isTurnover && !isT) return null;
+                        return (
                           <View
                             key={i}
                             style={[
                               styles.dayCol,
                               { left: i * DAY_WIDTH, height: ROW_HEIGHT },
-                              turnoverDays.has(format(day, 'yyyy-MM-dd')) && styles.dayColTurnover,
-                              isToday(day) && styles.dayColToday,
+                              isDeparture && styles.dayColDeparture,
+                              isArrival   && styles.dayColArrival,
+                              isTurnover  && styles.dayColTurnover,
+                              isT && styles.dayColToday,
                             ]}
                           />
-                        ) : null
-                      ))}
+                        );
+                      })}
 
                       {/* Grid lines */}
                       {days.map((_, i) => (
@@ -444,7 +497,6 @@ export default function CalendarScreen() {
                         const { left, width } = getBlockGeometry(resa, startDate);
                         if (width <= 0) return null;
                         const isPending = resa.status === 'pending';
-                        const sourceConf = SOURCE_CFG[resa.source ?? 'manual'];
                         const blockH = ROW_HEIGHT - BLOCK_PADDING * 2;
 
                         return (
@@ -470,10 +522,8 @@ export default function CalendarScreen() {
                             {width > 68 && (
                               <Text style={styles.resaNights}>{resa.nb_nights}n</Text>
                             )}
-                            {sourceConf && width > 42 && (
-                              <View style={[styles.sourceDot, { backgroundColor: sourceConf.bg }]}>
-                                <Text style={styles.sourceDotText}>{sourceConf.label}</Text>
-                              </View>
+                            {width > 42 && (
+                              <SourceBadge category={resa.category} source={resa.source} size={15} />
                             )}
                           </TouchableOpacity>
                         );
@@ -524,6 +574,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 19,
     backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  navBtnDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   navArrow: {
     fontSize: 24,
@@ -576,8 +629,22 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     gap: 1,
   },
+  dayHeaderDeparture: {
+    backgroundColor: '#FFFBEB',
+  },
+  dayHeaderArrival: {
+    backgroundColor: '#FFF4ED',
+  },
   dayHeaderTurnover: {
-    backgroundColor: '#FFF3CD',
+    backgroundColor: '#F5F3FF',
+  },
+  dayIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 4,
+    right: 4,
+    height: 3,
+    borderRadius: 2,
   },
   dayHeaderToday: {
     backgroundColor: APP_COLORS.primary + '0D',
@@ -620,8 +687,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  dayLabelTurnover: {
+  dayLabelDeparture: {
     color: '#B45309',
+    fontWeight: '700',
+  },
+  dayLabelArrival: {
+    color: '#9A3412',
+    fontWeight: '700',
+  },
+  dayLabelTurnover: {
+    color: '#5B21B6',
     fontWeight: '700',
   },
   dayLabelToday: {
@@ -681,8 +756,14 @@ const styles = StyleSheet.create({
     top: 0,
     width: DAY_WIDTH,
   },
-  dayColTurnover: {
+  dayColDeparture: {
     backgroundColor: '#FFFBEB',
+  },
+  dayColArrival: {
+    backgroundColor: '#FFF4ED',
+  },
+  dayColTurnover: {
+    backgroundColor: '#F5F3FF',
   },
   dayColToday: {
     backgroundColor: APP_COLORS.primary + '0B',

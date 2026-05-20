@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
-import { useTodayActivity, useUpcomingActivity, usePendingCheckInTime, useOccupiedToday, useFutureTurnovers } from '@/hooks/useReservations';
+import { useTodayActivity, useUpcomingActivity, usePendingCheckInTime, useOccupiedToday, useFutureTurnovers, useRecentDepartures } from '@/hooks/useReservations';
 import { useLowStockAlerts } from '@/hooks/useInventory';
 import { useActiveProperties, useUpdateCleaningStatus } from '@/hooks/useProperties';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -314,10 +314,106 @@ function CleaningStatusCard({
   today,
   allArrivals,
   onToggle,
+  onShowAll,
 }: {
   properties: Property[];
   today: string;
   allArrivals: Reservation[];
+  onToggle: (property: Property) => void;
+  onShowAll: () => void;
+}) {
+  const in4days = new Date(today);
+  in4days.setDate(in4days.getDate() + 4);
+  const in3daysStr = in4days.toISOString().slice(0, 10);
+
+  const active = properties
+    .filter((p) => p.is_active)
+    .map((p) => {
+      const nextArrival = allArrivals
+        .filter((r) => r.property_id === p.id)
+        .sort((a, b) => a.check_in.localeCompare(b.check_in))[0];
+      const urgent = p.cleaning_status === 'to_do' && !!nextArrival && nextArrival.check_in <= in3daysStr;
+      return { property: p, nextArrival, urgent };
+    })
+    .sort((a, b) => {
+      // to_do first, then urgent, then by next arrival
+      if (a.property.cleaning_status !== b.property.cleaning_status) {
+        return a.property.cleaning_status === 'to_do' ? -1 : 1;
+      }
+      if (a.urgent && !b.urgent) return -1;
+      if (!a.urgent && b.urgent) return 1;
+      if (a.nextArrival && b.nextArrival) return a.nextArrival.check_in.localeCompare(b.nextArrival.check_in);
+      if (a.nextArrival) return -1;
+      if (b.nextArrival) return 1;
+      return 0;
+    });
+
+  const todoItems = active.filter((a) => a.property.cleaning_status === 'to_do');
+  const readyCount = active.filter((a) => a.property.cleaning_status === 'ready').length;
+  const first = todoItems[0];
+  const extra = todoItems.length - 1;
+
+  return (
+    <Surface style={styles.statusCard} elevation={1}>
+      <View style={styles.statusCardHeader}>
+        <MaterialCommunityIcons name="broom" size={18} color="#8B5CF6" />
+        <Text style={[styles.statusCardTitle, { color: '#8B5CF6' }]}>Ménage</Text>
+        {todoItems.length > 0 && (
+          <View style={[styles.countBadge, { backgroundColor: first?.urgent ? APP_COLORS.danger : '#8B5CF6' }]}>
+            <Text style={styles.countText}>{todoItems.length}</Text>
+          </View>
+        )}
+        {readyCount > 0 && (
+          <Text style={{ fontSize: 10, color: APP_COLORS.success, fontWeight: '700' }}>
+            {readyCount} ✓
+          </Text>
+        )}
+      </View>
+      {active.length === 0 ? (
+        <Text style={styles.emptyText}>Aucun logement actif</Text>
+      ) : todoItems.length === 0 ? (
+        <Text style={[styles.emptyText, { color: APP_COLORS.success }]}>Tous les logements sont prêts ✓</Text>
+      ) : (
+        <View style={styles.statusItem}>
+          {first.property && <View style={[styles.dot, { backgroundColor: first.property.color }]} />}
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => onToggle(first.property)} activeOpacity={0.6}>
+            <Text style={styles.statusItemText} numberOfLines={1}>{first.property.name}</Text>
+            {first.nextArrival && (
+              <Text style={[styles.todayPropertyName, first.urgent && { color: APP_COLORS.danger }]}>
+                {first.urgent ? '⚠ ' : ''}Check-in {formatNextIn(first.nextArrival.check_in, today)}
+              </Text>
+            )}
+          </TouchableOpacity>
+          {extra > 0 ? (
+            <TouchableOpacity
+              style={[styles.extraBadge, { backgroundColor: '#8B5CF622', borderColor: '#8B5CF655' }]}
+              onPress={onShowAll}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.extraBadgeText, { color: '#8B5CF6' }]}>+{extra}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={onShowAll} activeOpacity={0.6}>
+              <MaterialCommunityIcons name="chevron-right" size={14} color={APP_COLORS.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+    </Surface>
+  );
+}
+
+function CleaningListModal({
+  properties,
+  today,
+  allArrivals,
+  onClose,
+  onToggle,
+}: {
+  properties: Property[];
+  today: string;
+  allArrivals: Reservation[];
+  onClose: () => void;
   onToggle: (property: Property) => void;
 }) {
   const in4days = new Date(today);
@@ -334,69 +430,62 @@ function CleaningStatusCard({
       return { property: p, nextArrival, urgent };
     })
     .sort((a, b) => {
-      if (a.nextArrival && b.nextArrival) {
-        return a.nextArrival.check_in.localeCompare(b.nextArrival.check_in);
-      }
-      if (a.nextArrival) return -1;
-      if (b.nextArrival) return 1;
+      if (a.property.cleaning_status !== b.property.cleaning_status) return a.property.cleaning_status === 'to_do' ? -1 : 1;
+      if (a.urgent && !b.urgent) return -1;
+      if (!a.urgent && b.urgent) return 1;
+      if (a.nextArrival && b.nextArrival) return a.nextArrival.check_in.localeCompare(b.nextArrival.check_in);
       return 0;
     });
 
+  const todoCount = active.filter((a) => a.property.cleaning_status === 'to_do').length;
+
   return (
-    <Surface style={styles.cleaningCard} elevation={1}>
-      <View style={styles.statusCardHeader}>
-        <MaterialCommunityIcons name="broom" size={18} color="#8B5CF6" />
-        <Text style={[styles.statusCardTitle, { color: '#8B5CF6' }]}>Statut ménage</Text>
-      </View>
-      {active.length === 0 ? (
-        <Text style={styles.emptyText}>Aucun logement actif</Text>
-      ) : (
-        active.map(({ property: p, nextArrival, urgent }) => {
-          const isDone = p.cleaning_status === 'ready';
-          return (
-            <TouchableOpacity
-              key={p.id}
-              style={[
-                styles.cleaningRow,
-                urgent && styles.cleaningRowUrgent,
-              ]}
-              onPress={() => onToggle(p)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.dot, { backgroundColor: p.color }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cleaningPropertyName} numberOfLines={1}>{p.name}</Text>
-                {nextArrival && (
-                  <Text style={[styles.cleaningNextIn, urgent && { color: APP_COLORS.danger }]}>
-                    {urgent && '⚠ '}Check-in {formatNextIn(nextArrival.check_in, today)}
-                  </Text>
-                )}
-              </View>
-              <View
-                style={[
-                  styles.cleaningBadge,
-                  { backgroundColor: isDone ? '#D1FAE5' : urgent ? '#FEE2E2' : '#FEF3C7' },
-                ]}
+    <Modal transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={tsheet.overlay} onPress={onClose}>
+        <Pressable style={[tsheet.container, { paddingBottom: 24 }]} onPress={() => {}}>
+          <View style={tsheet.handle} />
+          <View style={[tsheet.header, { paddingLeft: 20, paddingBottom: 12 }]}>
+            <MaterialCommunityIcons name="broom" size={20} color="#8B5CF6" />
+            <View style={{ flex: 1, paddingLeft: 10 }}>
+              <Text style={tsheet.propertyName}>Statut ménage</Text>
+              <Text style={tsheet.subTitle}>{todoCount} à faire · {active.length - todoCount} prêt{active.length - todoCount > 1 ? 's' : ''}</Text>
+            </View>
+          </View>
+          <View style={tsheet.divider} />
+          {active.map(({ property: p, nextArrival, urgent }) => {
+            const isDone = p.cleaning_status === 'ready';
+            return (
+              <TouchableOpacity
+                key={p.id}
+                style={styles.listModalItem}
+                onPress={() => { onClose(); onToggle(p); }}
+                activeOpacity={0.7}
               >
-                <MaterialCommunityIcons
-                  name={isDone ? 'check-circle' : 'clock-outline'}
-                  size={13}
-                  color={isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : '#B45309'}
-                />
-                <Text
-                  style={[
-                    styles.cleaningBadgeText,
-                    { color: isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : '#B45309' },
-                  ]}
-                >
-                  {isDone ? 'Prêt' : 'À faire'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })
-      )}
-    </Surface>
+                <View style={[styles.listModalStrip, { backgroundColor: p.color }]} />
+                <View style={{ flex: 1, paddingLeft: 12 }}>
+                  <Text style={styles.statusItemText} numberOfLines={1}>{p.name}</Text>
+                  {nextArrival && (
+                    <Text style={[styles.todayPropertyName, urgent && { color: APP_COLORS.danger }]}>
+                      {urgent ? '⚠ ' : ''}Check-in {formatNextIn(nextArrival.check_in, today)}
+                    </Text>
+                  )}
+                </View>
+                <View style={[styles.cleaningBadge, { backgroundColor: isDone ? '#D1FAE5' : urgent ? '#FEE2E2' : '#FEF3C7' }]}>
+                  <MaterialCommunityIcons
+                    name={isDone ? 'check-circle' : 'clock-outline'}
+                    size={13}
+                    color={isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : '#B45309'}
+                  />
+                  <Text style={[styles.cleaningBadgeText, { color: isDone ? APP_COLORS.success : urgent ? APP_COLORS.danger : '#B45309' }]}>
+                    {isDone ? 'Prêt' : 'À faire'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -423,10 +512,12 @@ export default function DashboardScreen() {
 
   const [turnoverDetail, setTurnoverDetail] = useState<{ dep: Reservation; arr: Reservation } | null>(null);
   const [showTurnoverList, setShowTurnoverList] = useState(false);
+  const [showCleaningList, setShowCleaningList] = useState(false);
   const [memoBannerDismissed, setMemoBannerDismissed] = useState(false);
   const { data: pendingMemos } = usePendingMemos();
   const pendingMemoCount = pendingMemos?.length ?? 0;
 
+  const { data: recentDepartures } = useRecentDepartures(90);
   const { data: todayData, isLoading: todayLoading } = useTodayActivity();
   const { data: upcomingActivity, isLoading: upcomingLoading } = useUpcomingActivity(20);
   const { data: futureTurnovers } = useFutureTurnovers();
@@ -443,15 +534,35 @@ export default function DashboardScreen() {
     ...(upcomingActivity?.arrivals ?? []),
   ];
 
+  // Auto-sync cleaning status from calendar:
+  // occupied → ready | past departure after last cleaning → to_do
   useEffect(() => {
-    if (!todayData?.checkOuts || !properties) return;
-    todayData.checkOuts.forEach((r) => {
-      const prop = properties.find((p) => p.id === r.property_id);
-      if (!prop) return;
-      if (prop.cleaning_status_date === today) return;
-      updateCleaningStatus({ id: prop.id, status: 'to_do', date: today });
+    if (!properties || !occupiedToday || !recentDepartures) return;
+
+    const occupiedPropIds = new Set(occupiedToday.map((r) => r.property_id));
+
+    properties.forEach((prop) => {
+      if (!prop.is_active) return;
+
+      if (occupiedPropIds.has(prop.id)) {
+        // Guest is there → auto ready
+        if (prop.cleaning_status !== 'ready') {
+          updateCleaningStatus({ id: prop.id, status: 'ready', date: today });
+        }
+      } else {
+        // Not occupied → check if there's a departure after last cleaning
+        if (prop.cleaning_status !== 'ready') return; // already to_do, skip
+        const lastDep = recentDepartures
+          .filter((r) => r.property_id === prop.id)
+          .sort((a, b) => b.check_out.localeCompare(a.check_out))[0];
+        if (!lastDep) return;
+        const statusDate = prop.cleaning_status_date ?? '1970-01-01';
+        if (lastDep.check_out > statusDate) {
+          updateCleaningStatus({ id: prop.id, status: 'to_do', date: today });
+        }
+      }
     });
-  }, [todayData?.checkOuts, properties]);
+  }, [occupiedToday, recentDepartures, properties]);
 
   useEffect(() => {
     if (!upcomingActivity || !properties) return;
@@ -601,6 +712,7 @@ export default function DashboardScreen() {
                 today={today}
                 allArrivals={allArrivals}
                 onToggle={handleCleaningToggle}
+                onShowAll={() => setShowCleaningList(true)}
               />
             </View>
 
@@ -685,6 +797,16 @@ export default function DashboardScreen() {
           today={today}
           onClose={() => setShowTurnoverList(false)}
           onPressItem={(dep, arr) => setTurnoverDetail({ dep, arr })}
+        />
+      )}
+
+      {showCleaningList && (
+        <CleaningListModal
+          properties={properties ?? []}
+          today={today}
+          allArrivals={allArrivals}
+          onClose={() => setShowCleaningList(false)}
+          onToggle={handleCleaningToggle}
         />
       )}
 

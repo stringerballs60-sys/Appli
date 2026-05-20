@@ -87,6 +87,16 @@ export function useFutureTurnovers() {
   });
 }
 
+export function useRecentDepartures(daysBack = 90) {
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
+  return useQuery({
+    queryKey: [RESERVATIONS_KEY, userId, 'recentDepartures', daysBack],
+    queryFn: () => reservationsService.getRecentDepartures(userId!, daysBack),
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useOccupiedToday() {
   const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   const today = new Date().toISOString().slice(0, 10);

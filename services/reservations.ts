@@ -47,6 +47,22 @@ export const reservationsService = {
     return data;
   },
 
+  async getRecentDepartures(userId: string, daysBack = 90): Promise<{ id: string; property_id: string; check_out: string }[]> {
+    const today = new Date().toISOString().slice(0, 10);
+    const from = new Date();
+    from.setDate(from.getDate() - daysBack);
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('id, property_id, check_out')
+      .eq('user_id', userId)
+      .lte('check_out', today)
+      .gte('check_out', from.toISOString().slice(0, 10))
+      .neq('status', 'cancelled')
+      .order('check_out', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+
   async getUpcoming(userId: string, limit = 3): Promise<Reservation[]> {
     const today = new Date().toISOString().slice(0, 10);
     const { data, error } = await supabase

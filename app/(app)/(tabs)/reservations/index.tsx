@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FlatList, View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, ActivityIndicator, Chip } from 'react-native-paper';
+import { Text, ActivityIndicator } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +11,8 @@ import { useActiveProperties } from '@/hooks/useProperties';
 import { ReservationCard } from '@/components/reservation/ReservationCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { APP_COLORS } from '@/constants/colors';
+import { RESERVATION_STATUS_COLORS } from '@/constants/colors';
+import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
 import { ReservationStatus } from '@/types';
 import { RESERVATION_STATUS_LABELS } from '@/constants/labels';
@@ -35,65 +38,65 @@ export default function ReservationsScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>{t('reservations.title')}</Text>
-            <Text style={styles.subtitle}>{reservations?.length ?? 0} réservation{(reservations?.length ?? 0) !== 1 ? 's' : ''}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => router.push('/(app)/reservations/new')}
-          >
-            <MaterialCommunityIcons name="plus" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <LinearGradient
+        colors={GRADIENTS.navyHeader as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View>
+          <Text style={styles.title}>{t('reservations.title')}</Text>
+          <Text style={styles.subtitle}>
+            {reservations?.length ?? 0} réservation{(reservations?.length ?? 0) !== 1 ? 's' : ''}
+          </Text>
         </View>
-      </View>
+        <TouchableOpacity style={[styles.addBtn, SHADOWS.navy]} onPress={() => router.push('/(app)/reservations/new')} activeOpacity={0.8}>
+          <MaterialCommunityIcons name="plus" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      </LinearGradient>
 
+      {/* Property filter */}
       {properties && properties.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterScroll}
-          contentContainerStyle={styles.filterRow}
-        >
-          <Chip
-            selected={!selectedPropertyId}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
+          <TouchableOpacity
+            style={[styles.chip, !selectedPropertyId && styles.chipActive]}
             onPress={() => setSelectedPropertyId(null)}
-            style={styles.filterChip}
           >
-            Tous
-          </Chip>
+            <Text style={[styles.chipText, !selectedPropertyId && styles.chipTextActive]}>Tous</Text>
+          </TouchableOpacity>
           {properties.map((p) => (
-            <Chip
+            <TouchableOpacity
               key={p.id}
-              selected={selectedPropertyId === p.id}
+              style={[styles.chip, selectedPropertyId === p.id && { backgroundColor: p.color, borderColor: p.color }]}
               onPress={() => setSelectedPropertyId(selectedPropertyId === p.id ? null : p.id)}
-              style={[styles.filterChip, { borderColor: p.color }]}
             >
-              {p.name}
-            </Chip>
+              <View style={[styles.chipDot, { backgroundColor: selectedPropertyId === p.id ? '#FFFFFF' : p.color }]} />
+              <Text style={[styles.chipText, selectedPropertyId === p.id && styles.chipTextActive]} numberOfLines={1}>
+                {p.name}
+              </Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       )}
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterRow}
-      >
-        {STATUS_FILTERS.map((status) => (
-          <Chip
-            key={status ?? 'all'}
-            selected={selectedStatus === status}
-            onPress={() => setSelectedStatus(status)}
-            style={styles.filterChip}
-          >
-            {status ? RESERVATION_STATUS_LABELS[status] : 'Tous les statuts'}
-          </Chip>
-        ))}
+      {/* Status filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
+        {STATUS_FILTERS.map((status) => {
+          const isSelected = selectedStatus === status;
+          const color = status ? RESERVATION_STATUS_COLORS[status] : APP_COLORS.primary;
+          return (
+            <TouchableOpacity
+              key={status ?? 'all'}
+              style={[styles.chip, isSelected && { backgroundColor: color, borderColor: color }]}
+              onPress={() => setSelectedStatus(status)}
+            >
+              <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                {status ? RESERVATION_STATUS_LABELS[status] : 'Tous les statuts'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {isLoading ? (
@@ -109,15 +112,9 @@ export default function ReservationsScreen() {
             />
           )}
           ListEmptyComponent={
-            <EmptyState
-              icon="bed-outline"
-              title={t('reservations.noReservations')}
-              subtitle="Ajoutez votre première réservation"
-            />
+            <EmptyState icon="bed-outline" title={t('reservations.noReservations')} subtitle="Ajoutez votre première réservation" />
           }
-          contentContainerStyle={
-            reservations?.length === 0 ? { flex: 1 } : { paddingTop: 8, paddingBottom: 24 }
-          }
+          contentContainerStyle={reservations?.length === 0 ? { flex: 1 } : { paddingTop: 8, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -126,33 +123,42 @@ export default function ReservationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
+  safeArea: { flex: 1, backgroundColor: APP_COLORS.primaryDark },
   header: {
-    backgroundColor: APP_COLORS.primary,
     paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  headerRow: {
+    paddingTop: 18,
+    paddingBottom: 22,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
-  subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  title: { fontSize: 24, fontFamily: FONTS.titleBold, color: APP_COLORS.accent, letterSpacing: 1 },
+  subtitle: { fontSize: 12, color: 'rgba(248,245,239,0.65)', marginTop: 2 },
+  addBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: RADII.sm,
+    backgroundColor: 'rgba(248,245,239,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(248,245,239,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  filterScroll: { flexShrink: 0, flexGrow: 0, backgroundColor: '#FFFFFF' },
-  filterRow: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
+  filterBar: { flexShrink: 0, flexGrow: 0, backgroundColor: APP_COLORS.surfaceElevated, borderBottomWidth: 1, borderBottomColor: APP_COLORS.borderLight },
+  filterContent: { paddingHorizontal: 12, paddingVertical: 9, gap: 7, alignItems: 'center' },
+  chip: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADII.full,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    backgroundColor: APP_COLORS.background,
   },
-  filterChip: { borderRadius: 20 },
+  chipActive: { backgroundColor: APP_COLORS.primary, borderColor: APP_COLORS.primary },
+  chipDot: { width: 6, height: 6, borderRadius: 3 },
+  chipText: { fontSize: 12, fontWeight: '500', color: APP_COLORS.textSecondary },
+  chipTextActive: { color: '#FFFFFF', fontWeight: '700' },
 });

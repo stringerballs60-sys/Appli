@@ -310,7 +310,7 @@ export default function CleaningPlannerScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: APP_COLORS.primaryDark },
+  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
   header: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 18, flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { padding: 2 },
   title: { fontSize: 22, fontFamily: FONTS.titleBold, color: APP_COLORS.accent, letterSpacing: 1 },

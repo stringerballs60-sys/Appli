@@ -187,7 +187,7 @@ export default function NewPropertyScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: APP_COLORS.primaryDark },
+  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
   header: {
     paddingHorizontal: 20,
     paddingTop: 18,

@@ -239,7 +239,7 @@ export default function NewTaskScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: APP_COLORS.primaryDark },
+  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
   header: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 18, flexDirection: 'row', alignItems: 'center', gap: 14 },
   backBtn: { padding: 2 },
   title: { flex: 1, fontSize: 20, fontFamily: FONTS.titleBold, color: APP_COLORS.accent, letterSpacing: 0.8 },

@@ -223,10 +223,9 @@ export function computeCleaningPlan(
       suggestedDate = today;
       isOverdue = true;
     } else {
-      // Schedule 7 days before arrival, respecting maxPerDay capacity
-      const idealDate = addDaysStr(nextArr.check_in, -7);
+      // Find first available quiet day between today and day before arrival
       const deadline = addDaysStr(nextArr.check_in, -1);
-      let cursor = idealDate >= today ? idealDate : today;
+      let cursor = today;
       let found = false;
       while (cursor <= deadline) {
         if ((daySlotCount.get(cursor) ?? 0) < maxPerDay) {
@@ -236,7 +235,7 @@ export function computeCleaningPlan(
         }
         cursor = addDaysStr(cursor, 1);
       }
-      if (!found) suggestedDate = idealDate >= today ? idealDate : today;
+      if (!found) suggestedDate = today;
       isOverdue = false;
     }
 

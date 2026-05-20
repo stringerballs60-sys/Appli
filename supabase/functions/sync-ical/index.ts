@@ -21,6 +21,10 @@ function parseICSDate(raw: string): string {
   return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
 }
 
+function daysBetween(a: string, b: string): number {
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000);
+}
+
 function parseICS(text: string): {
   events: ICalEvent[];
   raw_vevent_count: number;
@@ -36,13 +40,10 @@ function parseICS(text: string): {
   const events: ICalEvent[] = [];
   const parseLog: string[] = [];
 
-  // Count raw blocks
   const raw_vevent_count = lines.filter((l) => l.trim() === 'BEGIN:VEVENT').length;
   const raw_vfreebusy_count = lines.filter((l) => l.trim() === 'BEGIN:VFREEBUSY').length;
-
   parseLog.push(`ICS lines=${lines.length} VEVENT=${raw_vevent_count} VFREEBUSY=${raw_vfreebusy_count}`);
 
-  // Parse VEVENT blocks
   let inEvent = false;
   let inFreebusy = false;
   let cur: Partial<ICalEvent> = {};
@@ -52,26 +53,19 @@ function parseICS(text: string): {
     const trimmed = line.trim();
 
     if (trimmed === 'BEGIN:VEVENT') {
-      inEvent = true;
-      evIdx++;
+      inEvent = true; evIdx++;
       cur = { status: 'CONFIRMED', summary: '' };
     } else if (trimmed === 'END:VEVENT') {
       const accepted = !!(cur.uid && cur.dtstart && cur.dtend);
-      parseLog.push(
-        `VEVENT#${evIdx} uid=${cur.uid ?? 'MISSING'} dtstart=${cur.dtstart ?? 'MISSING'} dtend=${cur.dtend ?? 'MISSING'} summary="${cur.summary}" => ${accepted ? 'OK' : 'REJECTED'}`
-      );
+      parseLog.push(`VEVENT#${evIdx} uid=${cur.uid ?? 'MISSING'} ${cur.dtstart}→${cur.dtend} summary="${cur.summary}" => ${accepted ? 'OK' : 'REJECTED'}`);
       if (accepted) events.push(cur as ICalEvent);
       inEvent = false;
     } else if (trimmed === 'BEGIN:VFREEBUSY') {
-      inFreebusy = true;
-      evIdx++;
+      inFreebusy = true; evIdx++;
       cur = { status: 'CONFIRMED', summary: 'Réservation' };
     } else if (trimmed === 'END:VFREEBUSY') {
-      // FREEBUSY:20260801T000000Z/20260805T000000Z — synthesize an event per period
       const accepted = !!(cur.dtstart && cur.dtend);
-      parseLog.push(
-        `VFREEBUSY#${evIdx} dtstart=${cur.dtstart ?? 'MISSING'} dtend=${cur.dtend ?? 'MISSING'} => ${accepted ? 'OK' : 'REJECTED'}`
-      );
+      parseLog.push(`VFREEBUSY#${evIdx} ${cur.dtstart}→${cur.dtend} => ${accepted ? 'OK' : 'REJECTED'}`);
       if (accepted) {
         cur.uid = cur.uid ?? `freebusy-${cur.dtstart}-${cur.dtend}`;
         events.push(cur as ICalEvent);
@@ -82,14 +76,12 @@ function parseICS(text: string): {
       if (colon === -1) continue;
       const key = trimmed.slice(0, colon).split(';')[0].toUpperCase();
       const val = trimmed.slice(colon + 1);
-
       if (key === 'DTSTART') cur.dtstart = parseICSDate(val);
       else if (key === 'DTEND') cur.dtend = parseICSDate(val);
       else if (key === 'SUMMARY') cur.summary = val;
       else if (key === 'UID') cur.uid = val;
       else if (key === 'STATUS') cur.status = val.toUpperCase();
       else if (key === 'FREEBUSY' && inFreebusy) {
-        // FREEBUSY:20260801T000000Z/20260805T000000Z
         const slash = val.indexOf('/');
         if (slash !== -1) {
           cur.dtstart = parseICSDate(val.slice(0, slash));
@@ -98,36 +90,55 @@ function parseICS(text: string): {
       }
     }
   }
-
   return { events, raw_vevent_count, raw_vfreebusy_count, parseLog };
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Business logic ───────────────────────────────────────────────────────────
 
-function detectSource(url: string): string {
-  if (url.includes('airbnb')) return 'airbnb';
-  if (url.includes('booking.com')) return 'booking';
-  if (url.includes('abritel') || url.includes('vrbo') || url.includes('homeaway')) return 'abritel';
-  return 'manual';
-}
+// Blocks longer than this are property closures → skip
+const CLOSURE_THRESHOLD_DAYS = 60;
 
-function guestNameFromSummary(summary: string, source: string): string {
-  const lower = summary.toLowerCase();
-  if (!summary || lower === 'reserved' || lower === 'blocked' || lower === 'not available' || lower === 'unavailable') {
-    const label = source.charAt(0).toUpperCase() + source.slice(1);
-    return `Réservation ${label}`;
+function classifyEvent(
+  ev: ICalEvent,
+  source: string,
+  propertyType: string,
+): { guestName: string; category: string; eventSource: string } | null {
+  const sl = ev.summary.toLowerCase().trim();
+
+  // Explicit availability slots — skip
+  if (sl === 'available' || sl === 'open' || sl === 'libre') return null;
+
+  // "Not available" / manual blocks
+  const isBlock =
+    sl === 'not available' ||
+    sl === 'airbnb (not available)' ||
+    sl === 'unavailable' ||
+    sl === 'blocked';
+
+  if (isBlock) {
+    const days = daysBetween(ev.dtstart, ev.dtend);
+    // Long blocks = property closure → skip
+    if (days >= CLOSURE_THRESHOLD_DAYS) return null;
+    // Short blocks = direct/manual booking
+    return { guestName: 'Réservation directe', category: 'DIRECT_OWN', eventSource: 'manual' };
   }
-  return summary;
-}
 
-function categoryForSource(source: string, propertyType: string): string {
+  // Real platform reservation (e.g. "Reserved" on Airbnb)
+  let category: string;
   if (source === 'airbnb') {
-    if (propertyType === 'SCI') return 'AIRBNB_SCI';
-    if (propertyType === 'COHOST_AIRBNB') return 'AIRBNB_COHOST';
-    if (propertyType === 'HOST_AIRBNB') return 'AIRBNB_HOST_ACCOUNT';
-    return 'AIRBNB_SCI';
+    if (propertyType === 'SCI') category = 'AIRBNB_SCI';
+    else if (propertyType === 'COHOST_AIRBNB') category = 'AIRBNB_COHOST';
+    else if (propertyType === 'HOST_AIRBNB') category = 'AIRBNB_HOST_ACCOUNT';
+    else category = 'AIRBNB_SCI';
+  } else {
+    category = 'DIRECT_OWN';
   }
-  return 'DIRECT_OWN';
+
+  // Airbnb hides guest names in iCal — use a labelled placeholder
+  const platformLabel = source.charAt(0).toUpperCase() + source.slice(1);
+  const guestName = sl === 'reserved' ? `Réservation ${platformLabel}` : ev.summary;
+
+  return { guestName, category, eventSource: source };
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
@@ -162,16 +173,17 @@ serve(async (req) => {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Kaza/1.0)' },
           signal: AbortSignal.timeout(15_000),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status} for ${prop.ical_url}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const icsText = await res.text();
-        console.log(`[sync-ical] prop=${prop.id} ics_length=${icsText.length} first100="${icsText.slice(0, 100).replace(/\n/g, '|')}"`);
+        console.log(`[sync-ical] prop=${prop.id} ics_length=${icsText.length}`);
 
         const { events, raw_vevent_count, raw_vfreebusy_count, parseLog } = parseICS(icsText);
-        console.log(`[sync-ical] parsed=${events.length} log=${JSON.stringify(parseLog)}`);
 
-        const source = detectSource(prop.ical_url);
-        const category = categoryForSource(source, prop.property_type);
+        const source = prop.ical_url.includes('airbnb') ? 'airbnb'
+          : prop.ical_url.includes('booking.com') ? 'booking'
+          : prop.ical_url.includes('abritel') || prop.ical_url.includes('vrbo') ? 'abritel'
+          : 'manual';
 
         let upserted = 0;
         let cancelled = 0;
@@ -189,13 +201,11 @@ serve(async (req) => {
             continue;
           }
 
-          const sl = ev.summary.toLowerCase();
-          if (sl === 'available' || sl === 'open' || sl === 'libre') {
+          const decision = classifyEvent(ev, source, prop.property_type);
+          if (!decision) {
             skipped++;
             continue;
           }
-
-          const guestName = guestNameFromSummary(ev.summary, source);
 
           const { error: upsertErr } = await supabase
             .from('reservations')
@@ -204,11 +214,11 @@ serve(async (req) => {
                 user_id: prop.user_id,
                 property_id: prop.id,
                 ical_uid: ev.uid,
-                source,
-                category,
+                source: decision.eventSource,
+                category: decision.category,
                 check_in: ev.dtstart,
                 check_out: ev.dtend,
-                guest_name: guestName,
+                guest_name: decision.guestName,
                 status: 'confirmed',
                 nb_couples: 1,
                 nb_solo_adults: 0,
@@ -224,7 +234,7 @@ serve(async (req) => {
 
           if (upsertErr) {
             console.error(`[sync-ical] upsert error uid=${ev.uid}: ${upsertErr.message} code=${upsertErr.code}`);
-            upsertErrors.push(`uid=${ev.uid}: ${upsertErr.message} (code=${upsertErr.code})`);
+            upsertErrors.push(`uid=${ev.uid}: ${upsertErr.message} (${upsertErr.code})`);
           } else {
             upserted++;
           }
@@ -242,12 +252,10 @@ serve(async (req) => {
           skipped,
           parse_log: parseLog,
         };
-
         if (upsertErrors.length > 0) result.upsert_errors = upsertErrors;
-
         results.push(result);
       } catch (err: any) {
-        console.error(`[sync-ical] fetch error prop=${prop.id}: ${err.message}`);
+        console.error(`[sync-ical] error prop=${prop.id}: ${err.message}`);
         results.push({ property_id: prop.id, success: false, error: err.message });
       }
     }

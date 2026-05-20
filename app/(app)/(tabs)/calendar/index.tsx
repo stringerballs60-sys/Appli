@@ -42,15 +42,20 @@ const BLOCK_PADDING = 7;
 const MAX_DATE = new Date(2026, 9, 30); // 30 octobre 2026 — limite absolue
 
 // ── Platform config ───────────────────────────────────────────────────────────
-const SOURCE_CFG: Record<string, { bg: string; icon?: string; label?: string } | null> = {
-  airbnb:  { bg: '#FF5A5F', icon: 'airbnb' },
-  booking: { bg: '#003580', label: 'B' },
-  abritel: { bg: '#FF6600', label: 'V' },
-  manual:  null,
-};
+function getPlatformCfg(category?: string, source?: string): { bg: string; icon?: string; label?: string } | null {
+  // Category takes priority — covers manual entries with Airbnb category
+  if (category?.startsWith('AIRBNB')) return { bg: '#FF5A5F', icon: 'airbnb' };
+  if (category === 'BOOKING') return { bg: '#003580', label: 'B' };
+  if (category === 'ABRITEL') return { bg: '#FF6600', label: 'V' };
+  // Fallback to source for uncategorised entries
+  if (source === 'airbnb') return { bg: '#FF5A5F', icon: 'airbnb' };
+  if (source === 'booking') return { bg: '#003580', label: 'B' };
+  if (source === 'abritel') return { bg: '#FF6600', label: 'V' };
+  return null;
+}
 
-function SourceBadge({ source, size = 15, style }: { source: string; size?: number; style?: any }) {
-  const cfg = SOURCE_CFG[source ?? 'manual'];
+function SourceBadge({ category, source, size = 15, style }: { category?: string; source?: string; size?: number; style?: any }) {
+  const cfg = getPlatformCfg(category, source);
   if (!cfg) return null;
   return (
     <View style={[{
@@ -126,7 +131,7 @@ function ReservationPreviewSheet({ resa, onClose, onViewDetail }: PreviewSheetPr
               <Text style={sheet.guestName} numberOfLines={1}>{resa.guest_name}</Text>
               {property && <Text style={sheet.propertyName}>{property.name}</Text>}
             </View>
-            <SourceBadge source={resa.source ?? 'manual'} size={32} />
+            <SourceBadge category={resa.category} source={resa.source} size={32} />
           </View>
 
           {/* Date range */}
@@ -518,7 +523,7 @@ export default function CalendarScreen() {
                               <Text style={styles.resaNights}>{resa.nb_nights}n</Text>
                             )}
                             {width > 42 && (
-                              <SourceBadge source={resa.source ?? 'manual'} size={15} />
+                              <SourceBadge category={resa.category} source={resa.source} size={15} />
                             )}
                           </TouchableOpacity>
                         );

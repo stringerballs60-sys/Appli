@@ -1,9 +1,11 @@
 import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Text, Surface } from 'react-native-paper';
+import { Text } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { APP_COLORS } from '@/constants/colors';
+import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
 import { useAuthStore } from '@/stores/authStore';
 import { usePendingMemos } from '@/hooks/useMemos';
@@ -14,7 +16,7 @@ const ALL_MENU_ITEMS = [
     label: 'Mémo',
     subtitle: 'Notes rapides et rappels',
     icon: 'note-text-outline',
-    color: '#D4AF37',
+    color: APP_COLORS.accent,
     route: '/(app)/memo',
     managerOnly: false,
     cleanerOnly: false,
@@ -58,7 +60,7 @@ const ALL_MENU_ITEMS = [
     label: 'Rôles',
     subtitle: "Gérer les accès de l'équipe",
     icon: 'account-group',
-    color: '#059669',
+    color: APP_COLORS.success,
     route: '/(app)/roles',
     managerOnly: true,
     cleanerOnly: false,
@@ -69,7 +71,7 @@ const ALL_MENU_ITEMS = [
     label: 'Paramètres',
     subtitle: 'Profil et déconnexion',
     icon: 'cog-outline',
-    color: '#64748B',
+    color: APP_COLORS.primaryLight,
     route: '/(app)/settings',
     managerOnly: false,
     cleanerOnly: false,
@@ -92,118 +94,139 @@ export default function MenuScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
+      <LinearGradient
+        colors={GRADIENTS.navyHeader as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
         <Text style={styles.title}>Menu</Text>
         {!isManager && (
-          <View style={styles.roleBadge}>
+          <View style={styles.rolePill}>
             <MaterialCommunityIcons
               name={isComptable ? 'calculator-variant-outline' : 'broom'}
               size={12}
-              color="rgba(255,255,255,0.9)"
+              color={APP_COLORS.accent}
             />
-            <Text style={styles.roleBadgeText}>
+            <Text style={styles.rolePillText}>
               {isComptable ? 'Comptable' : 'Aide ménagère'}
             </Text>
           </View>
         )}
-      </View>
+      </LinearGradient>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
+        <View style={styles.list}>
           {menuItems.map((item) => {
             const badge = item.showBadge && pendingCount > 0 ? pendingCount : 0;
             return (
               <TouchableOpacity
                 key={item.key}
                 onPress={() => router.push(item.route as any)}
-                activeOpacity={0.7}
+                activeOpacity={0.75}
               >
-                <Surface style={styles.menuCard} elevation={2}>
-                  <View style={[styles.colorStrip, { backgroundColor: item.color }]} />
-
-                  <View style={[styles.iconBox, { backgroundColor: item.color + '18' }]}>
-                    <MaterialCommunityIcons name={item.icon as any} size={26} color={item.color} />
+                <View style={[styles.card, SHADOWS.sm]}>
+                  <View style={[styles.strip, { backgroundColor: item.color }]} />
+                  <View style={[styles.iconBox, { backgroundColor: item.color + '15' }]}>
+                    <MaterialCommunityIcons name={item.icon as any} size={24} color={item.color} />
                   </View>
-
-                  <View style={styles.cardContent}>
-                    <Text style={styles.cardLabel}>{item.label}</Text>
-                    <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+                  <View style={styles.content}>
+                    <Text style={styles.label}>{item.label}</Text>
+                    <Text style={styles.subtitle}>{item.subtitle}</Text>
                   </View>
-
                   {badge > 0 && (
                     <View style={[styles.badge, { backgroundColor: item.color }]}>
                       <Text style={styles.badgeText}>{badge}</Text>
                     </View>
                   )}
-
-                  <MaterialCommunityIcons name="chevron-right" size={20} color={APP_COLORS.border} />
-                </Surface>
+                  <MaterialCommunityIcons name="chevron-right" size={18} color={APP_COLORS.border} />
+                </View>
               </TouchableOpacity>
             );
           })}
         </View>
-        <View style={{ height: 24 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: APP_COLORS.background },
+  safeArea: { flex: 1, backgroundColor: APP_COLORS.primaryDark },
+  scroll: { flex: 1, backgroundColor: APP_COLORS.background },
+
   header: {
-    backgroundColor: APP_COLORS.primary,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 18,
+    paddingBottom: 22,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  title: { fontSize: 22, fontFamily: FONTS.titleBold, color: '#FFFFFF' },
-  roleBadge: {
+  title: {
+    fontSize: 24,
+    fontFamily: FONTS.titleBold,
+    color: APP_COLORS.accent,
+    letterSpacing: 1,
+  },
+  rolePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
+    backgroundColor: 'rgba(248,245,239,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(201,168,76,0.35)',
+    borderRadius: RADII.full,
+    paddingHorizontal: 12,
     paddingVertical: 5,
   },
-  roleBadgeText: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' },
-  scroll: { flex: 1 },
-  section: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
-  menuCard: {
+  rolePillText: {
+    fontSize: 11,
+    color: APP_COLORS.accentLight,
+    fontWeight: '600',
+  },
+
+  list: {
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    gap: 10,
+  },
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: APP_COLORS.surfaceElevated,
+    borderRadius: RADII.md,
     overflow: 'hidden',
     gap: 14,
-    paddingRight: 16,
+    paddingRight: 14,
     paddingVertical: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
   },
-  colorStrip: {
-    width: 5,
+  strip: {
+    width: 4,
     alignSelf: 'stretch',
-    borderRadius: 0,
     flexShrink: 0,
   },
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 46,
+    height: 46,
+    borderRadius: RADII.sm,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  cardContent: { flex: 1 },
-  cardLabel: { fontSize: 15, fontWeight: '700', color: APP_COLORS.textPrimary },
-  cardSubtitle: { fontSize: 12, color: APP_COLORS.textSecondary, marginTop: 2 },
+  content: { flex: 1 },
+  label: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: APP_COLORS.textPrimary,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+    marginTop: 2,
+  },
   badge: {
-    borderRadius: 10,
+    borderRadius: RADII.full,
     minWidth: 22,
     height: 22,
     justifyContent: 'center',

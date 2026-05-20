@@ -19,6 +19,9 @@ export interface CleaningTask {
   reason: string;
   helpNeeded: boolean;
   guestCount: number;
+  groupName: string | null;
+  arrivalsOnDay: number;
+  departuresOnDay: number;
 }
 
 export interface DayLoadInfo {
@@ -27,6 +30,8 @@ export interface DayLoadInfo {
   overCapacity: boolean;
   helpNeeded: boolean;
 }
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function addDaysStr(date: string, n: number): string {
   const d = new Date(date);
@@ -37,51 +42,16 @@ function addDaysStr(date: string, n: number): string {
 function addMinutesToTime(start: string, minutes: number): string {
   const [h, m] = start.split(':').map(Number);
   const total = h * 60 + m + minutes;
-  const hh = Math.floor(total / 60) % 24;
-  const mm = total % 60;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
 function estimateDuration(guestCount: number, nbBathrooms: number): number {
   const base = Math.max(80, guestCount * 40);
-  const extraBathrooms = Math.max(0, (nbBathrooms ?? 1) - 1);
-  return base + extraBathrooms * 20;
+  return base + Math.max(0, (nbBathrooms ?? 1) - 1) * 20;
 }
 
 function suggestStartTime(urgency: CleaningUrgency): string {
-  if (urgency === 'turnover') return '10:00';
-  return '09:00';
-}
-
-// Pick the best date for a cleaning task.
-// - Group co-scheduling: if a group preferred date falls in the window, use it (bypass maxPerDay).
-// - Consolidation: otherwise prefer the most-loaded day that still has capacity,
-//   to leave other days completely free.
-function pickDate(
-  from: string,
-  deadline: string,
-  daySlotCount: Map<string, number>,
-  maxPerDay: number,
-  groupPreferredDate: string | null,
-): string {
-  // Group co-scheduling: bypass maxPerDay, same trip = same day
-  if (groupPreferredDate && groupPreferredDate >= from && groupPreferredDate <= deadline) {
-    return groupPreferredDate;
-  }
-
-  // Consolidation: pick most-loaded day that still has room (fill before opening new days)
-  let bestDate = from;
-  let bestLoad = -1;
-  let cursor = from;
-  while (cursor <= deadline) {
-    const load = daySlotCount.get(cursor) ?? 0;
-    if (load < maxPerDay && load > bestLoad) {
-      bestDate = cursor;
-      bestLoad = load;
-    }
-    cursor = addDaysStr(cursor, 1);
-  }
-  return bestDate;
+  return urgency === 'turnover' ? '10:00' : '09:00';
 }
 
 function computePriority(suggestedDate: string, today: string): CleaningPriority {
@@ -93,6 +63,59 @@ function computePriority(suggestedDate: string, today: string): CleaningPriority
   return 'flexible';
 }
 
+// Rule 1: max cleanings allowed on a given day based on arrival pressure
+function maxCleaningsOnDay(arrivalsOnDay: number, globalMax: number): number {
+  if (arrivalsOnDay >= 3) return Math.min(globalMax, 1);
+  if (arrivalsOnDay >= 2) return Math.min(globalMax, 2);
+  return globalMax;
+}
+
+// Pick the best date for a cleaning task.
+//
+// 1. Group co-scheduling (Rule 3): use cluster anchor, bypass maxPerDay,
+//    but still respect arrival-day cap. Only applied if daysUntilArrival ≤ 7.
+// 2. Consolidation: prefer most-loaded days to leave other days fully free.
+// 3. Rule 1: arrival-day cap applied to all candidates.
+function pickDate(
+  from: string,
+  deadline: string,
+  daySlotCount: Map<string, number>,
+  maxPerDay: number,
+  arrivalsPerDay: Map<string, number>,
+  clusterAnchor: string | null,
+  daysUntilArrival: number,
+): string {
+  // Rule 3 — cluster co-scheduling (bypass maxPerDay)
+  if (clusterAnchor && clusterAnchor >= from && clusterAnchor <= deadline && daysUntilArrival <= 7) {
+    const arrivals = arrivalsPerDay.get(clusterAnchor) ?? 0;
+    const load = daySlotCount.get(clusterAnchor) ?? 0;
+    const arrivalCap = arrivals >= 3 ? 1 : arrivals >= 2 ? 2 : 99;
+    if (load < arrivalCap) return clusterAnchor;
+    // Anchor blocked by arrivals — fall through
+  }
+
+  // Consolidation: pick most-loaded available day (score = load - arrival penalty)
+  let bestDate = from;
+  let bestScore = -Infinity;
+  let hasCandidate = false;
+
+  let cursor = from;
+  while (cursor <= deadline) {
+    const load = daySlotCount.get(cursor) ?? 0;
+    const arrivals = arrivalsPerDay.get(cursor) ?? 0;
+    const cap = maxCleaningsOnDay(arrivals, maxPerDay);
+    if (load < cap) {
+      if (!hasCandidate) { bestDate = cursor; hasCandidate = true; }
+      const score = load * 10 - arrivals * 5;
+      if (score > bestScore) { bestScore = score; bestDate = cursor; }
+    }
+    cursor = addDaysStr(cursor, 1);
+  }
+  return bestDate;
+}
+
+// ── Main planner ─────────────────────────────────────────────────────────────
+
 export function computeCleaningPlan(
   reservations: Reservation[],
   properties: Property[],
@@ -103,18 +126,23 @@ export function computeCleaningPlan(
   const propMap = new Map(properties.map((p) => [p.id, p]));
   const active = reservations.filter((r) => r.status !== 'cancelled');
 
+  // Pre-compute arrivals & departures per day (Rules 1 & 4)
+  const arrivalsPerDay = new Map<string, number>();
+  const departuresPerDay = new Map<string, number>();
+  for (const r of active) {
+    if (r.check_in >= today) arrivalsPerDay.set(r.check_in, (arrivalsPerDay.get(r.check_in) ?? 0) + 1);
+    if (r.check_out >= today) departuresPerDay.set(r.check_out, (departuresPerDay.get(r.check_out) ?? 0) + 1);
+  }
+
   const departures = active
     .filter((r) => r.check_out >= today && r.check_out <= horizonDate)
     .sort((a, b) => a.check_out.localeCompare(b.check_out));
 
   const daySlotCount = new Map<string, number>();
-  const dayMinutes = new Map<string, number>();
-  // group_name → preferred date for co-scheduling
-  const groupDates = new Map<string, string>();
-
+  const clusterAnchors = new Map<string, string>(); // group_name → anchor date
   const tasks: CleaningTask[] = [];
 
-  // ── Pass 1: future departures ──────────────────────────────────────────────
+  // ── Pass 1: future departures ─────────────────────────────────────────────
   for (const dep of departures) {
     const property = propMap.get(dep.property_id);
     if (!property || !property.is_active) continue;
@@ -143,18 +171,20 @@ export function computeCleaningPlan(
     else if (urgency === 'normal') reason = 'Anticipation dernière minute';
     else reason = 'Logement libre — planifier tôt';
 
+    const group = property.group_name?.trim() || null;
     let suggestedDate = dep.check_out;
 
     if (windowDays > 0) {
       const deadline = checkIn ? addDaysStr(checkIn, -1) : horizonDate;
-      const group = property.group_name?.trim() || null;
-      const groupPreferred = group ? (groupDates.get(group) ?? null) : null;
-      suggestedDate = pickDate(dep.check_out, deadline, daySlotCount, maxPerDay, groupPreferred);
-      if (group) groupDates.set(group, suggestedDate);
+      const daysUntilCheckIn = checkIn
+        ? Math.round((new Date(checkIn).getTime() - new Date(today).getTime()) / 86400000)
+        : 99;
+      const anchor = group ? (clusterAnchors.get(group) ?? null) : null;
+      suggestedDate = pickDate(dep.check_out, deadline, daySlotCount, maxPerDay, arrivalsPerDay, anchor, daysUntilCheckIn);
+      if (group) clusterAnchors.set(group, suggestedDate);
     }
 
     daySlotCount.set(suggestedDate, (daySlotCount.get(suggestedDate) ?? 0) + 1);
-    dayMinutes.set(suggestedDate, (dayMinutes.get(suggestedDate) ?? 0) + estimatedMinutes);
 
     const startTime = suggestStartTime(urgency);
     tasks.push({
@@ -170,37 +200,44 @@ export function computeCleaningPlan(
       priority: computePriority(suggestedDate, today),
       urgency,
       reason,
-      helpNeeded: (dayMinutes.get(suggestedDate) ?? 0) > 240,
+      helpNeeded: false,
       guestCount,
+      groupName: group,
+      arrivalsOnDay: 0,
+      departuresOnDay: 0,
       isOverdue: false,
     });
   }
 
-  // ── Pass 2: properties with cleaning_status = 'to_do' not covered above ───
+  // ── Pass 2: properties with cleaning_status = 'to_do' ────────────────────
+  // Sorted by nearest arrival so urgent cluster members set the anchor first (Rule 3)
   const URGENT_DAYS = 3;
   const PLANNING_WINDOW = 14;
   const GROUP_PLANNING_WINDOW = 30;
 
-  for (const property of properties) {
-    if (!property.is_active || property.cleaning_status !== 'to_do') continue;
+  const pass2 = properties
+    .filter((p) => p.is_active && p.cleaning_status === 'to_do')
+    .map((p) => {
+      const nextArr = active
+        .filter((r) => r.property_id === p.id && r.check_in >= today)
+        .sort((a, b) => a.check_in.localeCompare(b.check_in))[0] ?? null;
+      const daysUntil = nextArr
+        ? Math.round((new Date(nextArr.check_in).getTime() - new Date(today).getTime()) / 86400000)
+        : 9999;
+      return { property: p, nextArr, daysUntil };
+    })
+    .filter((x) => x.nextArr !== null)
+    .sort((a, b) => a.daysUntil - b.daysUntil);
 
-    const nextArr = active
-      .filter((r) => r.property_id === property.id && r.check_in >= today)
-      .sort((a, b) => a.check_in.localeCompare(b.check_in))[0];
-    if (!nextArr) continue;
-
+  for (const { property, nextArr, daysUntil: daysUntilArrival } of pass2) {
     const alreadyCovered = tasks.some(
-      (t) => t.property.id === property.id && t.suggestedDate < nextArr.check_in
+      (t) => t.property.id === property.id && t.suggestedDate < nextArr!.check_in
     );
     if (alreadyCovered) continue;
 
     const lastDep = active
       .filter((r) => r.property_id === property.id && r.check_out < today)
       .sort((a, b) => b.check_out.localeCompare(a.check_out))[0];
-
-    const daysUntilArrival = Math.round(
-      (new Date(nextArr.check_in).getTime() - new Date(today).getTime()) / 86400000
-    );
 
     const guestCount = lastDep
       ? (lastDep.nb_couples ?? 0) * 2 + (lastDep.nb_solo_adults ?? 0) + (lastDep.nb_children ?? 0)
@@ -219,42 +256,38 @@ export function computeCleaningPlan(
 
     if (daysUntilArrival <= URGENT_DAYS) {
       suggestedDate = today;
+      if (group) clusterAnchors.set(group, today);
       isOverdue = true;
     } else {
-      // Group gets wider window to maximize chance of overlap with other group members
       const window = group ? GROUP_PLANNING_WINDOW : PLANNING_WINDOW;
-      const searchStart = addDaysStr(nextArr.check_in, -window);
+      const searchStart = addDaysStr(nextArr!.check_in, -window);
       const from = searchStart >= today ? searchStart : today;
-      const deadline = addDaysStr(nextArr.check_in, -1);
-      const groupPreferred = group ? (groupDates.get(group) ?? null) : null;
-      suggestedDate = pickDate(from, deadline, daySlotCount, maxPerDay, groupPreferred);
+      const deadline = addDaysStr(nextArr!.check_in, -1);
+      const anchor = group ? (clusterAnchors.get(group) ?? null) : null;
+      suggestedDate = pickDate(from, deadline, daySlotCount, maxPerDay, arrivalsPerDay, anchor, daysUntilArrival);
+      if (group) clusterAnchors.set(group, suggestedDate);
       isOverdue = false;
     }
 
-    if (group) groupDates.set(group, suggestedDate);
-
     daySlotCount.set(suggestedDate, (daySlotCount.get(suggestedDate) ?? 0) + 1);
-    dayMinutes.set(suggestedDate, (dayMinutes.get(suggestedDate) ?? 0) + estimatedMinutes);
 
     let reason: string;
     if (isOverdue && lastDep) {
-      const daysSinceDep = Math.round(
-        (new Date(today).getTime() - new Date(lastDep.check_out).getTime()) / 86400000
-      );
-      reason = `En retard de ${daysSinceDep}j · arrivée dans ${daysUntilArrival}j`;
+      const daysSince = Math.round((new Date(today).getTime() - new Date(lastDep.check_out).getTime()) / 86400000);
+      reason = `En retard de ${daysSince}j · arrivée J+${daysUntilArrival}`;
     } else if (isOverdue) {
-      reason = `Préparation requise · arrivée dans ${daysUntilArrival}j`;
+      reason = `Préparation requise · arrivée J+${daysUntilArrival}`;
     } else if (group) {
-      reason = `Groupe ${group} · arrivée dans ${daysUntilArrival}j`;
+      reason = `Cluster ${group} · arrivée J+${daysUntilArrival}`;
     } else {
-      reason = `Logement à préparer · arrivée dans ${daysUntilArrival}j`;
+      reason = `À préparer · arrivée J+${daysUntilArrival}`;
     }
 
     tasks.push({
       depReservationId: lastDep?.id ?? '',
       property,
       checkOut: lastDep?.check_out ?? today,
-      nextCheckIn: nextArr.check_in,
+      nextCheckIn: nextArr!.check_in,
       windowDays: daysUntilArrival,
       suggestedDate,
       suggestedStartTime: '09:00',
@@ -263,23 +296,32 @@ export function computeCleaningPlan(
       priority: computePriority(suggestedDate, today),
       urgency,
       reason,
-      helpNeeded: (dayMinutes.get(suggestedDate) ?? 0) > 240,
+      helpNeeded: false,
       guestCount,
+      groupName: group,
+      arrivalsOnDay: 0,
+      departuresOnDay: 0,
       isOverdue,
     });
   }
 
-  // Re-compute helpNeeded at day level (after all tasks assigned)
-  const finalDayMinutes = new Map<string, number>();
-  for (const t of tasks) {
-    finalDayMinutes.set(t.suggestedDate, (finalDayMinutes.get(t.suggestedDate) ?? 0) + t.estimatedMinutes);
-  }
+  // ── Final pass: Rule 4 — recompute helpNeeded per day ────────────────────
+  // Alert if count > 3 (hard), or count ≥ 3 AND arrivals+departures ≥ 2 (soft)
+  const finalDayCount = new Map<string, number>();
+  for (const t of tasks) finalDayCount.set(t.suggestedDate, (finalDayCount.get(t.suggestedDate) ?? 0) + 1);
 
   return tasks
-    .map((t) => ({
-      ...t,
-      helpNeeded: (finalDayMinutes.get(t.suggestedDate) ?? 0) > 240,
-    }))
+    .map((t) => {
+      const count = finalDayCount.get(t.suggestedDate) ?? 0;
+      const arrivals = arrivalsPerDay.get(t.suggestedDate) ?? 0;
+      const departures = departuresPerDay.get(t.suggestedDate) ?? 0;
+      return {
+        ...t,
+        helpNeeded: count > 3 || (count >= 3 && arrivals + departures >= 2),
+        arrivalsOnDay: arrivals,
+        departuresOnDay: departures,
+      };
+    })
     .sort((a, b) => {
       if (a.isOverdue && !b.isOverdue) return -1;
       if (!a.isOverdue && b.isOverdue) return 1;
@@ -304,6 +346,6 @@ export function getDayLoad(tasks: CleaningTask[], date: string, maxPerDay: numbe
     tasks: dayTasks,
     totalMinutes,
     overCapacity: dayTasks.length > maxPerDay,
-    helpNeeded: totalMinutes > 240,
+    helpNeeded: dayTasks.some((t) => t.helpNeeded),
   };
 }

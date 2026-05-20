@@ -170,16 +170,23 @@ const card = StyleSheet.create({
   sep: { fontSize: 11, color: APP_COLORS.border },
 });
 
-function HelpBanner({ totalMinutes }: { totalMinutes: number }) {
-  const urgent = totalMinutes > 360;
-  const color = urgent ? '#DC2626' : '#7C3AED';
-  const bg = urgent ? '#FEF2F2' : '#F3E8FF';
-  const border = urgent ? '#FECACA' : '#DDD6FE';
+function HelpBanner({ taskCount, arrivalsOnDay, departuresOnDay, totalMinutes }: {
+  taskCount: number; arrivalsOnDay: number; departuresOnDay: number; totalMinutes: number;
+}) {
+  const hard = taskCount > 3;
+  const soft = taskCount >= 3 && arrivalsOnDay + departuresOnDay >= 2;
+  if (!hard && !soft) return null;
+  const color = hard ? '#DC2626' : '#D97706';
+  const bg = hard ? '#FEF2F2' : '#FFFBEB';
+  const border = hard ? '#FECACA' : '#FDE68A';
+  const detail = hard
+    ? `${taskCount} ménages · ${formatDayMinutes(totalMinutes)}`
+    : `${taskCount} ménages + ${arrivalsOnDay} arrivée(s) · ${formatDayMinutes(totalMinutes)}`;
   return (
     <View style={[help.container, { backgroundColor: bg, borderColor: border }]}>
       <MaterialCommunityIcons name="account-plus" size={16} color={color} />
       <Text style={[help.text, { color }]}>
-        {urgent ? 'Aide nécessaire' : 'Aide recommandée'} · {formatDayMinutes(totalMinutes)} de ménage
+        {hard ? 'Aide nécessaire' : 'Aide recommandée'} · {detail}
       </Text>
     </View>
   );
@@ -303,7 +310,9 @@ export default function CleaningPlannerScreen() {
                 const load = dayTasks.length;
                 const overload = load > maxPerDay;
                 const dayMinutes = dayTasks.reduce((acc, t) => acc + t.estimatedMinutes, 0);
-                const needsHelp = dayMinutes > 240;
+                const arrivalsOnDay = dayTasks[0]?.arrivalsOnDay ?? 0;
+                const departuresOnDay = dayTasks[0]?.departuresOnDay ?? 0;
+                const needsHelp = dayTasks.some((t) => t.helpNeeded);
                 const isToday = date === today;
                 const isPast = date < today;
 
@@ -335,8 +344,15 @@ export default function CleaningPlannerScreen() {
                       <LoadBar count={load} max={maxPerDay} totalMinutes={dayMinutes} />
                     </View>
 
-                    {/* Help banner */}
-                    {needsHelp && <HelpBanner totalMinutes={dayMinutes} />}
+                    {/* Help banner (Rule 4) */}
+                    {needsHelp && (
+                      <HelpBanner
+                        taskCount={load}
+                        arrivalsOnDay={arrivalsOnDay}
+                        departuresOnDay={departuresOnDay}
+                        totalMinutes={dayMinutes}
+                      />
+                    )}
 
                     {/* Tasks */}
                     {dayTasks.map((task, i) => (

@@ -216,16 +216,21 @@ export function computeCleaningPlan(
     else if (daysUntilArrival <= 7) urgency = 'normal';
     else urgency = 'relaxed';
 
-    // Suggest cleaning date: today if urgent, otherwise 7 days before arrival
+    // Suggest cleaning date:
+    // - ≤ 3 days until arrival → urgent, plan today
+    // - > 3 days → find first quiet day in the 14 days before arrival (not earlier)
+    const URGENT_DAYS = 3;
+    const PLANNING_WINDOW = 14;
     let suggestedDate: string = today;
     let isOverdue: boolean;
-    if (daysUntilArrival <= 7) {
+    if (daysUntilArrival <= URGENT_DAYS) {
       suggestedDate = today;
       isOverdue = true;
     } else {
-      // Find first available quiet day between today and day before arrival
+      const searchStart = addDaysStr(nextArr.check_in, -PLANNING_WINDOW);
+      const earliestDate = searchStart >= today ? searchStart : today;
       const deadline = addDaysStr(nextArr.check_in, -1);
-      let cursor = today;
+      let cursor = earliestDate;
       let found = false;
       while (cursor <= deadline) {
         if ((daySlotCount.get(cursor) ?? 0) < maxPerDay) {
@@ -235,7 +240,7 @@ export function computeCleaningPlan(
         }
         cursor = addDaysStr(cursor, 1);
       }
-      if (!found) suggestedDate = today;
+      if (!found) suggestedDate = earliestDate;
       isOverdue = false;
     }
 

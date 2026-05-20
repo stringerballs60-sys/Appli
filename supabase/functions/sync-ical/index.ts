@@ -171,6 +171,8 @@ serve(async (req) => {
                 check_out: ev.dtend,
                 guest_name: decision.guestName,
                 status: 'confirmed',
+                check_in_time: '16:00',
+                check_in_time_confirmed: false,
                 nb_couples: 1,
                 nb_solo_adults: 0,
                 nb_children: 0,

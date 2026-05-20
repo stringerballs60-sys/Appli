@@ -22,7 +22,7 @@ function parseICSDate(raw: string): string {
   return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
 }
 
-function parseICS(text: string): ICalEvent[] {
+function parseICS(text: string): { events: ICalEvent[]; debugLines: string[] } {
   // Unfold RFC 5545 line continuations
   const unfolded = text
     .replace(/\r\n/g, '\n')
@@ -30,30 +30,41 @@ function parseICS(text: string): ICalEvent[] {
     .replace(/\n[ \t]/g, '');
 
   const events: ICalEvent[] = [];
+  const debugLines: string[] = [];
   let inEvent = false;
   let cur: Partial<ICalEvent> = {};
+  let eventCount = 0;
 
   for (const line of unfolded.split('\n')) {
     const trimmed = line.trim();
     if (trimmed === 'BEGIN:VEVENT') {
       inEvent = true;
+      eventCount++;
       cur = { status: 'CONFIRMED', summary: '' };
+      debugLines.push(`--- VEVENT #${eventCount} ---`);
     } else if (trimmed === 'END:VEVENT') {
-      if (cur.uid && cur.dtstart && cur.dtend) events.push(cur as ICalEvent);
+      debugLines.push(`  uid=${cur.uid ?? 'MISSING'} dtstart=${cur.dtstart ?? 'MISSING'} dtend=${cur.dtend ?? 'MISSING'} summary="${cur.summary}" status=${cur.status}`);
+      if (cur.uid && cur.dtstart && cur.dtend) {
+        events.push(cur as ICalEvent);
+        debugLines.push('  => ACCEPTED');
+      } else {
+        debugLines.push('  => REJECTED (missing uid/dtstart/dtend)');
+      }
       inEvent = false;
     } else if (inEvent) {
       const colon = trimmed.indexOf(':');
       if (colon === -1) continue;
       const key = trimmed.slice(0, colon).split(';')[0].toUpperCase();
       const val = trimmed.slice(colon + 1);
-      if (key === 'DTSTART') cur.dtstart = parseICSDate(val);
-      else if (key === 'DTEND') cur.dtend = parseICSDate(val);
-      else if (key === 'SUMMARY') cur.summary = val;
-      else if (key === 'UID') cur.uid = val;
-      else if (key === 'STATUS') cur.status = val.toUpperCase();
+      if (key === 'DTSTART') { cur.dtstart = parseICSDate(val); debugLines.push(`  DTSTART raw="${val}" parsed="${cur.dtstart}"`);
+      } else if (key === 'DTEND') { cur.dtend = parseICSDate(val); debugLines.push(`  DTEND raw="${val}" parsed="${cur.dtend}"`);
+      } else if (key === 'SUMMARY') { cur.summary = val; debugLines.push(`  SUMMARY="${val}"`);
+      } else if (key === 'UID') { cur.uid = val; debugLines.push(`  UID="${val}"`);
+      } else if (key === 'STATUS') { cur.status = val.toUpperCase(); debugLines.push(`  STATUS="${val}"`);
+      }
     }
   }
-  return events;
+  return { events, debugLines };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -96,7 +107,7 @@ serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const { property_id } = body as { property_id?: string };
+    const { property_id, debug = false } = body as { property_id?: string; debug?: boolean };
 
     // Fetch properties with an iCal URL
     let q = supabase
@@ -119,13 +130,15 @@ serve(async (req) => {
         if (!res.ok) throw new Error(`HTTP ${res.status} for ${prop.ical_url}`);
 
         const icsText = await res.text();
-        const events = parseICS(icsText);
+        const { events, debugLines } = parseICS(icsText);
         const source = detectSource(prop.ical_url);
         const category = categoryForSource(source, prop.property_type);
 
         let upserted = 0;
         let cancelled = 0;
         let skipped = 0;
+        const upsertErrors: string[] = [];
+        const skippedReasons: string[] = [];
 
         for (const ev of events) {
           // Cancel events explicitly marked CANCELLED
@@ -143,6 +156,7 @@ serve(async (req) => {
           const sl = ev.summary.toLowerCase();
           if (sl === 'available' || sl === 'open' || sl === 'libre') {
             skipped++;
+            skippedReasons.push(`uid=${ev.uid} summary="${ev.summary}"`);
             continue;
           }
 
@@ -175,25 +189,36 @@ serve(async (req) => {
 
           if (upsertErr) {
             console.error('upsert error', upsertErr.message, ev.uid);
+            upsertErrors.push(`uid=${ev.uid}: ${upsertErr.message} (code=${upsertErr.code})`);
           } else {
             upserted++;
           }
         }
 
-        results.push({
+        const result: Record<string, unknown> = {
           property_id: prop.id,
           success: true,
           total: events.length,
           upserted,
           cancelled,
           skipped,
-        });
+        };
+
+        if (upsertErrors.length > 0) result.upsert_errors = upsertErrors;
+        if (skippedReasons.length > 0) result.skipped_reasons = skippedReasons;
+
+        if (debug) {
+          result.ics_preview = icsText.slice(0, 3000);
+          result.parse_debug = debugLines;
+        }
+
+        results.push(result);
       } catch (err: any) {
         results.push({ property_id: prop.id, success: false, error: err.message });
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, results }), {
+    return new Response(JSON.stringify({ ok: true, results }, null, 2), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {

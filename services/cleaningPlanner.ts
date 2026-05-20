@@ -107,18 +107,12 @@ export function computeCleaningPlan(
 
     const estimatedMinutes = estimateDuration(guestCount, property.nb_bathrooms ?? 1);
 
-    // Urgency
+    // Urgency (based on the gap between checkout and next checkin)
     let urgency: CleaningUrgency;
     if (windowDays === 0) urgency = 'turnover';
     else if (windowDays <= 1) urgency = 'urgent';
     else if (windowDays <= 3) urgency = 'normal';
     else urgency = 'relaxed';
-
-    // Priority
-    let priority: CleaningPriority;
-    if (urgency === 'turnover' || urgency === 'urgent') priority = 'critique';
-    else if (urgency === 'normal') priority = 'recommande';
-    else priority = 'flexible';
 
     // Reason
     let reason: string;
@@ -146,6 +140,15 @@ export function computeCleaningPlan(
       }
       if (!found) suggestedDate = dep.check_out; // overloaded, put on checkOut anyway
     }
+
+    // Priority based on how soon the cleaning needs to happen (suggestedDate vs today)
+    const daysUntilSuggested = Math.max(0, Math.round(
+      (new Date(suggestedDate).getTime() - new Date(today).getTime()) / 86400000
+    ));
+    let priority: CleaningPriority;
+    if (daysUntilSuggested <= 2) priority = 'critique';
+    else if (daysUntilSuggested <= 10) priority = 'recommande';
+    else priority = 'flexible';
 
     // Update day load
     daySlotCount.set(suggestedDate, (daySlotCount.get(suggestedDate) ?? 0) + 1);
@@ -213,7 +216,10 @@ export function computeCleaningPlan(
     else if (daysUntilArrival <= 7) urgency = 'normal';
     else urgency = 'relaxed';
 
-    const priority: CleaningPriority = daysUntilArrival <= 7 ? 'critique' : 'recommande';
+    let priority: CleaningPriority;
+    if (daysUntilArrival <= 2) priority = 'critique';
+    else if (daysUntilArrival <= 10) priority = 'recommande';
+    else priority = 'flexible';
 
     let reason: string;
     if (lastDep) {

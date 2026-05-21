@@ -5,6 +5,7 @@ module.exports = function (api) {
     plugins: [
       ['module-resolver', { alias: { '@': '.' } }],
       'react-native-reanimated/plugin',
+      './babel-plugin-shim-dynamic-import',
     ],
   };
 };

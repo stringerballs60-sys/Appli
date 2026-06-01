@@ -14,8 +14,8 @@ import { APP_COLORS } from '@/constants/colors';
 import { RESERVATION_STATUS_COLORS } from '@/constants/colors';
 import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
-import { ReservationStatus, ReservationSource } from '@/types';
-import { RESERVATION_STATUS_LABELS } from '@/constants/labels';
+import { ReservationStatus, ReservationCategory } from '@/types';
+import { RESERVATION_STATUS_LABELS, RESERVATION_CATEGORY_LABELS } from '@/constants/labels';
 
 const STATUS_FILTERS: (ReservationStatus | null)[] = [
   null,
@@ -25,12 +25,14 @@ const STATUS_FILTERS: (ReservationStatus | null)[] = [
   ReservationStatus.CANCELLED,
 ];
 
-const SOURCE_FILTERS: { value: ReservationSource | null; label: string; color: string }[] = [
-  { value: null, label: 'Toutes sources', color: APP_COLORS.primary },
-  { value: 'airbnb', label: 'Airbnb', color: '#FF5A5F' },
-  { value: 'booking', label: 'Booking.com', color: '#003580' },
-  { value: 'abritel', label: 'Abritel', color: '#FF6600' },
-  { value: 'manual', label: 'Direct', color: APP_COLORS.success },
+const CATEGORY_FILTERS: (ReservationCategory | null)[] = [
+  null,
+  ReservationCategory.AIRBNB_SCI,
+  ReservationCategory.AIRBNB_COHOST,
+  ReservationCategory.AIRBNB_HOST_ACCOUNT,
+  ReservationCategory.DIRECT_OWN,
+  ReservationCategory.DIRECT_FROM_AIRBNB,
+  ReservationCategory.EXTERNAL_CLEANING,
 ];
 
 export default function ReservationsScreen() {
@@ -38,13 +40,13 @@ export default function ReservationsScreen() {
   const router = useRouter();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<ReservationStatus | null>(null);
-  const [selectedSource, setSelectedSource] = useState<ReservationSource | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<ReservationCategory | null>(null);
 
   const { data: properties } = useActiveProperties();
   const { data: reservations, isLoading } = useReservations({
     propertyId: selectedPropertyId ?? undefined,
     status: selectedStatus ?? undefined,
-    source: selectedSource ?? undefined,
+    category: selectedCategory ?? undefined,
   });
 
   return (
@@ -109,17 +111,19 @@ export default function ReservationsScreen() {
         })}
       </ScrollView>
 
-      {/* Source filter */}
+      {/* Category filter */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
-        {SOURCE_FILTERS.map(({ value, label, color }) => {
-          const isSelected = selectedSource === value;
+        {CATEGORY_FILTERS.map((cat) => {
+          const isSelected = selectedCategory === cat;
           return (
             <TouchableOpacity
-              key={value ?? 'all'}
-              style={[styles.chip, isSelected && { backgroundColor: color, borderColor: color }]}
-              onPress={() => setSelectedSource(value)}
+              key={cat ?? 'all'}
+              style={[styles.chip, isSelected && styles.chipActive]}
+              onPress={() => setSelectedCategory(cat)}
             >
-              <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{label}</Text>
+              <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                {cat ? RESERVATION_CATEGORY_LABELS[cat] : 'Tous types'}
+              </Text>
             </TouchableOpacity>
           );
         })}

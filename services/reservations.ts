@@ -5,7 +5,7 @@ import { calculateLinen } from '@/utils/linenCalculator';
 export const reservationsService = {
   async getAll(
     userId: string,
-    filters?: { propertyId?: string; from?: string; to?: string; status?: string; source?: string }
+    filters?: { propertyId?: string; from?: string; to?: string; status?: string; category?: string }
   ): Promise<Reservation[]> {
     let query = supabase
       .from('reservations')
@@ -17,7 +17,7 @@ export const reservationsService = {
     if (filters?.from) query = query.gte('check_in', filters.from);
     if (filters?.to) query = query.lte('check_out', filters.to);
     if (filters?.status) query = query.eq('status', filters.status);
-    if (filters?.source) query = query.eq('source', filters.source);
+    if (filters?.category) query = query.eq('category', filters.category);
 
     const { data, error } = await query;
     if (error) throw error;

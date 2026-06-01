@@ -45,6 +45,17 @@ const ALL_MENU_ITEMS = [
     showBadge: false,
   },
   {
+    key: 'accounting',
+    label: 'Comptabilité',
+    subtitle: 'Revenus, tarifs et analyse',
+    icon: 'chart-bar',
+    color: '#059669',
+    route: '/(app)/accounting',
+    managerOnly: true,
+    cleanerOnly: false,
+    showBadge: false,
+  },
+  {
     key: 'inventory',
     label: 'Inventaire',
     subtitle: 'Linge, équipements, consommables',

@@ -14,7 +14,7 @@ import { APP_COLORS } from '@/constants/colors';
 import { RESERVATION_STATUS_COLORS } from '@/constants/colors';
 import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
-import { ReservationStatus } from '@/types';
+import { ReservationStatus, ReservationSource } from '@/types';
 import { RESERVATION_STATUS_LABELS } from '@/constants/labels';
 
 const STATUS_FILTERS: (ReservationStatus | null)[] = [
@@ -25,16 +25,26 @@ const STATUS_FILTERS: (ReservationStatus | null)[] = [
   ReservationStatus.CANCELLED,
 ];
 
+const SOURCE_FILTERS: { value: ReservationSource | null; label: string; color: string }[] = [
+  { value: null, label: 'Toutes sources', color: APP_COLORS.primary },
+  { value: 'airbnb', label: 'Airbnb', color: '#FF5A5F' },
+  { value: 'booking', label: 'Booking.com', color: '#003580' },
+  { value: 'abritel', label: 'Abritel', color: '#FF6600' },
+  { value: 'manual', label: 'Direct', color: APP_COLORS.success },
+];
+
 export default function ReservationsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<ReservationStatus | null>(null);
+  const [selectedSource, setSelectedSource] = useState<ReservationSource | null>(null);
 
   const { data: properties } = useActiveProperties();
   const { data: reservations, isLoading } = useReservations({
     propertyId: selectedPropertyId ?? undefined,
     status: selectedStatus ?? undefined,
+    source: selectedSource ?? undefined,
   });
 
   return (
@@ -94,6 +104,22 @@ export default function ReservationsScreen() {
               <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
                 {status ? RESERVATION_STATUS_LABELS[status] : 'Tous les statuts'}
               </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Source filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
+        {SOURCE_FILTERS.map(({ value, label, color }) => {
+          const isSelected = selectedSource === value;
+          return (
+            <TouchableOpacity
+              key={value ?? 'all'}
+              style={[styles.chip, isSelected && { backgroundColor: color, borderColor: color }]}
+              onPress={() => setSelectedSource(value)}
+            >
+              <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{label}</Text>
             </TouchableOpacity>
           );
         })}

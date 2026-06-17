@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* KAZA Design System — Brand */
+    --brand-navy: #1A365D;
+    --brand-navy-700: #15294A;
+    --brand-navy-500: #2A5085;
+    --brand-navy-100: #E2E8F0;
+    --brand-gold: #D4AF37;
+    --brand-gold-100: #FAF1D2;
+
+    /* Backgrounds & surfaces */
+    --bg: #F8F9FA;
+    --surface: #FFFFFF;
+
+    /* Foreground / text */
+    --fg-1: #333333;
+    --fg-2: #6B7280;
+    --fg-3: #9CA3AF;
+
+    /* Semantic colors */
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --info: #2196F3;
+
+    /* Status — reservations */
+    --status-confirmed: #27AE60;
+    --status-pending: #F39C12;
+    --status-cancelled: #E74C3C;
+    --status-completed: #95A5A6;
+
+    /* Task accents */
+    --task-cleaning: #7C3AED;
+    --task-maintenance: #EA580C;
+    --task-restock: #0891B2;
+
+    /* Shadows */
+    --shadow-1: 0 1px 2px rgba(15,23,42,0.04), 0 1px 4px rgba(15,23,42,0.06);
+    --shadow-2: 0 2px 6px rgba(15,23,42,0.05), 0 4px 12px rgba(15,23,42,0.08);
+    --shadow-navy: 0 6px 18px rgba(26,54,93,0.25);
+
+    /* Border radii */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 14px;
+    --radius-2xl: 16px;
+    --radius-pill: 999px;
+
+    /* Tailwind/shadcn compat */
+    --background: 0 0% 97%;
+    --foreground: 0 0% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+    --primary: 215 57% 24%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 215 57% 24%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg-1);
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}

@@ -194,11 +194,35 @@ export function WebCalendar() {
     return list;
   }, [days]);
 
-  const selectedMonth = selectedDay.slice(0, 7);
+  const [visibleMonth, setVisibleMonth] = useState<string | null>(null);
+  const shownMonth = visibleMonth ?? selectedDay.slice(0, 7);
   const today = todayISO();
   const todayInSeason = today >= season.start && today <= season.end;
   const totalWidth = days.length * dayWidth;
   const loading = resaLoading || propLoading;
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node || typeof node.addEventListener !== 'function') return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const atEnd = node.scrollLeft + node.clientWidth >= node.scrollWidth - 2;
+      const offset = atEnd ? node.clientWidth - NAME_WIDTH - dayWidth : 3 * dayWidth;
+      const i = Math.min(days.length - 1, Math.max(0, Math.floor((node.scrollLeft + offset) / dayWidth)));
+      const month = days[i].slice(0, 7);
+      setVisibleMonth((prev) => (prev === month ? prev : month));
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    node.addEventListener('scroll', onScroll, { passive: true });
+    update();
+    return () => {
+      node.removeEventListener('scroll', onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [loading, isError, days, dayWidth, groups.length]);
 
   const gridLines = {
     backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${dayWidth - 1}px, ${CAL.brumeClair} ${dayWidth - 1}px, ${CAL.brumeClair} ${dayWidth}px)`,
@@ -281,8 +305,8 @@ export function WebCalendar() {
               }}
               style={({ hovered }: any) => [styles.month, hovered && styles.monthHover]}
             >
-              <Text style={[styles.monthText, m.key === selectedMonth && styles.monthTextOn]}>{m.label}</Text>
-              {m.key === selectedMonth && <View style={styles.monthMark} />}
+              <Text style={[styles.monthText, m.key === shownMonth && styles.monthTextOn]}>{m.label}</Text>
+              {m.key === shownMonth && <View style={styles.monthMark} />}
             </Pressable>
           ))}
         </View>

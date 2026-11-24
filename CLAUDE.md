@@ -92,9 +92,12 @@ Objectif : une version web de KAZA, utilisable sur ordinateur, qui deviendra à 
 - Variables d'environnement : copier `.env.example` en `.env` et y mettre la clé anon (Supabase → Project Settings → API).
 - Lancer en local : `npx expo start --web` (ou `npx expo export --platform web` puis servir `dist/`).
 
+- Saison : `constants/season.ts` (15 mars → 15 novembre, `SEASON_YEARS` = 2026, 2027). `getCurrentSeason()` renvoie la saison en cours ou la suivante ; le calendrier, le planning ménage et les changements de locataires s'arrêtent à la fin de saison (plus de date figée au 30/10/2026). Pour une nouvelle année, ajouter l'année dans `SEASON_YEARS`.
+- Calendrier web (direction « Fil de la journée », choisie par Charles le 24/11/2026) : `components/calendar/web/` (`WebCalendar.tsx`, `DayPanel.tsx`, `dayModel.ts`, `tokens.ts`). Affiché sur le web à partir de 900 px de large ; en dessous, le calendrier mobile. Grille logements × jours groupée par site (`group_name`), barres en demi-journée (arrivée l'après-midi, départ le matin), trait rouge = ménage entre deux séjours (seule couleur forte), colonne du jour choisi en or. Panneau de droite : ménages entre deux séjours, départs, arrivées (heure, voyageurs), linge à préparer, logements en séjour ; clic sur une réservation = sa fiche dans le panneau ; clic sur une case vide = « + Nouvelle réservation » pré-remplie (`/reservations/new?propertyId=…&checkIn=…`). Clavier : ← → jour précédent/suivant, T aujourd'hui, Échap. Police Atkinson Hyperlegible (`FONTS.readable`).
+
 Plan :
 1. ✅ Corriger les 5 erreurs TypeScript, ajouter le support web, obtenir un build web (fait le 24/11/2026 ; connexion Supabase à confirmer sur le PC de Charles).
-2. Adapter la mise en page ordinateur écran par écran (tableau de bord, calendrier, réservations, logements en priorité).
+2. Adapter la mise en page ordinateur écran par écran (tableau de bord, calendrier ✅ le 24/11/2026, réservations, logements en priorité). Reste aussi à remplacer la barre d'onglets du bas par un menu latéral sur ordinateur.
 3. Héberger le site chez un hébergeur européen.
 4. Plus tard : table `recaps` (récaps mails produits par n8n) + écran dédié, notifications push via Expo à la place de WhatsApp.
 
@@ -104,3 +107,4 @@ Plan :
 - **Mai 2026** : Nettoyage GitHub — branche unique `kaza`, CLAUDE.md pour mémoire inter-sessions, hook SessionStart
 - **Novembre 2026** : Création de la branche `web` pour la version web, état des lieux et plan dans la section « Version web ».
 - **Novembre 2026** : Étape 1 de la version web : support web, 5 erreurs TypeScript corrigées, confirmations et notifications adaptées au web, premier build web réussi.
+- **Novembre 2026** : Saison 2027 réglable (15 mars → 15 nov.) et nouveau calendrier web « Fil de la journée » ; lien « Mot de passe oublié ».

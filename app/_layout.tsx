@@ -16,6 +16,10 @@ import {
   Inter_400Regular,
   Inter_500Medium,
 } from '@expo-google-fonts/inter';
+import {
+  AtkinsonHyperlegible_400Regular,
+  AtkinsonHyperlegible_700Bold,
+} from '@expo-google-fonts/atkinson-hyperlegible';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { APP_COLORS } from '@/constants/colors';
@@ -56,6 +60,8 @@ export default function RootLayout() {
     'Montserrat-SemiBold': Montserrat_600SemiBold,
     'Inter-Regular': Inter_400Regular,
     'Inter-Medium': Inter_500Medium,
+    'Atkinson-Regular': AtkinsonHyperlegible_400Regular,
+    'Atkinson-Bold': AtkinsonHyperlegible_700Bold,
   });
 
   useEffect(() => {

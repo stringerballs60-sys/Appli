@@ -14,8 +14,10 @@ import { useReservations } from '@/hooks/useReservations';
 import { useActiveProperties } from '@/hooks/useProperties';
 import { computeCleaningPlan, groupTasksByDate, CleaningTask, CleaningPriority } from '@/services/cleaningPlanner';
 import { getCleaningPrefs } from '@/services/cleaningPrefs';
+import { getCurrentSeason } from '@/constants/season';
 
-const HORIZON = '2026-10-30';
+const SEASON = getCurrentSeason();
+const HORIZON = SEASON.end;
 
 const PRIORITY_CONFIG: Record<CleaningPriority, { label: string; color: string; bg: string }> = {
   critique:   { label: 'Critique',    color: '#DC2626', bg: '#FEF2F2' },
@@ -206,7 +208,7 @@ export default function CleaningPlannerScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Planning ménage</Text>
-          <Text style={styles.subtitle}>Jusqu'au 30 oct. 2026</Text>
+          <Text style={styles.subtitle}>Jusqu'au {format(parseISO(HORIZON), 'd MMM yyyy', { locale: fr })}</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/(app)/settings')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <MaterialCommunityIcons name="cog-outline" size={22} color="rgba(248,245,239,0.7)" />

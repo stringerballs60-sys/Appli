@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reservationsService } from '@/services/reservations';
 import { useAuthStore } from '@/stores/authStore';
+import { getCurrentSeason } from '@/constants/season';
 import { ReservationFormData, Property } from '@/types';
 
 export const RESERVATIONS_KEY = 'reservations';
@@ -82,7 +83,7 @@ export function useFutureTurnovers() {
   const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, 'futureTurnovers'],
-    queryFn: () => reservationsService.getFutureTurnovers(userId!, '2026-10-30'),
+    queryFn: () => reservationsService.getFutureTurnovers(userId!, getCurrentSeason().end),
     enabled: !!userId,
     refetchInterval: 5 * 60 * 1000,
   });

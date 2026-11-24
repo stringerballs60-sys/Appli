@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ScrollView, View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, TextInput, Button, Snackbar } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
@@ -54,6 +54,8 @@ export default function NewReservationScreen() {
   const [calendarInitialDate, setCalendarInitialDate] = useState<string | undefined>(undefined);
   const [error, setError] = useState('');
   const [overlapWarning, setOverlapWarning] = useState(false);
+  const params = useLocalSearchParams<{ propertyId?: string; checkIn?: string }>();
+  const [prefilled, setPrefilled] = useState(false);
 
   const set = (key: keyof ReservationFormData, value: any) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -72,6 +74,14 @@ export default function NewReservationScreen() {
     set('beds_sofa_used', 0);
     set('beds_crib_used', 0);
   };
+
+  useEffect(() => {
+    if (prefilled || !properties) return;
+    const p = params.propertyId ? properties.find((x) => x.id === params.propertyId) : undefined;
+    if (p) handlePropertySelect(p);
+    if (params.checkIn && /^\d{4}-\d{2}-\d{2}$/.test(params.checkIn)) set('check_in', params.checkIn);
+    setPrefilled(true);
+  }, [properties, params.propertyId, params.checkIn, prefilled]);
 
   const handleGuestChange = (key: keyof ReservationFormData, value: number) => {
     const updated = { ...form, [key]: value };

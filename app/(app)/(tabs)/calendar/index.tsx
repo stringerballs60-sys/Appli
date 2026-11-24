@@ -9,6 +9,8 @@ import {
   Modal,
   Pressable,
   LayoutChangeEvent,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +33,8 @@ import { useReservationsForMonth } from '@/hooks/useReservations';
 import { useActiveProperties } from '@/hooks/useProperties';
 import { APP_COLORS } from '@/constants/colors';
 import { Reservation, ReservationSource, Property } from '@/types';
+import { getCurrentSeason, seasonEndDate, seasonStartDate } from '@/constants/season';
+import { WebCalendar } from '@/components/calendar/web/WebCalendar';
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 const SIDEBAR_WIDTH = 76;
@@ -39,7 +43,6 @@ const MONTH_NAV_HEIGHT = 54;
 const DAY_HEADER_HEIGHT = 54;
 const MIN_ROW_HEIGHT = 44;
 const BLOCK_PADDING = 7;
-const MAX_DATE = new Date(2026, 9, 30); // 30 octobre 2026 — limite absolue
 
 // ── Platform config ───────────────────────────────────────────────────────────
 function getPlatformCfg(category?: string, source?: string): { bg: string; icon?: string; label?: string } | null {
@@ -195,19 +198,32 @@ function ReservationPreviewSheet({ resa, onClose, onViewDetail }: PreviewSheetPr
 
 // ── Calendar Screen ───────────────────────────────────────────────────────────
 export default function CalendarScreen() {
+  const { width } = useWindowDimensions();
+  if (Platform.OS === 'web' && width >= 900) return <WebCalendar />;
+  return <MobileCalendar />;
+}
+
+function MobileCalendar() {
   const router = useRouter();
+  const season = useMemo(() => getCurrentSeason(), []);
+  const MAX_DATE = useMemo(() => seasonEndDate(season), [season]);
+  const initialStart = useMemo(() => {
+    const seasonStart = startOfMonth(seasonStartDate(season));
+    const current = startOfMonth(new Date());
+    return current < seasonStart ? seasonStart : current;
+  }, [season]);
   const headerScrollRef = useRef<ScrollView>(null);
   const contentScrollRef = useRef<ScrollView>(null);
 
   // Window anchor = first month displayed
-  const [windowStart, setWindowStart] = useState(() => startOfMonth(new Date()));
+  const [windowStart, setWindowStart] = useState(initialStart);
   // Displayed month = derived from scroll, shown in header
-  const [displayedMonth, setDisplayedMonth] = useState(() => startOfMonth(new Date()));
+  const [displayedMonth, setDisplayedMonth] = useState(initialStart);
   const [selectedResa, setSelectedResa] = useState<Reservation | null>(null);
   const [gridHeight, setGridHeight] = useState(0);
 
   const startDate = windowStart;
-  const endDate = MAX_DATE; // limite fixe au 30 octobre 2026
+  const endDate = MAX_DATE;
   const TOTAL_DAYS = Math.max(1, differenceInDays(endDate, startDate) + 1);
   const days = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(startDate, i));
 
@@ -276,7 +292,7 @@ export default function CalendarScreen() {
 
   const scrollToMonth = useCallback((targetMonth: Date) => {
     const targetStart = startOfMonth(targetMonth);
-    if (targetStart > MAX_DATE) return; // bloqué au 30 octobre
+    if (targetStart > MAX_DATE) return;
 
     if (targetStart < windowStart) {
       setWindowStart(targetStart);
@@ -287,7 +303,7 @@ export default function CalendarScreen() {
     contentScrollRef.current?.scrollTo({ x: offset, animated: true });
     headerScrollRef.current?.scrollTo({ x: offset, animated: true });
     setDisplayedMonth(targetStart);
-  }, [windowStart, startDate]);
+  }, [windowStart, startDate, MAX_DATE]);
 
   const handleGridLayout = useCallback((e: LayoutChangeEvent) => {
     setGridHeight(e.nativeEvent.layout.height);

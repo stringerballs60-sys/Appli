@@ -12,31 +12,15 @@ import { getCurrentSeason } from '@/constants/season';
 import { channelOf } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { CAL, PANEL_WIDTH } from '@/components/calendar/web/tokens';
+import { CLEANING, Row, groupKey, Thumb, dayMonth } from './shared';
+import { KeyBoardView, BristolView, VillageMapView, Section } from './views';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const toISO = (d: Date) => format(d, 'yyyy-MM-dd');
-const dayMonth = (iso: string) => format(parseISO(iso), 'd MMM', { locale: fr }).replace('.', '');
 
-const CLEANING: Record<Property['cleaning_status'], { label: string; color: string; strong?: boolean }> = {
-  to_do: { label: 'Ménage à faire', color: CAL.changement, strong: true },
-  in_progress: { label: 'Ménage en cours', color: CAL.or },
-  ready: { label: 'Prêt', color: '#2F7D5B' },
-  occupied: { label: 'Occupé', color: CAL.nuit },
-};
-
-type SortKey = 'site' | 'name' | 'occupancy' | 'next';
-
-interface Row {
-  property: Property;
-  current: Reservation | null;
-  next: Reservation | null;
-  upcoming: Reservation[];
-  bookedNights: number;
-  occupancy: number;
-}
-
-function groupKey(p: Property) {
-  return p.group_name?.trim() || 'Autres logements';
-}
+type SortKey = 'name' | 'occupancy' | 'next';
+type ViewKey = 'keys' | 'bristol' | 'map';
+const VIEW_KEY = 'kaza_properties_view';
 
 export function WebProperties() {
   const router = useRouter();
@@ -53,7 +37,17 @@ export function WebProperties() {
   const [site, setSite] = useState<string | null>(null);
   const [onlyTodo, setOnlyTodo] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
-  const [sort, setSort] = useState<SortKey>('site');
+  const [sort, setSort] = useState<SortKey>('name');
+  const [view, setView] = useState<ViewKey>('keys');
+  useEffect(() => {
+    AsyncStorage.getItem(VIEW_KEY).then((v) => {
+      if (v === 'keys' || v === 'bristol' || v === 'map') setView(v);
+    }).catch(() => {});
+  }, []);
+  const chooseView = (v: ViewKey) => {
+    setView(v);
+    AsyncStorage.setItem(VIEW_KEY, v).catch(() => {});
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const rows = useMemo<Row[]>(() => {
@@ -94,23 +88,20 @@ export function WebProperties() {
     });
   }, [rows, query, site, onlyTodo, showInactive]);
 
-  const sections = useMemo(() => {
+  const sections = useMemo<Section[]>(() => {
     const byName = (a: Row, b: Row) => a.property.name.localeCompare(b.property.name, 'fr', { numeric: true });
-    if (sort === 'site') {
-      const map = new Map<string, Row[]>();
-      visible.forEach((r) => {
-        const key = r.property.is_active ? groupKey(r.property) : 'Inactifs';
-        map.set(key, [...(map.get(key) ?? []), r]);
-      });
-      return Array.from(map.entries())
-        .sort(([a], [b]) => (a === 'Inactifs' ? 1 : b === 'Inactifs' ? -1 : a.localeCompare(b, 'fr')))
-        .map(([title, list]) => ({ title, rows: list.sort(byName) }));
-    }
-    const list = [...visible];
-    if (sort === 'name') list.sort(byName);
-    if (sort === 'occupancy') list.sort((a, b) => b.occupancy - a.occupancy);
-    if (sort === 'next') list.sort((a, b) => (a.next?.check_in ?? '9999').localeCompare(b.next?.check_in ?? '9999'));
-    return [{ title: null as string | null, rows: list }];
+    const sorter =
+      sort === 'occupancy' ? (a: Row, b: Row) => b.occupancy - a.occupancy
+      : sort === 'next' ? (a: Row, b: Row) => (a.next?.check_in ?? '9999').localeCompare(b.next?.check_in ?? '9999')
+      : byName;
+    const map = new Map<string, Row[]>();
+    visible.forEach((r) => {
+      const key = r.property.is_active ? groupKey(r.property) : 'Inactifs';
+      map.set(key, [...(map.get(key) ?? []), r]);
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => (a === 'Inactifs' ? 1 : b === 'Inactifs' ? -1 : a.localeCompare(b, 'fr')))
+      .map(([title, list]) => ({ title, rows: list.sort(sorter) }));
   }, [visible, sort]);
 
   const flat = useMemo(() => sections.flatMap((s) => s.rows), [sections]);
@@ -176,7 +167,6 @@ export function WebProperties() {
         <View style={{ flex: 1 }} />
         <Text style={styles.sortLabel}>Trier :</Text>
         {([
-          ['site', 'par site'],
           ['name', 'par nom'],
           ['occupancy', 'par remplissage'],
           ['next', 'par arrivée'],
@@ -185,6 +175,18 @@ export function WebProperties() {
             <Text style={[styles.sortText, sort === k && styles.sortTextOn]}>{label}</Text>
           </Pressable>
         ))}
+        <View style={styles.sep} />
+        <View style={styles.viewSwitch}>
+          {([
+            ['keys', 'Clés'],
+            ['bristol', 'Fiches'],
+            ['map', 'Plan'],
+          ] as [ViewKey, string][]).map(([v, label]) => (
+            <Pressable key={v} onPress={() => chooseView(v)} style={({ hovered }: any) => [styles.viewItem, view === v && styles.viewItemOn, hovered && view !== v && { backgroundColor: CAL.brumeClair }]}>
+              <Text style={[styles.viewText, view === v && styles.viewTextOn]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       <View style={styles.main}>
@@ -210,36 +212,18 @@ export function WebProperties() {
               </Text>
             </View>
           ) : (
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }}>
-              <View style={styles.headRow}>
-                <Text style={[styles.headCell, { flex: 2.2, paddingLeft: 52 }]}>Logement</Text>
-                <Text style={[styles.headCell, { flex: 1.2 }]}>État</Text>
-                <Text style={[styles.headCell, { flex: 1.9 }]}>En ce moment</Text>
-                <Text style={[styles.headCell, { flex: 1.9 }]}>Prochaine arrivée</Text>
-                <Text style={[styles.headCell, { flex: 1.5 }]}>Saison {season.year}</Text>
-                <Text style={[styles.headCell, { width: 140, textAlign: 'right' }]}>Capacité</Text>
-              </View>
-              {sections.map((section) => (
-                <View key={section.title ?? 'all'}>
-                  {section.title && (
-                    <View style={styles.sectionRow}>
-                      <Text style={styles.sectionText}>{section.title}</Text>
-                      <Text style={styles.sectionCount}>{section.rows.length}</Text>
-                    </View>
-                  )}
-                  {section.rows.map((row) => (
-                    <PropertyRow
-                      key={row.property.id}
-                      row={row}
-                      selected={row.property.id === selectedId}
-                      resaLoading={resaLoading}
-                      onPress={() => setSelectedId(row.property.id)}
-                      onOpen={() => router.push(`/(app)/properties/${row.property.id}`)}
-                    />
-                  ))}
-                </View>
-              ))}
-            </ScrollView>
+            (() => {
+              const props = {
+                sections,
+                selectedId,
+                resaLoading,
+                onSelect: setSelectedId,
+                onOpen: (id: string) => router.push(`/(app)/properties/${id}`),
+              };
+              if (view === 'bristol') return <BristolView {...props} />;
+              if (view === 'map') return <VillageMapView {...props} />;
+              return <KeyBoardView {...props} />;
+            })()
           )}
         </View>
 
@@ -265,101 +249,6 @@ function Chip({ label, on, onPress, tone }: { label: string; on: boolean; onPres
       <Text style={[styles.chipText, on && styles.chipTextOn]}>{label}</Text>
     </Pressable>
   );
-}
-
-function PropertyRow({ row, selected, resaLoading, onPress, onOpen }: { row: Row; selected: boolean; resaLoading: boolean; onPress: () => void; onOpen: () => void }) {
-  const { property: p, current, next, occupancy } = row;
-  const cleaning = CLEANING[p.cleaning_status] ?? CLEANING.to_do;
-  return (
-    <Pressable
-      onPress={onPress}
-      onLongPress={onOpen}
-      {...({ onDoubleClick: onOpen } as any)}
-      style={({ hovered }: any) => [styles.row, hovered && styles.rowHover, selected && styles.rowSelected, !p.is_active && { opacity: 0.55 }]}
-    >
-      <View style={[styles.cell, { flex: 2.2, flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
-        <Thumb property={p} size={40} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
-          <Text style={styles.meta} numberOfLines={1}>
-            {PROPERTY_TYPE_SHORT_LABELS[p.property_type]}
-            {p.ical_url ? ' · synchro Airbnb' : ''}
-            {p.notes ? ' · ' : ''}
-            {p.notes ? <Text style={styles.metaNote}>{p.notes.split('\n')[0]}</Text> : null}
-          </Text>
-        </View>
-      </View>
-
-      <View style={[styles.cell, { flex: 1.2, flexDirection: 'row', alignItems: 'center', gap: 7 }]}>
-        <View style={[styles.dot, { backgroundColor: cleaning.color }]} />
-        <Text style={[styles.value, cleaning.strong && { color: CAL.changement, fontFamily: CAL.fontBold }]}>{cleaning.label}</Text>
-      </View>
-
-      <View style={[styles.cell, { flex: 1.9 }]}>
-        {resaLoading ? <Text style={styles.muted}>…</Text> : current ? (
-          <View style={styles.inline}>
-            <ChannelBadge channel={channelOf(current)} size={16} />
-            <Text style={styles.value} numberOfLines={1}>
-              {current.guest_name} <Text style={styles.muted}>jusqu'au {dayMonth(current.check_out)}</Text>
-            </Text>
-          </View>
-        ) : (
-          <Text style={styles.muted}>Libre</Text>
-        )}
-      </View>
-
-      <View style={[styles.cell, { flex: 1.9 }]}>
-        {resaLoading ? <Text style={styles.muted}>…</Text> : next ? (
-          <View style={styles.inline}>
-            <ChannelBadge channel={channelOf(next)} size={16} />
-            <Text style={styles.value} numberOfLines={1}>
-              {dayMonth(next.check_in)} <Text style={styles.muted}>· {next.guest_name}</Text>
-            </Text>
-          </View>
-        ) : (
-          <Text style={styles.muted}>Aucune prévue</Text>
-        )}
-      </View>
-
-      <View style={[styles.cell, { flex: 1.5, flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
-        <View style={styles.meter}>
-          <View style={[styles.meterFill, { width: `${Math.round(occupancy * 100)}%`, backgroundColor: p.color }]} />
-        </View>
-        <Text style={styles.percent}>{resaLoading ? '…' : `${Math.round(occupancy * 100)} %`}</Text>
-      </View>
-
-      <View style={[styles.cell, { width: 140, alignItems: 'flex-end', paddingRight: 0 }]}>
-        <Text style={styles.value}>{p.max_guests} pers.</Text>
-        <Text style={styles.meta}>{bedsShort(p)}</Text>
-      </View>
-    </Pressable>
-  );
-}
-
-function initials(name: string) {
-  const words = name.replace(/[^\p{L}\p{N} ]/gu, ' ').split(' ').filter(Boolean);
-  return (words.length > 1 ? words[0][0] + words[1][0] : name.slice(0, 2)).toUpperCase();
-}
-
-function Thumb({ property, size }: { property: Property; size: number }) {
-  const photo = (property as Property & { photo_url?: string | null }).photo_url;
-  if (photo) {
-    return <Image source={{ uri: photo }} style={{ width: size, height: size, borderRadius: 6, backgroundColor: CAL.brumeClair }} />;
-  }
-  return (
-    <View style={{ width: size, height: size, borderRadius: 6, backgroundColor: `${property.color}40`, borderWidth: 1, borderColor: `${property.color}90`, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontFamily: CAL.fontBold, fontSize: size * 0.32, color: CAL.texte }}>{initials(property.name)}</Text>
-    </View>
-  );
-}
-
-function bedsShort(p: Property) {
-  const parts = [
-    p.nb_double_beds > 0 && `${p.nb_double_beds} dbl`,
-    p.nb_single_beds > 0 && `${p.nb_single_beds} smp`,
-    p.nb_sofa_beds > 0 && `${p.nb_sofa_beds} can.`,
-  ].filter(Boolean);
-  return parts.length ? parts.join(' · ') : 'lits ?';
 }
 
 function DetailPanel({
@@ -482,6 +371,11 @@ const styles = StyleSheet.create({
   sortLabel: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux },
   sortItem: { paddingVertical: 4, paddingHorizontal: 6, borderRadius: 4 },
   sortText: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux },
+  viewSwitch: { flexDirection: 'row', backgroundColor: CAL.brumeClair, borderRadius: 6, padding: 2 },
+  viewItem: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 4 },
+  viewItemOn: { backgroundColor: CAL.blanc, borderWidth: 1, borderColor: CAL.brume },
+  viewText: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux },
+  viewTextOn: { fontFamily: CAL.fontBold, color: CAL.texte },
   sortTextOn: { fontFamily: CAL.fontBold, color: CAL.texte, textDecorationLine: 'underline', textDecorationColor: CAL.or },
   main: { flex: 1, flexDirection: 'row', minHeight: 0 },
   headRow: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: CAL.brume, backgroundColor: CAL.blanc },

@@ -62,6 +62,7 @@ export interface Property {
   color: string;
   cleaning_status: 'ready' | 'to_do' | 'in_progress' | 'occupied';
   cleaning_status_date: string | null;
+  photo_url?: string | null;
   ical_url: string | null;
   group_name: string | null;
   created_at: string;

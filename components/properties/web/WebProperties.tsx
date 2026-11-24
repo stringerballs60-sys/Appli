@@ -14,6 +14,7 @@ import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { CAL, PANEL_WIDTH } from '@/components/calendar/web/tokens';
 import { CLEANING, Row, groupKey, Thumb, dayMonth } from './shared';
 import { KeyBoardView, BristolView, VillageMapView, Section } from './views';
+import { PropertyPhotoEditor } from '@/components/properties/PropertyPhotoEditor';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const toISO = (d: Date) => format(d, 'yyyy-MM-dd');
@@ -278,13 +279,9 @@ function DetailPanel({
   return (
     <View style={styles.panel}>
       <ScrollView contentContainerStyle={styles.panelBody}>
-        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-          <Thumb property={p} size={56} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.panelTitle}>{p.name}</Text>
-            <Text style={styles.panelSub}>{groupKey(p)} · {PROPERTY_TYPE_LABELS[p.property_type]}</Text>
-          </View>
-        </View>
+        <Text style={styles.panelTitle}>{p.name}</Text>
+        <Text style={[styles.panelSub, { marginBottom: 14 }]}>{groupKey(p)} · {PROPERTY_TYPE_LABELS[p.property_type]}</Text>
+        <PropertyPhotoEditor key={p.id} property={p} size={88} />
 
         <View style={styles.stateBox}>
           <View style={[styles.dot, { backgroundColor: cleaning.color }]} />

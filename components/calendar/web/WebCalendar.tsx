@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { addDays, differenceInDays, format, getDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -431,6 +431,7 @@ export function WebCalendar() {
                         <View key={p.id} style={styles.propRow}>
                           <View style={[styles.propName, sticky({ left: 0, zIndex: 2 })]}>
                             <View style={[styles.propTab, { backgroundColor: p.color }]} />
+                            {p.photo_url ? <Image source={{ uri: p.photo_url }} style={styles.propPhoto} /> : null}
                             <Text style={styles.propText} numberOfLines={1}>{p.name}</Text>
                           </View>
                           <Pressable
@@ -546,6 +547,7 @@ const styles = StyleSheet.create({
   propRow: { flexDirection: 'row', height: ROW_HEIGHT, borderBottomWidth: 1, borderBottomColor: CAL.brume },
   propName: { width: NAME_WIDTH, height: ROW_HEIGHT - 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 10, paddingRight: 8, backgroundColor: CAL.blanc, borderRightWidth: 1, borderRightColor: CAL.brume },
   propTab: { width: 4, height: 24, borderRadius: 2 },
+  propPhoto: { width: 28, height: 28, borderRadius: 5, marginLeft: -4, backgroundColor: CAL.brumeClair },
   propText: { fontFamily: CAL.fontBold, fontSize: 14, color: CAL.texte, flex: 1 },
   track: { height: ROW_HEIGHT - 1, position: 'relative', cursor: 'pointer' as any },
   bar: { position: 'absolute', top: 7, height: ROW_HEIGHT - 15, borderLeftWidth: 3, borderRadius: 3, flexDirection: 'row', alignItems: 'center', gap: 5, paddingLeft: 4, paddingRight: 4, overflow: 'hidden', zIndex: 2 },

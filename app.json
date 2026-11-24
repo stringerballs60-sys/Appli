@@ -41,6 +41,13 @@
           "color": "#1a56db",
           "sounds": []
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "KAZA a besoin d'accéder à tes photos pour ajouter la photo d'un logement.",
+          "cameraPermission": false
+        }
       ]
     ],
     "experiments": {

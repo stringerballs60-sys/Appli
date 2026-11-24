@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useProperty, useUpdateProperty, useTogglePropertyActive, useSyncIcal } from '@/hooks/useProperties';
+import { PropertyPhotoEditor } from '@/components/properties/PropertyPhotoEditor';
 import { useReservations } from '@/hooks/useReservations';
 import { PropertyBadge } from '@/components/ui/PropertyBadge';
 import { ReservationCard } from '@/components/reservation/ReservationCard';
@@ -151,6 +152,10 @@ export default function PropertyDetailScreen() {
                   <Text style={styles.inactiveBadgeText}>Inactif</Text>
                 </View>
               )}
+            </View>
+
+            <View style={[styles.infoCard, SHADOWS.sm]}>
+              <PropertyPhotoEditor property={property} size={96} />
             </View>
 
             <View style={[styles.infoCard, SHADOWS.sm]}>

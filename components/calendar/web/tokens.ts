@@ -15,7 +15,7 @@ export const CAL = {
   fontBold: FONTS.readableBold,
 };
 
-export const NAME_WIDTH = 168;
+export const NAME_WIDTH = 196;
 export const PANEL_WIDTH = 360;
 export const ROW_HEIGHT = 44;
 export const GROUP_HEIGHT = 28;

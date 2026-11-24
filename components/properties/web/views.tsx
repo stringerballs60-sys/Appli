@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Image } from 'react-native';
 import { channelOf } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { CAL } from '@/components/calendar/web/tokens';
@@ -70,10 +70,16 @@ export function KeyBoardView({ sections, selectedId, resaLoading, onSelect, onOp
                     ) : (
                       <View style={k.keyWrap}>
                         <View style={k.string} />
-                        <View style={[k.tag, { backgroundColor: p.color }]}>
-                          <View style={k.tagHole} />
-                          <Text style={k.tagText}>{initials(p.name)}</Text>
-                        </View>
+                        {p.photo_url ? (
+                          <View style={[k.tagPhotoWrap, { borderColor: p.color }]}>
+                            <Image source={{ uri: p.photo_url }} style={k.tagPhoto} />
+                          </View>
+                        ) : (
+                          <View style={[k.tag, { backgroundColor: p.color }]}>
+                            <View style={k.tagHole} />
+                            <Text style={k.tagText}>{initials(p.name)}</Text>
+                          </View>
+                        )}
                       </View>
                     )}
                   </View>
@@ -117,6 +123,8 @@ const k = StyleSheet.create({
   string: { width: 1.5, height: 10, backgroundColor: KEY.sauge },
   tag: { width: 46, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 5 },
   tagHole: { position: 'absolute', top: 5, width: 7, height: 7, borderRadius: 4, backgroundColor: KEY.tuile },
+  tagPhotoWrap: { width: 52, height: 52, borderRadius: 26, borderWidth: 3, overflow: 'hidden', backgroundColor: KEY.planche },
+  tagPhoto: { width: '100%', height: '100%' },
   tagText: { fontFamily: CAL.fontBold, fontSize: 13, color: CAL.texte },
   away: { alignItems: 'center', marginTop: 10, paddingHorizontal: 4 },
   awayText: { fontFamily: CAL.fontBold, fontSize: 12, color: '#5C6B61' },

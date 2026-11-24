@@ -21,6 +21,27 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [secureText, setSecureText] = useState(true);
   const [rememberMe, setRememberMe] = useState(true);
+  const [info, setInfo] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const handleForgot = async () => {
+    setInfo('');
+    if (!email.trim()) {
+      setError('Saisis ton email, puis clique sur « Mot de passe oublié ? »');
+      return;
+    }
+    setSending(true);
+    setError('');
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setSending(false);
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+    setInfo('Si un compte existe pour cet email, un lien pour choisir un nouveau mot de passe vient d\'être envoyé.');
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -96,6 +117,13 @@ export default function LoginScreen() {
               }
             />
             {error ? <HelperText type="error">{error}</HelperText> : null}
+            {info ? <HelperText type="info" style={styles.info}>{info}</HelperText> : null}
+
+            {Platform.OS === 'web' && (
+              <TouchableOpacity onPress={handleForgot} disabled={sending} style={styles.forgotWrap}>
+                <Text style={styles.forgotLink}>{sending ? 'Envoi en cours…' : 'Mot de passe oublié ?'}</Text>
+              </TouchableOpacity>
+            )}
 
             <View style={styles.rememberRow}>
               <Text style={styles.rememberLabel}>{t('auth.rememberMe')}</Text>
@@ -187,6 +215,9 @@ const styles = StyleSheet.create({
     color: APP_COLORS.textPrimary,
   },
   button: { borderRadius: RADII.sm, marginTop: 4 },
+  info: { color: APP_COLORS.success },
+  forgotWrap: { alignSelf: 'flex-end', marginBottom: 4 },
+  forgotLink: { fontSize: 13, fontFamily: FONTS.bodyMedium, color: APP_COLORS.primary },
   buttonContent: { paddingVertical: 6 },
   registerRow: {
     flexDirection: 'row',

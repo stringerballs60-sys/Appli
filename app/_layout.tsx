@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import '@/i18n';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PaperProvider, MD3LightTheme, configureFonts } from 'react-native-paper';
@@ -62,7 +63,8 @@ export default function RootLayout() {
 
     const init = async () => {
       const rememberMe = await AsyncStorage.getItem(REMEMBER_ME_KEY);
-      if (rememberMe === 'false') {
+      const onResetPage = Platform.OS === 'web' && window.location.pathname.startsWith('/reset-password');
+      if (rememberMe === 'false' && !onResetPage) {
         await AsyncStorage.removeItem(REMEMBER_ME_KEY);
         try { await supabase.auth.signOut(); } catch (_) {}
         setSession(null);

@@ -12,6 +12,7 @@ export function useReservations(filters?: {
   to?: string;
   status?: string;
   category?: string;
+  channel?: string;
 }) {
   const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({

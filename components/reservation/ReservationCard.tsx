@@ -5,6 +5,8 @@ import { Reservation } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDate, getNightsLabel } from '@/utils/dateHelpers';
 import { APP_COLORS } from '@/constants/colors';
+import { ChannelBadge } from '@/components/ui/ChannelBadge';
+import { channelOf } from '@/constants/channels';
 
 interface ReservationCardProps {
   reservation: Reservation;
@@ -27,9 +29,12 @@ export function ReservationCard({ reservation, onPress }: ReservationCardProps) 
         )}
         <View style={styles.content}>
           <View style={styles.row}>
-            <Text style={styles.guestName} numberOfLines={1}>
-              {reservation.guest_name}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
+              <ChannelBadge channel={channelOf(reservation)} size={18} />
+              <Text style={[styles.guestName, { flexShrink: 1 }]} numberOfLines={1}>
+                {reservation.guest_name}
+              </Text>
+            </View>
             <StatusBadge status={reservation.status} />
           </View>
           {property && (

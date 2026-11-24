@@ -1,5 +1,6 @@
 import { LinenCalculation, Property, Reservation } from '@/types';
 import { calculateLinen } from '@/utils/linenCalculator';
+import { CHANNEL_LABELS, channelOf } from '@/constants/channels';
 
 export interface Turnover {
   property: Property;
@@ -77,9 +78,5 @@ export function buildDayModel(
 }
 
 export function sourceLabel(resa: Reservation): string {
-  if (resa.category?.startsWith('AIRBNB') || resa.source === 'airbnb') return 'Airbnb';
-  if (resa.source === 'booking') return 'Booking';
-  if (resa.source === 'abritel') return 'Abritel';
-  if (resa.category === 'EXTERNAL_CLEANING') return 'Ménage seul';
-  return 'Direct';
+  return CHANNEL_LABELS[channelOf(resa)];
 }

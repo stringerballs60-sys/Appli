@@ -19,10 +19,13 @@ import { FONTS } from '@/constants/typography';
 import { suggestBedAllocation, calculateLinen } from '@/utils/linenCalculator';
 import { toISODateString, calcNights } from '@/utils/dateHelpers';
 import { reservationsService } from '@/services/reservations';
+import { CHANNELS, CHANNEL_LABELS, categoryForChannel } from '@/constants/channels';
+import { ChannelBadge } from '@/components/ui/ChannelBadge';
 
 const emptyForm = (): ReservationFormData => ({
   property_id: '',
-  category: ReservationCategory.AIRBNB_SCI,
+  category: ReservationCategory.AIRBNB_COHOST,
+  source: 'airbnb',
   status: ReservationStatus.CONFIRMED,
   guest_name: '',
   guest_email: '',
@@ -68,7 +71,7 @@ export default function NewReservationScreen() {
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
     set('property_id', property.id);
-    set('category', PROPERTY_TYPE_DEFAULT_CATEGORY[property.property_type]);
+    setForm((prev) => ({ ...prev, category: categoryForChannel(prev.source ?? 'manual', property.property_type) }));
     set('beds_double_used', 0);
     set('beds_single_used', 0);
     set('beds_sofa_used', 0);
@@ -82,6 +85,10 @@ export default function NewReservationScreen() {
     if (params.checkIn && /^\d{4}-\d{2}-\d{2}$/.test(params.checkIn)) set('check_in', params.checkIn);
     setPrefilled(true);
   }, [properties, params.propertyId, params.checkIn, prefilled]);
+
+  const selectChannel = (ch: NonNullable<ReservationFormData['source']>) => {
+    setForm((prev) => ({ ...prev, source: ch, category: categoryForChannel(ch, selectedProperty?.property_type) }));
+  };
 
   const handleGuestChange = (key: keyof ReservationFormData, value: number) => {
     const updated = { ...form, [key]: value };
@@ -166,14 +173,18 @@ export default function NewReservationScreen() {
 
         <View style={styles.sectionLabel}>
           <View style={styles.sectionAccent} />
-          <Text style={styles.sectionLabelText}>{t('reservations.category').toUpperCase()}</Text>
+          <Text style={styles.sectionLabelText}>PROVENANCE</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {Object.values(ReservationCategory).map((cat) => (
-            <TouchableOpacity key={cat} style={[styles.chip, form.category === cat && styles.chipActive]} onPress={() => set('category', cat)}>
-              <Text style={[styles.chipText, form.category === cat && styles.chipTextActive]}>{RESERVATION_CATEGORY_LABELS[cat]}</Text>
-            </TouchableOpacity>
-          ))}
+          {CHANNELS.map((ch) => {
+            const on = (form.source ?? 'manual') === ch;
+            return (
+              <TouchableOpacity key={ch} style={[styles.chip, on && styles.chipActive, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={() => selectChannel(ch)}>
+                <ChannelBadge channel={ch} size={18} ring={on} />
+                <Text style={[styles.chipText, on && styles.chipTextActive]}>{CHANNEL_LABELS[ch]}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         <View style={styles.sectionLabel}>

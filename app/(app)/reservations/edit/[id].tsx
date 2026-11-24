@@ -18,6 +18,8 @@ import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
 import { suggestBedAllocation, calculateLinen } from '@/utils/linenCalculator';
 import { toISODateString, calcNights } from '@/utils/dateHelpers';
+import { CHANNELS, CHANNEL_LABELS, categoryForChannel, channelOf } from '@/constants/channels';
+import { ChannelBadge } from '@/components/ui/ChannelBadge';
 
 export default function EditReservationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,6 +47,7 @@ export default function EditReservationScreen() {
     setForm({
       property_id: reservation.property_id,
       category: reservation.category,
+      source: channelOf(reservation),
       status: reservation.status,
       guest_name: reservation.guest_name,
       guest_email: reservation.guest_email ?? '',
@@ -71,7 +74,11 @@ export default function EditReservationScreen() {
 
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
-    set('property_id', property.id);
+    setForm((prev) => prev ? { ...prev, property_id: property.id, category: categoryForChannel(prev.source ?? 'manual', property.property_type) } : prev);
+  };
+
+  const selectChannel = (ch: NonNullable<ReservationFormData['source']>) => {
+    setForm((prev) => prev ? { ...prev, source: ch, category: categoryForChannel(ch, selectedProperty?.property_type) } : prev);
   };
 
   const handleGuestChange = (key: keyof ReservationFormData, value: number) => {
@@ -159,14 +166,18 @@ export default function EditReservationScreen() {
 
         <View style={styles.sectionLabel}>
           <View style={styles.sectionAccent} />
-          <Text style={styles.sectionLabelText}>{t('reservations.category').toUpperCase()}</Text>
+          <Text style={styles.sectionLabelText}>PROVENANCE</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {Object.values(ReservationCategory).map((cat) => (
-            <TouchableOpacity key={cat} style={[styles.chip, form.category === cat && styles.chipActive]} onPress={() => set('category', cat)}>
-              <Text style={[styles.chipText, form.category === cat && styles.chipTextActive]}>{RESERVATION_CATEGORY_LABELS[cat]}</Text>
-            </TouchableOpacity>
-          ))}
+          {CHANNELS.map((ch) => {
+            const on = (form.source ?? 'manual') === ch;
+            return (
+              <TouchableOpacity key={ch} style={[styles.chip, on && styles.chipActive, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={() => selectChannel(ch)}>
+                <ChannelBadge channel={ch} size={18} ring={on} />
+                <Text style={[styles.chipText, on && styles.chipTextActive]}>{CHANNEL_LABELS[ch]}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         <View style={styles.sectionLabel}>

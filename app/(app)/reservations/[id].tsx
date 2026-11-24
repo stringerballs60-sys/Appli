@@ -11,7 +11,9 @@ import { LinenPreviewCard } from '@/components/reservation/LinenPreviewCard';
 import { APP_COLORS, RESERVATION_STATUS_COLORS } from '@/constants/colors';
 import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
-import { RESERVATION_CATEGORY_LABELS, RESERVATION_STATUS_LABELS } from '@/constants/labels';
+import { RESERVATION_STATUS_LABELS } from '@/constants/labels';
+import { channelOf } from '@/constants/channels';
+import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { formatDate, getNightsLabel } from '@/utils/dateHelpers';
 import { ReservationStatus } from '@/types';
 import { calculateLinen } from '@/utils/linenCalculator';
@@ -103,7 +105,7 @@ export default function ReservationDetailScreen() {
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
               <Text style={[styles.statusText, { color: statusColor }]}>{RESERVATION_STATUS_LABELS[reservation.status]}</Text>
             </View>
-            <Text style={styles.category}>{RESERVATION_CATEGORY_LABELS[reservation.category]}</Text>
+            <ChannelBadge channel={channelOf(reservation)} size={18} withLabel />
             <Text style={styles.guestCount}>{totalGuests} pers.</Text>
           </View>
           <View style={styles.datesRow}>

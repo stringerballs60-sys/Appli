@@ -188,6 +188,7 @@ export type ReservationFormData = {
   beds_sofa_used: number;
   beds_crib_used: number;
   notes: string;
+  source?: ReservationSource;
 };
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────────────────────

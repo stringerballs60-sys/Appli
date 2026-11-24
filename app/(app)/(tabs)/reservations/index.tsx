@@ -14,8 +14,10 @@ import { APP_COLORS } from '@/constants/colors';
 import { RESERVATION_STATUS_COLORS } from '@/constants/colors';
 import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
-import { ReservationStatus, ReservationCategory } from '@/types';
-import { RESERVATION_STATUS_LABELS, RESERVATION_CATEGORY_LABELS } from '@/constants/labels';
+import { ReservationStatus, ReservationSource } from '@/types';
+import { ChannelBadge } from '@/components/ui/ChannelBadge';
+import { RESERVATION_STATUS_LABELS } from '@/constants/labels';
+import { CHANNELS, CHANNEL_LABELS } from '@/constants/channels';
 
 const STATUS_FILTERS: (ReservationStatus | null)[] = [
   null,
@@ -25,28 +27,20 @@ const STATUS_FILTERS: (ReservationStatus | null)[] = [
   ReservationStatus.CANCELLED,
 ];
 
-const CATEGORY_FILTERS: (ReservationCategory | null)[] = [
-  null,
-  ReservationCategory.AIRBNB_SCI,
-  ReservationCategory.AIRBNB_COHOST,
-  ReservationCategory.AIRBNB_HOST_ACCOUNT,
-  ReservationCategory.DIRECT_OWN,
-  ReservationCategory.DIRECT_FROM_AIRBNB,
-  ReservationCategory.EXTERNAL_CLEANING,
-];
+const CHANNEL_FILTERS: (ReservationSource | null)[] = [null, ...CHANNELS];
 
 export default function ReservationsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<ReservationStatus | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<ReservationCategory | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<ReservationSource | null>(null);
 
   const { data: properties } = useActiveProperties();
   const { data: reservations, isLoading } = useReservations({
     propertyId: selectedPropertyId ?? undefined,
     status: selectedStatus ?? undefined,
-    category: selectedCategory ?? undefined,
+    channel: selectedChannel ?? undefined,
   });
 
   return (
@@ -111,18 +105,18 @@ export default function ReservationsScreen() {
         })}
       </ScrollView>
 
-      {/* Category filter */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
-        {CATEGORY_FILTERS.map((cat) => {
-          const isSelected = selectedCategory === cat;
+        {CHANNEL_FILTERS.map((ch) => {
+          const isSelected = selectedChannel === ch;
           return (
             <TouchableOpacity
-              key={cat ?? 'all'}
-              style={[styles.chip, isSelected && styles.chipActive]}
-              onPress={() => setSelectedCategory(cat)}
+              key={ch ?? 'all'}
+              style={[styles.chip, isSelected && styles.chipActive, ch ? { flexDirection: 'row', alignItems: 'center', gap: 6 } : null]}
+              onPress={() => setSelectedChannel(ch)}
             >
+              {ch ? <ChannelBadge channel={ch} size={16} ring={isSelected} /> : null}
               <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                {cat ? RESERVATION_CATEGORY_LABELS[cat] : 'Tous types'}
+                {ch ? CHANNEL_LABELS[ch] : 'Toutes provenances'}
               </Text>
             </TouchableOpacity>
           );

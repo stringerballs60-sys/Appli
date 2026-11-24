@@ -28,13 +28,14 @@ import {
   subMonths,
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { useReservationsForMonth } from '@/hooks/useReservations';
 import { useActiveProperties } from '@/hooks/useProperties';
 import { APP_COLORS } from '@/constants/colors';
 import { Reservation, ReservationSource, Property } from '@/types';
 import { getCurrentSeason, seasonEndDate, seasonStartDate } from '@/constants/season';
 import { WebCalendar } from '@/components/calendar/web/WebCalendar';
+import { ChannelBadge } from '@/components/ui/ChannelBadge';
+import { channelOf } from '@/constants/channels';
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 const SIDEBAR_WIDTH = 76;
@@ -44,38 +45,10 @@ const DAY_HEADER_HEIGHT = 54;
 const MIN_ROW_HEIGHT = 44;
 const BLOCK_PADDING = 7;
 
-// ── Platform config ───────────────────────────────────────────────────────────
-function getPlatformCfg(category?: string, source?: string): { bg: string; icon?: string; label?: string } | null {
-  // Category takes priority — covers manual entries with Airbnb category
-  if (category?.startsWith('AIRBNB')) return { bg: '#FF5A5F', icon: 'airbnb' };
-  if (category === 'BOOKING') return { bg: '#003580', label: 'B' };
-  if (category === 'ABRITEL') return { bg: '#FF6600', label: 'V' };
-  // Fallback to source for uncategorised entries
-  if (source === 'airbnb') return { bg: '#FF5A5F', icon: 'airbnb' };
-  if (source === 'booking') return { bg: '#003580', label: 'B' };
-  if (source === 'abritel') return { bg: '#FF6600', label: 'V' };
-  return null;
-}
-
-function SourceBadge({ category, source, size = 15, style }: { category?: string; source?: string; size?: number; style?: any }) {
-  const cfg = getPlatformCfg(category, source);
-  if (!cfg) return null;
+function SourceBadge({ category, source, size = 15, style }: { category?: string; source?: ReservationSource; size?: number; style?: any }) {
   return (
-    <View style={[{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: cfg.bg,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1.5,
-      borderColor: 'rgba(255,255,255,0.55)',
-    }, style]}>
-      {cfg.icon ? (
-        <FontAwesome5 name={cfg.icon} size={size * 0.6} color="#FFFFFF" brand />
-      ) : (
-        <Text style={{ fontSize: size * 0.5, fontWeight: '900', color: '#FFFFFF' }}>{cfg.label}</Text>
-      )}
+    <View style={style}>
+      <ChannelBadge channel={channelOf({ category, source })} size={size} ring />
     </View>
   );
 }

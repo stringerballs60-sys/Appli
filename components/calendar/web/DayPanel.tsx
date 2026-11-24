@@ -4,7 +4,9 @@ import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Property, Reservation } from '@/types';
 import { CAL, PANEL_WIDTH } from './tokens';
-import { DayModel, guestCount, linenFor, sourceLabel } from './dayModel';
+import { DayModel, guestCount, linenFor } from './dayModel';
+import { ChannelBadge } from '@/components/ui/ChannelBadge';
+import { channelOf } from '@/constants/channels';
 
 interface DayPanelProps {
   model: DayModel;
@@ -55,6 +57,7 @@ function ResaLine({
   return (
     <Pressable onPress={onPress} style={({ hovered }: any) => [styles.line, hovered && styles.lineHover]}>
       <View style={[styles.tab, { backgroundColor: property?.color ?? CAL.brume }]} />
+      <ChannelBadge channel={channelOf(resa)} size={18} />
       <View style={{ flex: 1 }}>
         <Text style={styles.lineTitle} numberOfLines={1}>
           {property?.name ?? 'Logement'} · {resa.guest_name}
@@ -151,7 +154,10 @@ function ResaDetail({
 
       <View style={styles.facts}>
         <Fact label="Voyageurs" value={guests || '—'} />
-        <Fact label="Provenance" value={sourceLabel(resa)} />
+        <View style={styles.fact}>
+          <Text style={styles.factLabel}>Provenance</Text>
+          <ChannelBadge channel={channelOf(resa)} size={18} withLabel labelColor={CAL.texte} />
+        </View>
         <Fact label="Statut" value={resa.status === 'pending' ? 'En attente' : resa.status === 'completed' ? 'Terminée' : 'Confirmée'} />
         {resa.guest_phone ? <Fact label="Téléphone" value={resa.guest_phone} /> : null}
         {resa.notes ? <Fact label="Notes" value={resa.notes} /> : null}

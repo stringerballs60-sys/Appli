@@ -10,6 +10,8 @@ import { getCurrentSeason, getSeason, SEASON_YEARS } from '@/constants/season';
 import { CAL, NAME_WIDTH, ROW_HEIGHT, GROUP_HEIGHT, HEADER_HEIGHT, ZOOM_LEVELS } from './tokens';
 import { buildDayModel } from './dayModel';
 import { DayPanel } from './DayPanel';
+import { ChannelBadge } from '@/components/ui/ChannelBadge';
+import { channelOf } from '@/constants/channels';
 
 const sticky = (extra: object) => ({ position: 'sticky', ...extra }) as any;
 
@@ -241,7 +243,7 @@ export function WebCalendar() {
       const isSelected = selectedResa?.id === r.id;
       const isPast = r.check_out < today;
       const turnoverAfter = arrivalDates.has(r.check_out);
-      const showText = width > 54;
+      const showText = width > 64;
       return (
         <Pressable
           key={r.id}
@@ -265,6 +267,7 @@ export function WebCalendar() {
             isSelected && styles.barSelected,
           ]}
         >
+          {width > 22 && <ChannelBadge channel={channelOf(r)} size={14} />}
           {showText && (
             <Text style={styles.barText} numberOfLines={1}>
               {r.guest_name}
@@ -541,10 +544,10 @@ const styles = StyleSheet.create({
   propTab: { width: 4, height: 24, borderRadius: 2 },
   propText: { fontFamily: CAL.fontBold, fontSize: 14, color: CAL.texte, flex: 1 },
   track: { height: ROW_HEIGHT - 1, position: 'relative', cursor: 'pointer' as any },
-  bar: { position: 'absolute', top: 7, height: ROW_HEIGHT - 15, borderLeftWidth: 3, borderRadius: 3, justifyContent: 'center', paddingLeft: 6, paddingRight: 4, overflow: 'hidden', zIndex: 2 },
+  bar: { position: 'absolute', top: 7, height: ROW_HEIGHT - 15, borderLeftWidth: 3, borderRadius: 3, flexDirection: 'row', alignItems: 'center', gap: 5, paddingLeft: 4, paddingRight: 4, overflow: 'hidden', zIndex: 2 },
   barPending: { borderStyle: 'dashed', borderWidth: 1, borderColor: CAL.texteDoux },
   barSelected: { outlineWidth: 2, outlineStyle: 'solid', outlineColor: CAL.or, outlineOffset: 1 } as any,
-  barText: { fontFamily: CAL.fontBold, fontSize: 12, color: CAL.texte },
+  barText: { fontFamily: CAL.fontBold, fontSize: 12, color: CAL.texte, flexShrink: 1 },
   barNights: { fontFamily: CAL.font, fontSize: 11, color: CAL.texteDoux },
   turnoverMark: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 3, backgroundColor: CAL.changement },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },

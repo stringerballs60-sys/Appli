@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';

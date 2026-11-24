@@ -4,12 +4,12 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   TextInput as RNTextInput,
   KeyboardAvoidingView,
   Platform,
   Modal,
 } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { Text, TextInput, Button, Snackbar } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -153,6 +154,7 @@ export default function SettingsScreen() {
           </Button>
         </View>
 
+        {Platform.OS !== 'web' && (<>
         <SectionLabel text="Notifications" />
         <View style={[styles.card, SHADOWS.sm]}>
           <Text style={styles.hint}>Choisissez l'heure de réception pour chaque type de notification.</Text>
@@ -172,6 +174,7 @@ export default function SettingsScreen() {
             Enregistrer les heures
           </Button>
         </View>
+        </>)}
 
         <SectionLabel text="Planning ménage" />
         <View style={[styles.card, SHADOWS.sm]}>

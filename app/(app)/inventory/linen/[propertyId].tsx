@@ -14,7 +14,7 @@ import { FONTS } from '@/constants/typography';
 import { LINEN_TYPE_LABELS } from '@/constants/labels';
 import { LinenType } from '@/types';
 
-const ALL_LINEN_TYPES = Object.values(LinenType).filter((t) => t !== LinenType.FACE_TOWELS);
+const ALL_LINEN_TYPES = Object.values(LinenType);
 
 export default function LinenInventoryScreen() {
   const { propertyId } = useLocalSearchParams<{ propertyId: string }>();

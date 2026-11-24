@@ -3,13 +3,17 @@ import { Platform } from 'react-native';
 import { Reservation } from '@/types';
 import { getNotifPrefs } from './notificationPrefs';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 async function setupAndroidChannel() {
   if (Platform.OS === 'android') {

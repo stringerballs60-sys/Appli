@@ -35,6 +35,7 @@ export default function NewPropertyScreen() {
     is_active: true,
     color: PROPERTY_COLORS[0],
     ical_url: '',
+    group_name: '',
   });
   const [error, setError] = useState('');
 
@@ -76,6 +77,7 @@ export default function NewPropertyScreen() {
         <View style={[styles.section, SHADOWS.sm]}>
           <TextInput label={t('properties.name') + ' *'} value={form.name} onChangeText={(v) => set('name', v)} mode="outlined" style={styles.input} outlineColor={APP_COLORS.border} activeOutlineColor={APP_COLORS.primary} />
           <TextInput label={t('properties.address')} value={form.address} onChangeText={(v) => set('address', v)} mode="outlined" style={styles.input} outlineColor={APP_COLORS.border} activeOutlineColor={APP_COLORS.primary} />
+          <TextInput label="Groupe / Zone (ex : Les Cortalines)" value={form.group_name} onChangeText={(v) => set('group_name', v)} mode="outlined" style={styles.input} outlineColor={APP_COLORS.border} activeOutlineColor={APP_COLORS.primary} />
         </View>
 
         <View style={styles.sectionLabel}>

@@ -67,7 +67,7 @@ export function useSyncIcal() {
         body: { property_id: propertyId },
       });
       if (error) throw error;
-      return data as { ok: boolean; results: { property_id: string; success: boolean; upserted?: number; cancelled?: number; error?: string }[] };
+      return data as { ok: boolean; results: { property_id: string; success: boolean; inserted?: number; updated?: number; cancelled?: number; error?: string }[] };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reservations'] });

@@ -11,6 +11,7 @@
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",
     "@expo-google-fonts/montserrat": "^0.2.3",
+    "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.105.1",
@@ -28,6 +29,7 @@
     "expo-updates": "~29.0.0",
     "i18next": "^26.0.8",
     "react": "19.1.0",
+    "react-dom": "19.1.0",
     "react-i18next": "^17.0.6",
     "react-native": "0.81.5",
     "react-native-calendars": "^1.1314.0",
@@ -38,6 +40,7 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-url-polyfill": "^3.0.0",
+    "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
     "zustand": "^5.0.12"
   },
@@ -45,8 +48,6 @@
     "@types/react": "~19.1.0",
     "babel-plugin-module-resolver": "^5.0.3",
     "babel-preset-expo": "~54.0.0",
-    "react-dom": "19.2.6",
-    "scheduler": "0.27.0",
     "typescript": "~5.9.2"
   },
   "overrides": {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, StyleSheet, FlatList, Alert, TouchableOpacity, Modal } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { Text, ActivityIndicator, TextInput, Button, SegmentedButtons, Snackbar } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';

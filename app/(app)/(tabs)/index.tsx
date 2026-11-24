@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
-import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Alert, Modal, Pressable } from 'react-native';
+import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { Alert } from '@/utils/alert';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';

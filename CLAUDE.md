@@ -97,9 +97,11 @@ Objectif : une version web de KAZA, utilisable sur ordinateur, qui deviendra à 
 
 - Provenance des réservations (24/11/2026) : 4 choix seulement, Direct / Airbnb / Booking / Abritel, stockés dans la colonne `source` (`manual` = Direct). `constants/channels.ts` (libellés, couleurs, `channelOf()`, `categoryForChannel()`) et `components/ui/ChannelBadge.tsx` (petit logo rond). L'ancienne colonne `category` (enum Postgres) est gardée pour l'appli mobile et la synchro iCal : elle est déduite automatiquement de la provenance et du type de logement, elle n'est plus affichée. Les anciennes résas `AIRBNB_*` saisies à la main ont été passées en `source = 'airbnb'`.
 
+- Logements web (24/11/2026) : `components/properties/web/WebProperties.tsx`, affiché à partir de 900 px (même direction que le calendrier). Tableau groupé par site : miniature (initiales sur la couleur du logement tant qu'il n'y a pas de `photo_url`), état du ménage (rouge = à faire), occupant actuel, prochaine arrivée avec logo de provenance, remplissage de la saison, capacité. Recherche, filtres site / ménage à faire / inactifs, tri, ↑ ↓ Entrée au clavier, panneau de droite (notes, couchages, prochains séjours, actions). La liste mobile utilise `FlatList` sur le web (le glisser-déposer bloquait le défilement).
+
 Plan :
 1. ✅ Corriger les 5 erreurs TypeScript, ajouter le support web, obtenir un build web (fait le 24/11/2026 ; connexion Supabase à confirmer sur le PC de Charles).
-2. Adapter la mise en page ordinateur écran par écran (tableau de bord, calendrier ✅ le 24/11/2026, réservations, logements en priorité). Reste aussi à remplacer la barre d'onglets du bas par un menu latéral sur ordinateur.
+2. Adapter la mise en page ordinateur écran par écran (tableau de bord, calendrier ✅ et logements ✅ le 24/11/2026, réservations). Reste aussi à remplacer la barre d'onglets du bas par un menu latéral sur ordinateur.
 3. Héberger le site chez un hébergeur européen.
 4. Plus tard : table `recaps` (récaps mails produits par n8n) + écran dédié, notifications push via Expo à la place de WhatsApp.
 

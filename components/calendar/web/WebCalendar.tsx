@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { addDays, differenceInDays, format, getDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useReservationsForMonth } from '@/hooks/useReservations';
@@ -42,7 +42,11 @@ export function WebCalendar() {
   const season = useMemo(() => getSeason(seasonYear), [seasonYear]);
   const [zoom, setZoom] = useState(1);
   const dayWidth = ZOOM_LEVELS[zoom];
-  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const params = useLocalSearchParams<{ site?: string }>();
+  const [groupFilter, setGroupFilter] = useState<string | null>(params.site ?? null);
+  useEffect(() => {
+    if (params.site) setGroupFilter(params.site);
+  }, [params.site]);
 
   const days = useMemo(() => {
     const start = parseISO(season.start);

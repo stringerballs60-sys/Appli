@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, FlatList, Platform, useWindowDimensions } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -17,6 +17,7 @@ import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
 import { Property, PropertyType } from '@/types';
 import { PROPERTY_TYPE_LABELS } from '@/constants/labels';
+import { WebProperties } from '@/components/properties/web/WebProperties';
 
 const ORDER_KEY = 'kaza_properties_order';
 type FilterType = 'all' | 'active' | 'inactive' | PropertyType;
@@ -104,6 +105,12 @@ function PropertyCard({
 }
 
 export default function PropertiesScreen() {
+  const { width } = useWindowDimensions();
+  if (Platform.OS === 'web' && width >= 900) return <WebProperties />;
+  return <MobileProperties />;
+}
+
+function MobileProperties() {
   const { t } = useTranslation();
   const router = useRouter();
   const { data: properties, isLoading } = useProperties();
@@ -201,14 +208,31 @@ export default function PropertiesScreen() {
         ) : filtered.length === 0 ? (
           <EmptyState icon="home-city-outline" title={t('properties.noProperties')} subtitle={t('properties.addFirst')} />
         ) : (
-          <DraggableFlatList
-            data={filtered}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            onDragEnd={handleDragEnd}
-            contentContainerStyle={{ paddingBottom: 24, paddingTop: 8 }}
-            showsVerticalScrollIndicator={false}
-          />
+          Platform.OS === 'web' ? (
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <PropertyCard
+                  property={item}
+                  onPress={() => router.push(`/(app)/properties/${item.id}`)}
+                  drag={() => {}}
+                  isActive={false}
+                />
+              )}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: 24, paddingTop: 8 }}
+            />
+          ) : (
+            <DraggableFlatList
+              data={filtered}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              onDragEnd={handleDragEnd}
+              contentContainerStyle={{ paddingBottom: 24, paddingTop: 8 }}
+              showsVerticalScrollIndicator={false}
+            />
+          )
         )}
       </SafeAreaView>
     </GestureHandlerRootView>

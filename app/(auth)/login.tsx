@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, Image, TouchableOpacity, Pressable, useWindowDimensions } from 'react-native';
+import { useState } from 'react';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Image, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { TextInput, Button, Text, HelperText, Switch } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
@@ -9,14 +9,7 @@ import { supabase } from '@/services/supabase';
 import { APP_COLORS } from '@/constants/colors';
 import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
-import { WebLogin, LoginVariant } from '@/components/auth/WebLogin';
-
-const VARIANT_KEY = 'kaza_login_variant';
-const VARIANTS: { key: LoginVariant; label: string }[] = [
-  { key: 'keybox', label: 'A · Boîte à clés' },
-  { key: 'ticket', label: 'B · Ticket' },
-  { key: 'village', label: 'C · Lama le soir' },
-];
+import { WebLogin } from '@/components/auth/WebLogin';
 
 const REMEMBER_ME_KEY = 'kaza_remember_me';
 
@@ -32,16 +25,6 @@ export default function LoginScreen() {
   const [info, setInfo] = useState('');
   const [sending, setSending] = useState(false);
   const { width } = useWindowDimensions();
-  const [variant, setVariant] = useState<LoginVariant>('keybox');
-  useEffect(() => {
-    AsyncStorage.getItem(VARIANT_KEY).then((v) => {
-      if (v === 'keybox' || v === 'ticket' || v === 'village') setVariant(v);
-    }).catch(() => {});
-  }, []);
-  const chooseVariant = (v: LoginVariant) => {
-    setVariant(v);
-    AsyncStorage.setItem(VARIANT_KEY, v).catch(() => {});
-  };
 
   const handleForgot = async () => {
     setInfo('');
@@ -85,7 +68,6 @@ export default function LoginScreen() {
     return (
       <View style={{ flex: 1 }}>
         <WebLogin
-          variant={variant}
           email={email}
           password={password}
           rememberMe={rememberMe}
@@ -100,14 +82,6 @@ export default function LoginScreen() {
           onForgot={handleForgot}
           onRegister={() => router.push('/(auth)/register')}
         />
-        <View style={styles.variantBar}>
-          <Text style={styles.variantLabel}>Version à tester :</Text>
-          {VARIANTS.map((v) => (
-            <Pressable key={v.key} onPress={() => chooseVariant(v.key)} style={[styles.variantChip, variant === v.key && styles.variantChipOn]}>
-              <Text style={[styles.variantText, variant === v.key && { color: '#FFFFFF' }]}>{v.label}</Text>
-            </Pressable>
-          ))}
-        </View>
       </View>
     );
   }
@@ -211,11 +185,6 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  variantBar: { position: 'absolute', left: 16, bottom: 16, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 8, padding: 6, boxShadow: '0 4px 14px rgba(0,0,0,0.18)' } as any,
-  variantLabel: { fontFamily: FONTS.body, fontSize: 12, color: '#5B6472', marginHorizontal: 4 },
-  variantChip: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 5 },
-  variantChipOn: { backgroundColor: '#0F2240' },
-  variantText: { fontFamily: FONTS.bodyMedium, fontSize: 12, color: '#0F2240' },
   gradient: { flex: 1 },
   container: { flex: 1 },
   inner: {

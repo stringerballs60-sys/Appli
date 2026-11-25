@@ -1,11 +1,7 @@
-import { useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Image } from 'react-native';
+import { useState } from 'react';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { FONTS } from '@/constants/typography';
-
-export type LoginVariant = 'keybox' | 'ticket' | 'village';
 
 export interface LoginFormProps {
   email: string;
@@ -125,74 +121,6 @@ function LoginForm(p: LoginFormProps & { tone: Tone; title?: string; subtitle?: 
   );
 }
 
-/* ───────── A · Boîte à clés ───────── */
-const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-function KeyboxLogin(p: LoginFormProps) {
-  const wheels = ['K', 'A', 'Z', 'A'];
-  return (
-    <View style={[s.root, { flexDirection: 'row' }]}>
-      <View style={[s.half, { backgroundColor: C.nuit, alignItems: 'center', justifyContent: 'center', gap: 34 }]}>
-        <View style={k.box}>
-          <View style={k.shackle} />
-          <View style={k.body}>
-            <View style={k.window}>
-              {wheels.map((w, i) => (
-                <View key={i} style={k.wheel}>
-                  <Text style={k.ghost}>{ABC[(ABC.indexOf(w) + 25) % 26]}</Text>
-                  <Text style={k.digit}>{w}</Text>
-                  <Text style={k.ghost}>{ABC[(ABC.indexOf(w) + 1) % 26]}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={k.lever} />
-          </View>
-        </View>
-        <View style={{ alignItems: 'center', gap: 6, maxWidth: 380 }}>
-          <Text style={k.brand}>KAZA</Text>
-          <Text style={k.tagline}>Les clés de tes logements, au même endroit.</Text>
-        </View>
-      </View>
-      <View style={[s.half, { backgroundColor: C.kraft, alignItems: 'center', justifyContent: 'center' }]}>
-        <View style={k.card}>
-          <LoginForm {...p} tone={PAPER_TONE} title="Ouvre la boîte" subtitle="Connecte-toi pour retrouver ta conciergerie." />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-/* ───────── B · Ticket d'entrée ───────── */
-function TicketLogin(p: LoginFormProps) {
-  const now = useMemo(() => new Date(), []);
-  return (
-    <View style={[s.root, { backgroundColor: C.kraft, alignItems: 'center', justifyContent: 'center', padding: 32 }]}>
-      <View style={t.ticket}>
-        <View style={t.stub}>
-          <Image source={require('@/assets/icon.png')} style={t.logo} resizeMode="contain" />
-          <View style={{ alignItems: 'center' }}>
-            <Text style={t.stubLabel}>entrée du</Text>
-            <Text style={t.day}>{format(now, 'd')}</Text>
-            <Text style={t.month}>{format(now, 'MMMM', { locale: fr }).toUpperCase()}</Text>
-            <Text style={t.year}>{format(now, 'EEEE yyyy', { locale: fr })}</Text>
-          </View>
-          <Text style={t.stubFoot}>N° {format(now, 'ddMM')}·KZ</Text>
-        </View>
-        <View style={t.perf}>
-          <View style={[t.notch, { top: -12 }]} />
-          <View style={t.dash} />
-          <View style={[t.notch, { bottom: -12 }]} />
-        </View>
-        <View style={t.body}>
-          <View style={t.stamp} pointerEvents="none">
-            <Text style={t.stampText}>KAZA</Text>
-          </View>
-          <LoginForm {...p} tone={PAPER_TONE} title="Ton ticket d’entrée" subtitle="Conciergerie · gestion des logements" />
-        </View>
-      </View>
-    </View>
-  );
-}
-
 /* ───────── C · Lama, le soir ───────── */
 const HOUSES = [
   { w: 90, h: 70, roof: 34, lit: [0, 2] }, { w: 70, h: 110, roof: 30, lit: [1, 4] }, { w: 120, h: 80, roof: 40, lit: [3] },
@@ -238,15 +166,13 @@ function VillageLogin(p: LoginFormProps) {
   );
 }
 
-export function WebLogin({ variant, ...p }: LoginFormProps & { variant: LoginVariant }) {
-  if (variant === 'ticket') return <TicketLogin {...p} />;
-  if (variant === 'village') return <VillageLogin {...p} />;
-  return <KeyboxLogin {...p} />;
+/** Connexion sur ordinateur : « Lama, le soir », choisie par Charles le 25/11/2026. */
+export function WebLogin(p: LoginFormProps) {
+  return <VillageLogin {...p} />;
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, minHeight: '100vh' as any },
-  half: { flex: 1, padding: 48 },
 });
 
 const f = StyleSheet.create({
@@ -263,37 +189,6 @@ const f = StyleSheet.create({
   info: { fontFamily: FONTS.readable, fontSize: 13, backgroundColor: '#EAF0F8', borderRadius: 5, paddingVertical: 8, paddingHorizontal: 10 },
   button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 7, height: 48, marginTop: 4 },
   buttonText: { fontFamily: FONTS.readableBold, fontSize: 15, letterSpacing: 0.3 },
-});
-
-const k = StyleSheet.create({
-  box: { alignItems: 'center' },
-  shackle: { width: 120, height: 70, borderWidth: 14, borderBottomWidth: 0, borderColor: '#8D96A6', borderTopLeftRadius: 60, borderTopRightRadius: 60, marginBottom: -4 },
-  body: { width: 300, height: 220, backgroundColor: '#2A3550', borderRadius: 22, alignItems: 'center', justifyContent: 'center', gap: 22, boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.08), 0 24px 50px rgba(0,0,0,0.35)' } as any,
-  window: { flexDirection: 'row', gap: 10, backgroundColor: '#141C2E', padding: 10, borderRadius: 10 },
-  wheel: { width: 44, height: 84, backgroundColor: '#E9E4DA', borderRadius: 6, alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 10px 12px rgba(0,0,0,0.25), inset 0 -10px 12px rgba(0,0,0,0.25)' } as any,
-  digit: { fontFamily: FONTS.readableBold, fontSize: 28, color: C.nuit, lineHeight: 32 },
-  ghost: { fontFamily: FONTS.readableBold, fontSize: 13, color: 'rgba(15,34,64,0.25)', lineHeight: 18 },
-  lever: { width: 150, height: 14, borderRadius: 7, backgroundColor: C.or },
-  brand: { fontFamily: FONTS.stubSerif, fontSize: 64, color: '#FFFFFF', letterSpacing: 6 },
-  tagline: { fontFamily: FONTS.readable, fontSize: 16, color: 'rgba(255,255,255,0.7)', textAlign: 'center' },
-  card: { width: 400, maxWidth: '100%', backgroundColor: C.papier, borderRadius: 10, borderWidth: 1, borderColor: C.trait, padding: 36, boxShadow: '0 18px 40px rgba(47,74,120,0.12)' } as any,
-});
-
-const t = StyleSheet.create({
-  ticket: { flexDirection: 'row', width: 860, maxWidth: '100%', minHeight: 470, backgroundColor: C.papier, borderRadius: 12, borderWidth: 1, borderColor: C.trait, boxShadow: '0 2px 0 rgba(47,74,120,0.10), 0 30px 60px rgba(47,74,120,0.12)' } as any,
-  stub: { width: 240, backgroundColor: C.carbone, borderTopLeftRadius: 11, borderBottomLeftRadius: 11, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 32 },
-  logo: { width: 54, height: 54, borderRadius: 12, backgroundColor: '#FFFFFF' },
-  stubLabel: { fontFamily: FONTS.readable, fontSize: 12, color: '#C9D4E8', textTransform: 'uppercase', letterSpacing: 1.5 },
-  day: { fontFamily: FONTS.stubSerif, fontSize: 120, lineHeight: 124, color: '#FFFFFF' },
-  month: { fontFamily: FONTS.readableBold, fontSize: 16, color: '#FFFFFF', letterSpacing: 3 },
-  year: { fontFamily: FONTS.readable, fontSize: 13, color: '#C9D4E8', marginTop: 4 },
-  stubFoot: { fontFamily: FONTS.readable, fontSize: 11, color: '#9FB1D2', letterSpacing: 1.5 },
-  perf: { width: 24, alignItems: 'center', position: 'relative' },
-  dash: { flex: 1, width: 0, borderLeftWidth: 2, borderStyle: 'dashed', borderColor: C.trait, marginVertical: 16 },
-  notch: { position: 'absolute', width: 24, height: 24, borderRadius: 12, backgroundColor: C.kraft, borderWidth: 1, borderColor: C.trait },
-  body: { flex: 1, paddingVertical: 44, paddingHorizontal: 56, justifyContent: 'center', position: 'relative' },
-  stamp: { position: 'absolute', top: 28, right: 32, borderWidth: 2, borderColor: C.carbone, borderRadius: 4, paddingVertical: 3, paddingHorizontal: 10, transform: [{ rotate: '-8deg' }], opacity: 0.55 },
-  stampText: { fontFamily: FONTS.readableBold, fontSize: 15, letterSpacing: 4, color: C.carbone },
 });
 
 const v = StyleSheet.create({

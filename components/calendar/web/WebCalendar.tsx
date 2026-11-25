@@ -13,6 +13,9 @@ import { DayPanel } from './DayPanel';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { channelOf } from '@/constants/channels';
 import { isStay, blockReasonLabel } from '@/constants/blocks';
+import { useCalendarMarks } from '@/hooks/useCalendarMarks';
+import { marksInRange, markColor, MarkOccurrence } from '@/constants/calendarMarks';
+import { MarksEditor } from './MarksEditor';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const sticky = (extra: object) => ({ position: 'sticky', ...extra }) as any;
@@ -208,6 +211,29 @@ export function WebCalendar() {
   const today = todayISO();
   const todayInSeason = today >= season.start && today <= season.end;
   const totalWidth = days.length * dayWidth;
+
+  const { data: marksData } = useCalendarMarks();
+  const [marksOpen, setMarksOpen] = useState(false);
+  const [markEditId, setMarkEditId] = useState<string | null>(null);
+  const occurrences = useMemo(() => marksInRange(marksData ?? [], season.start, season.end), [marksData, season.start, season.end]);
+  const markByDay = useMemo(() => {
+    const map = new Map<string, MarkOccurrence>();
+    occurrences.forEach((o) => days.forEach((d) => { if (d >= o.start && d <= o.end && !map.has(d)) map.set(d, o); }));
+    return map;
+  }, [occurrences, days]);
+  const markSpan = (o: MarkOccurrence) => {
+    const a = Math.max(0, dayIndex(o.start));
+    const b = Math.min(days.length - 1, dayIndex(o.end));
+    return { left: a * dayWidth, width: (b - a + 1) * dayWidth };
+  };
+  const markTints = (
+    <>
+      {occurrences.map((o) => (
+        <View key={`${o.mark.id}-${o.start}`} pointerEvents="none" style={[styles.markTint, markSpan(o), { backgroundColor: markColor(o.mark.color).fond }]} />
+      ))}
+    </>
+  );
+  const openMarks = (id: string | null = null) => { setMarkEditId(id); setMarksOpen(true); };
   const loading = resaLoading || propLoading;
 
   useEffect(() => {
@@ -336,6 +362,10 @@ export function WebCalendar() {
 
         <View style={{ flex: 1 }} />
 
+        <Pressable onPress={() => openMarks(null)} style={({ hovered }: any) => [styles.toolBtn, hovered && styles.toolBtnHover]} accessibilityLabel="Dates marquées">
+          <Text style={styles.toolText}>Dates marquées</Text>
+        </Pressable>
+
         {todayInSeason && (
           <Pressable onPress={() => { selectDay(today); scrollToDay(today); }} style={({ hovered }: any) => [styles.toolBtn, hovered && styles.toolBtnHover]}>
             <Text style={styles.toolText}>Aujourd'hui</Text>
@@ -412,6 +442,7 @@ export function WebCalendar() {
                           { width: dayWidth },
                           weekend && styles.dayWeekend,
                           isFirst && styles.dayFirst,
+                          markByDay.has(d) && { backgroundColor: markColor(markByDay.get(d)!.mark.color).fond },
                           hovered && !isSel && styles.dayHover,
                         ]}
                       >
@@ -435,6 +466,30 @@ export function WebCalendar() {
                   })}
                 </View>
 
+                {occurrences.length > 0 && (
+                  <View style={[styles.markBand, sticky({ top: HEADER_HEIGHT, zIndex: 3 })]}>
+                    <View style={[styles.markCorner, sticky({ left: 0, zIndex: 4 })]}>
+                      <Text style={styles.markCornerText}>Dates marquées</Text>
+                    </View>
+                    <View style={{ width: totalWidth, position: 'relative' }}>
+                      {occurrences.map((o) => {
+                        const c = markColor(o.mark.color);
+                        const span = markSpan(o);
+                        return (
+                          <Pressable
+                            key={`${o.mark.id}-${o.start}`}
+                            onPress={() => openMarks(o.mark.id)}
+                            accessibilityLabel={`${o.mark.title}, modifier`}
+                            style={({ hovered }: any) => [styles.markPill, span, { backgroundColor: c.fond, borderColor: hovered ? c.texte : 'transparent' }]}
+                          >
+                            <Text style={[styles.markPillText, { color: c.texte }]} numberOfLines={1}>{o.mark.title}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
                 <View style={{ position: 'relative' }}>
                   {visibleGroups.map((g) => (
                     <View key={g.name}>
@@ -442,6 +497,7 @@ export function WebCalendar() {
                         <View style={[styles.groupLabel, sticky({ left: 0, zIndex: 2 })]}>
                           <Text style={styles.groupText} numberOfLines={1}>{g.name}</Text>
                         </View>
+                        <View style={{ width: totalWidth, position: 'relative' }}>{markTints}</View>
                       </View>
                       {g.properties.map((p) => (
                         <View key={p.id} style={styles.propRow}>
@@ -459,6 +515,7 @@ export function WebCalendar() {
                             }}
                             accessibilityLabel={`Choisir un jour pour ${p.name}`}
                           >
+                            {markTints}
                             <View
                               pointerEvents="none"
                               style={[styles.selColumn, { left: dayIndex(selectedDay) * dayWidth, width: dayWidth }]}
@@ -477,6 +534,8 @@ export function WebCalendar() {
             </View>
           )}
         </View>
+
+        <MarksEditor visible={marksOpen} initialId={markEditId} initialDate={selectedDay} onClose={() => setMarksOpen(false)} />
 
         {!loading && !isError && groups.length > 0 && (
           <DayPanel
@@ -557,6 +616,12 @@ const styles = StyleSheet.create({
   turnoverDotText: { fontFamily: CAL.fontBold, fontSize: 9, color: CAL.blanc, lineHeight: 11 },
   selColumn: { position: 'absolute', top: 0, bottom: 0, backgroundColor: CAL.orClair, zIndex: 0 },
   todayLine: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: CAL.or, zIndex: 3 },
+  markBand: { flexDirection: 'row', height: 24, backgroundColor: CAL.blanc, borderBottomWidth: 1, borderBottomColor: CAL.brume },
+  markCorner: { width: NAME_WIDTH, height: 23, justifyContent: 'center', paddingHorizontal: 14, backgroundColor: CAL.blanc, borderRightWidth: 1, borderRightColor: CAL.brume },
+  markCornerText: { fontFamily: CAL.font, fontSize: 11, color: CAL.texteDoux },
+  markPill: { position: 'absolute', top: 3, height: 17, borderRadius: 3, borderWidth: 1, paddingHorizontal: 6, justifyContent: 'center', overflow: 'hidden' },
+  markPillText: { fontFamily: CAL.fontBold, fontSize: 11 },
+  markTint: { position: 'absolute', top: 0, bottom: 0, opacity: 0.55 },
   groupRow: { height: GROUP_HEIGHT, backgroundColor: CAL.brumeClair, borderBottomWidth: 1, borderBottomColor: CAL.brume, flexDirection: 'row' },
   groupLabel: { width: NAME_WIDTH, height: GROUP_HEIGHT - 1, justifyContent: 'center', paddingHorizontal: 14, backgroundColor: CAL.brumeClair },
   groupText: { fontFamily: CAL.fontBold, fontSize: 12, color: CAL.texteDoux },

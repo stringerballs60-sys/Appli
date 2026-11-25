@@ -292,3 +292,19 @@ export interface Memo {
   created_at: string;
   completed_at: string | null;
 }
+
+export type CalendarMarkColor = 'sable' | 'lavande' | 'olive' | 'ciel' | 'rose';
+export type CalendarMarkKind = 'event' | 'holiday' | 'bridge';
+
+export interface CalendarMark {
+  id: string;
+  user_id: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  color: CalendarMarkColor;
+  kind: CalendarMarkKind;
+  yearly: boolean;
+  created_at: string;
+  updated_at: string;
+}

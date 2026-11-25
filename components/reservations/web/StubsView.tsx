@@ -18,6 +18,7 @@ export const STUB = {
   carbone: '#2F4A78',
   nuit: '#0F2240',
   tampon: '#B4453A',
+  presta: '#1E7A78',
   cadenas: '#6E6457',
   trait: '#DCD2C0',
   or: '#C9A227',
@@ -68,8 +69,8 @@ export function StubsView({ rows, tab, today, selectedId, propertiesById, turnov
                   <View style={s.body}>
                     <Stamp property={p} dim={block || cancelled} />
                     {!block && !cancelled && r.price != null ? (
-                      <View style={s.price} pointerEvents="none">
-                        <Text style={s.priceText}>{formatPrice(r.price)}</Text>
+                      <View style={[s.price, channelOf(r) === 'presta' && s.pricePresta]} pointerEvents="none">
+                        <Text style={[s.priceText, channelOf(r) === 'presta' && { color: STUB.presta }]}>{formatPrice(r.price)}</Text>
                       </View>
                     ) : null}
                     <View style={[s.inline, { paddingRight: 70 }]}>
@@ -171,6 +172,7 @@ const s = StyleSheet.create({
     position: 'absolute', top: 78, right: 8, borderWidth: 2, borderColor: STUB.tampon, borderRadius: 3, paddingVertical: 1, paddingHorizontal: 6,
     transform: [{ rotate: '-7deg' }], opacity: 0.88, boxShadow: `inset 0 0 0 1px ${STUB.papier}, inset 0 0 0 2px ${STUB.tampon}55`,
   } as any,
+  pricePresta: { borderColor: STUB.presta, boxShadow: `inset 0 0 0 1px ${STUB.papier}, inset 0 0 0 2px ${STUB.presta}55` } as any,
   priceText: { fontFamily: FONTS.readableBold, fontSize: 14, color: STUB.tampon, letterSpacing: 0.6 },
   timbreInit: { fontFamily: FONTS.readableBold, fontSize: 16, color: STUB.nuit },
   stamp: { position: 'absolute', right: 78, top: 34, borderWidth: 2, borderRadius: 4, paddingVertical: 2, paddingHorizontal: 8, transform: [{ rotate: '-9deg' }], opacity: 0.85 },

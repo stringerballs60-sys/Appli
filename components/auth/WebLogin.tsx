@@ -41,7 +41,7 @@ const PAPER_TONE: Tone = { bg: C.papier, field: '#FFFFFF', border: C.trait, focu
 function Field({
   label, value, onChange, secure, tone, icon, onSubmit, autoFocus, type,
 }: {
-  label: string; value: string; onChange: (v: string) => void; secure?: boolean; tone: Tone; icon: string; onSubmit: () => void; autoFocus?: boolean; type: 'email' | 'password';
+  label: string; value: string; onChange: (v: string) => void; secure?: boolean; tone: Tone; icon: string; onSubmit: () => void; autoFocus?: boolean; type: 'email' | 'password' | 'new-password' | 'name';
 }) {
   const [focus, setFocus] = useState(false);
   const [hidden, setHidden] = useState(true);
@@ -56,11 +56,11 @@ function Field({
           onFocus={() => setFocus(true)}
           onBlur={() => setFocus(false)}
           secureTextEntry={secure && hidden}
-          autoCapitalize="none"
+          autoCapitalize={type === 'name' ? 'words' : 'none'}
           autoCorrect={false}
           autoFocus={autoFocus}
           keyboardType={type === 'email' ? 'email-address' : 'default'}
-          autoComplete={type === 'email' ? 'email' : 'current-password'}
+          autoComplete={type === 'email' ? 'email' : type === 'name' ? 'name' : type === 'new-password' ? 'new-password' : 'current-password'}
           onSubmitEditing={onSubmit}
           style={[f.input, { color: tone.text }] as any}
           placeholderTextColor={tone.soft}
@@ -144,31 +144,112 @@ function House({ w, h, roof, lit }: { w: number; h: number; roof: number; lit: n
   );
 }
 
-function VillageLogin(p: LoginFormProps) {
+function VillageScene({ tagline, children }: { tagline: string; children: React.ReactNode }) {
   return (
     <View style={[s.root, { backgroundColor: C.nuit, overflow: 'hidden' }]}>
       <View style={v.sky} />
       <View style={v.moon} />
       <View style={v.brandWrap}>
         <Text style={v.brand}>KAZA</Text>
-        <Text style={v.tagline}>Le soir tombe sur Lama. Tes logements t’attendent.</Text>
+        <Text style={v.tagline}>{tagline}</Text>
       </View>
       <View style={v.village} pointerEvents="none">
         {HOUSES.concat(HOUSES.slice(0, 6)).map((h, i) => <House key={i} {...h} />)}
       </View>
       <View style={v.ground} />
       <View style={v.cardWrap}>
-        <View style={v.card}>
-          <LoginForm {...p} tone={PAPER_TONE} title="Bonsoir" subtitle="Connecte-toi à ta conciergerie." />
-        </View>
+        <View style={v.card}>{children}</View>
       </View>
     </View>
   );
 }
 
-/** Connexion sur ordinateur : « Lama, le soir », choisie par Charles le 25/11/2026. */
 export function WebLogin(p: LoginFormProps) {
-  return <VillageLogin {...p} />;
+  return (
+    <VillageScene tagline="Le soir tombe sur Lama. Tes logements t’attendent.">
+      <LoginForm {...p} tone={PAPER_TONE} title="Bonsoir" subtitle="Connecte-toi à ta conciergerie." />
+    </VillageScene>
+  );
+}
+
+export interface RegisterFormProps {
+  fullName: string;
+  email: string;
+  password: string;
+  confirm: string;
+  loading: boolean;
+  error: string;
+  success: boolean;
+  onFullName: (v: string) => void;
+  onEmail: (v: string) => void;
+  onPassword: (v: string) => void;
+  onConfirm: (v: string) => void;
+  onRegister: () => void;
+  onLogin: () => void;
+}
+
+/** Création de compte sur ordinateur, même décor que la connexion. */
+export function WebRegister(p: RegisterFormProps) {
+  const tone = PAPER_TONE;
+  const tooShort = p.password.length > 0 && p.password.length < 6;
+  const mismatch = p.confirm.length > 0 && p.confirm !== p.password;
+  if (p.success) {
+    return (
+      <VillageScene tagline="Une fenêtre de plus s’allume à Lama.">
+        <View style={{ gap: 16 }}>
+          <View style={f.successIcon}>
+            <MaterialCommunityIcons name="email-check-outline" size={26} color={C.carbone} />
+          </View>
+          <Text style={[f.title, { color: tone.text, fontFamily: FONTS.stubSerif }]}>Compte créé</Text>
+          <Text style={[f.sub, { color: tone.soft, lineHeight: 21 }]}>
+            Un e-mail de confirmation vient de partir vers <Text style={{ fontFamily: FONTS.readableBold, color: tone.text }}>{p.email.trim().toLowerCase()}</Text>. Clique sur le lien qu’il contient, puis reviens te connecter.
+          </Text>
+          <Pressable onPress={p.onLogin} style={({ hovered }: any) => [f.button, { backgroundColor: tone.button }, hovered && { opacity: 0.9 }]}>
+            <Text style={[f.buttonText, { color: tone.buttonText }]}>Aller à la connexion</Text>
+            <MaterialCommunityIcons name="arrow-right" size={18} color={tone.buttonText} />
+          </Pressable>
+        </View>
+      </VillageScene>
+    );
+  }
+  return (
+    <VillageScene tagline="Allume ta fenêtre au village : crée ton compte KAZA.">
+      <View style={{ gap: 14, width: '100%' }}>
+        <View style={{ gap: 4, marginBottom: 4 }}>
+          <Text style={[f.title, { color: tone.text, fontFamily: FONTS.stubSerif }]}>Bienvenue</Text>
+          <Text style={[f.sub, { color: tone.soft }]}>Crée ton compte pour gérer ta conciergerie.</Text>
+        </View>
+        <Field label="Nom complet" value={p.fullName} onChange={p.onFullName} tone={tone} icon="account-outline" onSubmit={p.onRegister} autoFocus type="name" />
+        <Field label="E-mail" value={p.email} onChange={p.onEmail} tone={tone} icon="email-outline" onSubmit={p.onRegister} type="email" />
+        <View style={{ gap: 4 }}>
+          <Field label="Mot de passe" value={p.password} onChange={p.onPassword} secure tone={tone} icon="lock-outline" onSubmit={p.onRegister} type="new-password" />
+          <Text style={[f.hint, { color: tooShort ? C.rouge : tone.soft }]}>6 caractères minimum{tooShort ? ` (encore ${6 - p.password.length})` : ''}</Text>
+        </View>
+        <View style={{ gap: 4 }}>
+          <Field label="Confirmer le mot de passe" value={p.confirm} onChange={p.onConfirm} secure tone={tone} icon="lock-check-outline" onSubmit={p.onRegister} type="new-password" />
+          {mismatch ? <Text style={[f.hint, { color: C.rouge }]}>Les deux mots de passe ne sont pas identiques.</Text> : null}
+        </View>
+
+        {p.error ? <Text style={f.error} accessibilityLiveRegion="polite">{p.error}</Text> : null}
+
+        <Pressable
+          onPress={p.onRegister}
+          disabled={p.loading}
+          style={({ hovered, pressed }: any) => [f.button, { backgroundColor: tone.button }, (hovered || pressed) && { opacity: 0.9 }, p.loading && { opacity: 0.6 }]}
+        >
+          <Text style={[f.buttonText, { color: tone.buttonText }]}>{p.loading ? 'Création…' : 'Créer mon compte'}</Text>
+          {!p.loading ? <MaterialCommunityIcons name="arrow-right" size={18} color={tone.buttonText} /> : null}
+        </Pressable>
+
+        <View style={[f.row, { justifyContent: 'center', gap: 6 }]}>
+          <Text style={[f.small, { color: tone.soft }]}>Déjà un compte ?</Text>
+          <Pressable onPress={p.onLogin}>
+            <Text style={[f.small, f.link, { color: tone.link }]}>Se connecter</Text>
+          </Pressable>
+        </View>
+      </View>
+    </VillageScene>
+  );
 }
 
 const s = StyleSheet.create({
@@ -186,6 +267,8 @@ const f = StyleSheet.create({
   small: { fontFamily: FONTS.readable, fontSize: 13 },
   link: { fontFamily: FONTS.readableBold, textDecorationLine: 'underline' },
   error: { fontFamily: FONTS.readableBold, fontSize: 13, color: C.rouge, backgroundColor: '#FBECEC', borderRadius: 5, paddingVertical: 8, paddingHorizontal: 10 },
+  hint: { fontFamily: FONTS.readable, fontSize: 12 },
+  successIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#EAF0F8', alignItems: 'center', justifyContent: 'center' },
   info: { fontFamily: FONTS.readable, fontSize: 13, backgroundColor: '#EAF0F8', borderRadius: 5, paddingVertical: 8, paddingHorizontal: 10 },
   button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 7, height: 48, marginTop: 4 },
   buttonText: { fontFamily: FONTS.readableBold, fontSize: 15, letterSpacing: 0.3 },

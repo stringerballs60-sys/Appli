@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Image, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
+import { WebRegister } from '@/components/auth/WebLogin';
 import { TextInput, Button, Text, HelperText } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
@@ -19,6 +20,7 @@ export default function RegisterScreen() {
   const [success, setSuccess] = useState(false);
   const [secureText, setSecureText] = useState(true);
   const [secureConfirm, setSecureConfirm] = useState(true);
+  const { width } = useWindowDimensions();
 
   const handleRegister = async () => {
     if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
@@ -44,6 +46,26 @@ export default function RegisterScreen() {
     if (authError) { setError(t('auth.registerError')); return; }
     setSuccess(true);
   };
+
+  if (Platform.OS === 'web' && width >= 900) {
+    return (
+      <WebRegister
+        fullName={fullName}
+        email={email}
+        password={password}
+        confirm={confirmPassword}
+        loading={loading}
+        error={error}
+        success={success}
+        onFullName={(v) => { setFullName(v); setError(''); }}
+        onEmail={(v) => { setEmail(v); setError(''); }}
+        onPassword={(v) => { setPassword(v); setError(''); }}
+        onConfirm={(v) => { setConfirmPassword(v); setError(''); }}
+        onRegister={handleRegister}
+        onLogin={() => router.replace('/(auth)/login')}
+      />
+    );
+  }
 
   if (success) {
     return (

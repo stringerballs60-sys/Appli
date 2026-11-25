@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { FlatList, View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { FlatList, View, StyleSheet, ScrollView, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
+import { WebReservations } from '@/components/reservations/web/WebReservations';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -43,6 +44,8 @@ export default function ReservationsScreen() {
     channel: selectedChannel ?? undefined,
     kind: 'stay',
   });
+  const { width } = useWindowDimensions();
+  if (Platform.OS === 'web' && width >= 900) return <WebReservations />;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>

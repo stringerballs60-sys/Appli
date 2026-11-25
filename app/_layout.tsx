@@ -21,6 +21,9 @@ import {
   AtkinsonHyperlegible_400Regular,
   AtkinsonHyperlegible_700Bold,
 } from '@expo-google-fonts/atkinson-hyperlegible';
+import { CourierPrime_400Regular, CourierPrime_700Bold } from '@expo-google-fonts/courier-prime';
+import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif';
+import { MartianMono_400Regular, MartianMono_600SemiBold } from '@expo-google-fonts/martian-mono';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { APP_COLORS } from '@/constants/colors';
@@ -63,6 +66,11 @@ export default function RootLayout() {
     'Inter-Medium': Inter_500Medium,
     'Atkinson-Regular': AtkinsonHyperlegible_400Regular,
     'Atkinson-Bold': AtkinsonHyperlegible_700Bold,
+    'CourierPrime-Regular': CourierPrime_400Regular,
+    'CourierPrime-Bold': CourierPrime_700Bold,
+    'InstrumentSerif-Regular': InstrumentSerif_400Regular,
+    'MartianMono-Regular': MartianMono_400Regular,
+    'MartianMono-SemiBold': MartianMono_600SemiBold,
   });
 
   useEffect(() => {

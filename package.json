@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@expo-google-fonts/atkinson-hyperlegible": "^0.4.1",
+    "@expo-google-fonts/courier-prime": "^0.4.1",
+    "@expo-google-fonts/instrument-serif": "^0.4.1",
     "@expo-google-fonts/inter": "^0.2.3",
+    "@expo-google-fonts/martian-mono": "^0.4.2",
     "@expo-google-fonts/montserrat": "^0.2.3",
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.1.1",

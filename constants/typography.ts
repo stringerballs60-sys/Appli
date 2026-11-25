@@ -5,4 +5,9 @@ export const FONTS = {
   bodyMedium: 'Inter-Medium',
   readable: 'Atkinson-Regular',
   readableBold: 'Atkinson-Bold',
+  typewriter: 'CourierPrime-Regular',
+  typewriterBold: 'CourierPrime-Bold',
+  stubSerif: 'InstrumentSerif-Regular',
+  board: 'MartianMono-Regular',
+  boardBold: 'MartianMono-SemiBold',
 };

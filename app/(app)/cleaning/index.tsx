@@ -176,7 +176,7 @@ export default function CleaningPlannerScreen() {
     getCleaningPrefs().then((p) => setMaxPerDay(p.maxPerDay));
   }, []);
 
-  const { data: reservations, isLoading: resLoading } = useReservations();
+  const { data: reservations, isLoading: resLoading } = useReservations({ kind: 'stay' });
   const { data: properties, isLoading: propLoading } = useActiveProperties();
 
   const tasks = useMemo(() => {

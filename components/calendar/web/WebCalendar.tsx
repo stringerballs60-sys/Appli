@@ -12,6 +12,8 @@ import { buildDayModel } from './dayModel';
 import { DayPanel } from './DayPanel';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { channelOf } from '@/constants/channels';
+import { isStay, blockReasonLabel } from '@/constants/blocks';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const sticky = (extra: object) => ({ position: 'sticky', ...extra }) as any;
 
@@ -81,6 +83,7 @@ export function WebCalendar() {
     () => (reservationsData ?? []).filter((r) => r.status !== 'cancelled'),
     [reservationsData]
   );
+  const stays = useMemo(() => reservations.filter(isStay), [reservations]);
   const propertiesById = useMemo(() => new Map((propertiesData ?? []).map((p) => [p.id, p])), [propertiesData]);
   const groups = useMemo(() => groupProperties(propertiesData ?? []), [propertiesData]);
   const visibleGroups = groupFilter ? groups.filter((g) => g.name === groupFilter) : groups;
@@ -93,14 +96,14 @@ export function WebCalendar() {
 
   const turnoverCountByDay = useMemo(() => {
     const counts = new Map<string, number>();
-    const arrivals = new Set(reservations.map((r) => `${r.property_id}|${r.check_in}`));
-    reservations.forEach((r) => {
+    const arrivals = new Set(stays.map((r) => `${r.property_id}|${r.check_in}`));
+    stays.forEach((r) => {
       if (arrivals.has(`${r.property_id}|${r.check_out}`)) {
         counts.set(r.check_out, (counts.get(r.check_out) ?? 0) + 1);
       }
     });
     return counts;
-  }, [reservations]);
+  }, [stays]);
 
   useEffect(() => {
     if (userPicked.current || !reservationsData) return;
@@ -117,8 +120,8 @@ export function WebCalendar() {
   }, [reservationsData, season]);
 
   const dayModel = useMemo(
-    () => buildDayModel(selectedDay, reservations, propertiesById),
-    [selectedDay, reservations, propertiesById]
+    () => buildDayModel(selectedDay, stays, propertiesById),
+    [selectedDay, stays, propertiesById]
   );
 
   const dayIndex = (iso: string) => differenceInDays(parseISO(iso), parseISO(season.start));
@@ -236,8 +239,9 @@ export function WebCalendar() {
 
   const renderBars = (property: Property) => {
     const resas = byProperty.get(property.id) ?? [];
-    const arrivalDates = new Set(resas.map((r) => r.check_in));
+    const arrivalDates = new Set(resas.filter(isStay).map((r) => r.check_in));
     return resas.map((r) => {
+      const block = !isStay(r);
       const startI = dayIndex(r.check_in);
       const endI = dayIndex(r.check_out);
       const left = startI < 0 ? 0 : startI * dayWidth + dayWidth / 2 + 1;
@@ -246,7 +250,7 @@ export function WebCalendar() {
       if (width <= 2) return null;
       const isSelected = selectedResa?.id === r.id;
       const isPast = r.check_out < today;
-      const turnoverAfter = arrivalDates.has(r.check_out);
+      const turnoverAfter = !block && arrivalDates.has(r.check_out);
       const showText = width > 64;
       return (
         <Pressable
@@ -257,8 +261,14 @@ export function WebCalendar() {
             setSelectedResa(r);
             setEmptySlotProperty(null);
           }}
-          accessibilityLabel={`${r.guest_name}, ${property.name}, du ${r.check_in} au ${r.check_out}`}
-          style={({ hovered }: any) => [
+          accessibilityLabel={block ? `Dates bloquées (${blockReasonLabel(r.block_reason)}), ${property.name}, du ${r.check_in} au ${r.check_out}` : `${r.guest_name}, ${property.name}, du ${r.check_in} au ${r.check_out}`}
+          style={({ hovered }: any) => block ? [
+            styles.bar,
+            styles.barBlock,
+            { left, width, opacity: isPast && !isSelected ? 0.6 : 1 },
+            (hovered || isSelected) && styles.barBlockHover,
+            isSelected && styles.barSelected,
+          ] : [
             styles.bar,
             {
               left,
@@ -271,8 +281,14 @@ export function WebCalendar() {
             isSelected && styles.barSelected,
           ]}
         >
-          {width > 22 && <ChannelBadge channel={channelOf(r)} size={14} />}
-          {showText && (
+          {block ? (
+            <>
+              {width > 22 && <MaterialCommunityIcons name="lock" size={13} color="#6E6457" />}
+              {showText && <Text style={styles.barBlockText} numberOfLines={1}>{blockReasonLabel(r.block_reason)}</Text>}
+            </>
+          ) : null}
+          {!block && width > 22 && <ChannelBadge channel={channelOf(r)} size={14} />}
+          {!block && showText && (
             <Text style={styles.barText} numberOfLines={1}>
               {r.guest_name}
               <Text style={styles.barNights}>  {r.nb_nights} n.</Text>
@@ -475,7 +491,7 @@ export function WebCalendar() {
             onSelectResa={(r) => setSelectedResa(r)}
             onCloseResa={() => setSelectedResa(null)}
             onOpenResa={(r) => router.push(`/(app)/reservations/${r.id}`)}
-            onEditResa={(r) => router.push(`/(app)/reservations/edit/${r.id}`)}
+            onEditResa={(r) => router.push(isStay(r) ? `/(app)/reservations/edit/${r.id}` : { pathname: '/(app)/reservations/block', params: { id: r.id } })}
             onNewResa={(p, date) => router.push({ pathname: '/(app)/reservations/new', params: { propertyId: p.id, checkIn: date } })}
           />
         )}
@@ -551,6 +567,9 @@ const styles = StyleSheet.create({
   propText: { fontFamily: CAL.fontBold, fontSize: 14, color: CAL.texte, flex: 1 },
   track: { height: ROW_HEIGHT - 1, position: 'relative', cursor: 'pointer' as any },
   bar: { position: 'absolute', top: 7, height: ROW_HEIGHT - 15, borderLeftWidth: 3, borderRadius: 3, flexDirection: 'row', alignItems: 'center', gap: 5, paddingLeft: 4, paddingRight: 4, overflow: 'hidden', zIndex: 2 },
+  barBlock: { backgroundColor: '#EFEBE4', borderLeftColor: '#9C907E', backgroundImage: 'repeating-linear-gradient(135deg, rgba(110,100,87,0.16) 0 4px, transparent 4px 9px)' } as any,
+  barBlockHover: { backgroundColor: '#E4DED3' },
+  barBlockText: { fontFamily: CAL.fontBold, fontSize: 12, color: '#6E6457', flexShrink: 1 },
   barPending: { borderStyle: 'dashed', borderWidth: 1, borderColor: CAL.texteDoux },
   barSelected: { outlineWidth: 2, outlineStyle: 'solid', outlineColor: CAL.or, outlineOffset: 1 } as any,
   barText: { fontFamily: CAL.fontBold, fontSize: 12, color: CAL.texte, flexShrink: 1 },

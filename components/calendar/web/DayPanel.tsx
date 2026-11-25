@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { isBlock, blockReasonLabel } from '@/constants/blocks';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -121,6 +122,7 @@ function ResaDetail({
     resa.nb_babies > 0 && `${resa.nb_babies} bébé${resa.nb_babies > 1 ? 's' : ''}`,
   ].filter(Boolean).join(', ');
   const time = resa.check_in_time ? resa.check_in_time.slice(0, 5) : null;
+  const block = isBlock(resa);
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.body}>
@@ -131,27 +133,34 @@ function ResaDetail({
       <View style={styles.resaHead}>
         <View style={[styles.tabTall, { backgroundColor: property?.color ?? CAL.brume }]} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.resaGuest}>{resa.guest_name}</Text>
+          <Text style={styles.resaGuest}>{block ? 'Dates bloquées' : resa.guest_name}</Text>
           <Text style={styles.resaProperty}>{property?.name}</Text>
         </View>
       </View>
 
       <View style={styles.stay}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.stayLabel}>Arrivée</Text>
+          <Text style={styles.stayLabel}>{block ? 'Du' : 'Arrivée'}</Text>
           <Text style={styles.stayValue}>{capitalize(shortDate(resa.check_in))}</Text>
-          <Text style={styles.stayHint}>{time ? `${time}${resa.check_in_time_confirmed ? '' : ' · à confirmer'}` : 'Heure à confirmer'}</Text>
+          {!block && <Text style={styles.stayHint}>{time ? `${time}${resa.check_in_time_confirmed ? '' : ' · à confirmer'}` : 'Heure à confirmer'}</Text>}
         </View>
         <View style={styles.nights}>
           <Text style={styles.nightsNum}>{resa.nb_nights}</Text>
           <Text style={styles.nightsLabel}>nuit{resa.nb_nights > 1 ? 's' : ''}</Text>
         </View>
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
-          <Text style={styles.stayLabel}>Départ</Text>
+          <Text style={styles.stayLabel}>{block ? 'Au' : 'Départ'}</Text>
           <Text style={styles.stayValue}>{capitalize(shortDate(resa.check_out))}</Text>
         </View>
       </View>
 
+      {block ? (
+        <View style={styles.facts}>
+          <Fact label="Motif" value={blockReasonLabel(resa.block_reason)} />
+          <Fact label="Remplissage" value="Ces nuits sont retirées du calcul du taux." />
+          {resa.notes ? <Fact label="Notes" value={resa.notes} /> : null}
+        </View>
+      ) : (<>
       <View style={styles.facts}>
         <Fact label="Voyageurs" value={guests || '—'} />
         <View style={styles.fact}>
@@ -165,13 +174,14 @@ function ResaDetail({
 
       <Text style={styles.subTitle}>Linge pour ce séjour</Text>
       <LinenSummary linen={linenFor(resa, property)} />
+      </>)}
 
       <View style={styles.actions}>
-        <Pressable onPress={onOpen} style={({ hovered }: any) => [styles.btnPrimary, hovered && { backgroundColor: CAL.nuitSoft }]}>
+        {!block && <Pressable onPress={onOpen} style={({ hovered }: any) => [styles.btnPrimary, hovered && { backgroundColor: CAL.nuitSoft }]}>
           <Text style={styles.btnPrimaryText}>Ouvrir la fiche</Text>
-        </Pressable>
+        </Pressable>}
         <Pressable onPress={onEdit} style={({ hovered }: any) => [styles.btnGhost, hovered && { backgroundColor: CAL.brumeClair }]}>
-          <Text style={styles.btnGhostText}>Modifier</Text>
+          <Text style={styles.btnGhostText}>{block ? 'Modifier ou supprimer le blocage' : 'Modifier'}</Text>
         </Pressable>
       </View>
     </ScrollView>

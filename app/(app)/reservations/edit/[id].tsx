@@ -30,6 +30,9 @@ export default function EditReservationScreen() {
   const { data: properties } = useActiveProperties();
 
   const reservation = reservations?.find((r) => r.id === id);
+  useEffect(() => {
+    if (reservation?.kind === 'block') router.replace({ pathname: '/(app)/reservations/block', params: { id: reservation.id } });
+  }, [reservation?.kind, reservation?.id, router]);
 
   const [form, setForm] = useState<ReservationFormData | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);

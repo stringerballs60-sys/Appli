@@ -25,6 +25,8 @@ export enum ReservationStatus {
 }
 
 export type ReservationSource = 'airbnb' | 'booking' | 'abritel' | 'manual';
+export type ReservationKind = 'stay' | 'block';
+export type BlockReason = 'personal' | 'owner' | 'works' | 'other';
 
 export enum LinenType {
   DOUBLE_SHEETS = 'double_sheets',
@@ -104,6 +106,8 @@ export interface Reservation {
   linen_calculation: LinenCalculation | null;
   notes: string | null;
   source: ReservationSource;
+  kind: ReservationKind;
+  block_reason: BlockReason | null;
   ical_uid: string | null;
   created_at: string;
   updated_at: string;

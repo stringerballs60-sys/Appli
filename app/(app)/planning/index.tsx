@@ -46,7 +46,7 @@ export default function PlanningScreen() {
   const from = format(startDate, 'yyyy-MM-dd');
   const to = format(addDays(startDate, TOTAL_DAYS), 'yyyy-MM-dd');
 
-  const { data: reservations, isLoading: resaLoading } = useReservationsForMonth(from, to);
+  const { data: reservations, isLoading: resaLoading } = useReservationsForMonth(from, to, { staysOnly: true });
   const { data: properties, isLoading: propLoading } = useActiveProperties();
 
   const days = Array.from({ length: TOTAL_DAYS }, (_, i) => addDays(startDate, i));

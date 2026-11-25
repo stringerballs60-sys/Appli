@@ -29,7 +29,7 @@ export default function AccountingScreen() {
   const router = useRouter();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  const { data: reservations, isLoading } = useReservations();
+  const { data: reservations, isLoading } = useReservations({ kind: 'stay' });
   const { data: properties } = useActiveProperties();
 
   const years = useMemo(() => {

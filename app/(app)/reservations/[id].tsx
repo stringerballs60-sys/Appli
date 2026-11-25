@@ -2,7 +2,7 @@ import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Alert } from '@/utils/alert';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Redirect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -47,6 +47,10 @@ export default function ReservationDetailScreen() {
         <ActivityIndicator style={{ marginTop: 40 }} color={APP_COLORS.primary} />
       </SafeAreaView>
     );
+  }
+
+  if (reservation.kind === 'block') {
+    return <Redirect href={{ pathname: '/(app)/reservations/block', params: { id: reservation.id } }} />;
   }
 
   const property = reservation.property;

@@ -12,16 +12,16 @@ import { getCurrentSeason } from '@/constants/season';
 import { channelOf } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { CAL, PANEL_WIDTH } from '@/components/calendar/web/tokens';
-import { CLEANING, Row, groupKey, Thumb, dayMonth } from './shared';
-import { KeyBoardView, BristolView, VillageMapView, Section } from './views';
+import { CLEANING, Row, TodayTag, groupKey, dayMonth } from './shared';
+import { KeyBoardView, Section } from './views';
+import { isBlock, isStay, blockReasonLabel } from '@/constants/blocks';
+import { computeOccupancy } from '@/constants/blocks';
+import { ICAL_PAUSED } from '@/constants/ical';
 import { PropertyPhotoEditor } from '@/components/properties/PropertyPhotoEditor';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const toISO = (d: Date) => format(d, 'yyyy-MM-dd');
 
 type SortKey = 'name' | 'occupancy' | 'next';
-type ViewKey = 'keys' | 'bristol' | 'map';
-const VIEW_KEY = 'kaza_properties_view';
 
 export function WebProperties() {
   const router = useRouter();
@@ -29,7 +29,6 @@ export function WebProperties() {
   const today = toISO(new Date());
   const from = today < season.start ? today : season.start;
   const to = toISO(addDays(parseISO(season.end), 1));
-  const seasonNights = differenceInDays(parseISO(season.end), parseISO(season.start)) + 1;
 
   const { data: properties, isLoading: propLoading, isError: propError, refetch } = useProperties();
   const { data: reservationsData, isLoading: resaLoading } = useReservationsForMonth(from, to);
@@ -39,39 +38,39 @@ export function WebProperties() {
   const [onlyTodo, setOnlyTodo] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [sort, setSort] = useState<SortKey>('name');
-  const [view, setView] = useState<ViewKey>('keys');
-  useEffect(() => {
-    AsyncStorage.getItem(VIEW_KEY).then((v) => {
-      if (v === 'keys' || v === 'bristol' || v === 'map') setView(v);
-    }).catch(() => {});
-  }, []);
-  const chooseView = (v: ViewKey) => {
-    setView(v);
-    AsyncStorage.setItem(VIEW_KEY, v).catch(() => {});
-  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const rows = useMemo<Row[]>(() => {
-    const resas = (reservationsData ?? []).filter((r) => r.status !== 'cancelled');
+    const all = (reservationsData ?? []).filter((r) => r.status !== 'cancelled');
     return (properties ?? []).map((property) => {
-      const mine = resas.filter((r) => r.property_id === property.id).sort((a, b) => a.check_in.localeCompare(b.check_in));
-      const current = mine.find((r) => r.check_in <= today && r.check_out > today) ?? null;
-      const upcoming = mine.filter((r) => r.check_in > today);
-      const bookedNights = mine.reduce((sum, r) => {
-        const start = r.check_in < season.start ? season.start : r.check_in;
-        const endExclusive = r.check_out > toISO(addDays(parseISO(season.end), 1)) ? toISO(addDays(parseISO(season.end), 1)) : r.check_out;
-        return sum + Math.max(0, differenceInDays(parseISO(endExclusive), parseISO(start)));
-      }, 0);
+      const mine = all.filter((r) => r.property_id === property.id).sort((a, b) => a.check_in.localeCompare(b.check_in));
+      const stays = mine.filter(isStay);
+      const blocks = mine.filter(isBlock);
+      const current = stays.find((r) => r.check_in <= today && r.check_out > today) ?? null;
+      const currentBlock = current ? null : blocks.find((r) => r.check_in <= today && r.check_out > today) ?? null;
+      const upcoming = stays.filter((r) => r.check_in > today);
+      const arriving = stays.find((r) => r.check_in === today) ?? null;
+      const leaving = stays.some((r) => r.check_out === today);
+      const todayTag: TodayTag | null =
+        arriving && leaving ? { kind: 'turnover', time: arriving.check_in_time }
+        : leaving ? { kind: 'departure' }
+        : arriving ? { kind: 'arrival', time: arriving.check_in_time }
+        : null;
+      const occ = computeOccupancy(mine, season.start, season.end);
       return {
         property,
         current,
+        currentBlock,
         next: upcoming[0] ?? null,
         upcoming,
-        bookedNights,
-        occupancy: Math.min(1, bookedNights / seasonNights),
+        upcomingBlocks: blocks.filter((r) => r.check_out > today),
+        today: todayTag,
+        bookedNights: occ.bookedNights,
+        blockedNights: occ.blockedNights,
+        occupancy: occ.rate,
       };
     });
-  }, [properties, reservationsData, today, season, seasonNights]);
+  }, [properties, reservationsData, today, season]);
 
   const sites = useMemo(
     () => Array.from(new Set((properties ?? []).filter((p) => p.is_active).map(groupKey))).sort((a, b) => a.localeCompare(b, 'fr')),
@@ -176,18 +175,6 @@ export function WebProperties() {
             <Text style={[styles.sortText, sort === k && styles.sortTextOn]}>{label}</Text>
           </Pressable>
         ))}
-        <View style={styles.sep} />
-        <View style={styles.viewSwitch}>
-          {([
-            ['keys', 'Clés'],
-            ['bristol', 'Fiches'],
-            ['map', 'Plan'],
-          ] as [ViewKey, string][]).map(([v, label]) => (
-            <Pressable key={v} onPress={() => chooseView(v)} style={({ hovered }: any) => [styles.viewItem, view === v && styles.viewItemOn, hovered && view !== v && { backgroundColor: CAL.brumeClair }]}>
-              <Text style={[styles.viewText, view === v && styles.viewTextOn]}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
       </View>
 
       <View style={styles.main}>
@@ -221,8 +208,6 @@ export function WebProperties() {
                 onSelect: setSelectedId,
                 onOpen: (id: string) => router.push(`/(app)/properties/${id}`),
               };
-              if (view === 'bristol') return <BristolView {...props} />;
-              if (view === 'map') return <VillageMapView {...props} />;
               return <KeyBoardView {...props} />;
             })()
           )}
@@ -235,6 +220,7 @@ export function WebProperties() {
             onOpen={() => router.push(`/(app)/properties/${selected.property.id}`)}
             onCalendar={() => router.push({ pathname: '/(app)/(tabs)/calendar', params: { site: groupKey(selected.property) } })}
             onNewResa={() => router.push({ pathname: '/(app)/reservations/new', params: { propertyId: selected.property.id } })}
+            onNewBlock={() => router.push({ pathname: '/(app)/reservations/block', params: { propertyId: selected.property.id } })}
             onOpenResa={(r) => router.push(`/(app)/reservations/${r.id}`)}
           />
         )}
@@ -258,6 +244,7 @@ function DetailPanel({
   onOpen,
   onCalendar,
   onNewResa,
+  onNewBlock,
   onOpenResa,
 }: {
   row: Row;
@@ -265,9 +252,10 @@ function DetailPanel({
   onOpen: () => void;
   onCalendar: () => void;
   onNewResa: () => void;
+  onNewBlock: () => void;
   onOpenResa: (r: Reservation) => void;
 }) {
-  const { property: p, current, upcoming, bookedNights, occupancy } = row;
+  const { property: p, current, currentBlock, upcoming, upcomingBlocks, bookedNights, blockedNights, occupancy } = row;
   const cleaning = CLEANING[p.cleaning_status] ?? CLEANING.to_do;
   const beds = [
     p.nb_double_beds > 0 && `${p.nb_double_beds} lit${p.nb_double_beds > 1 ? 's' : ''} double${p.nb_double_beds > 1 ? 's' : ''}`,
@@ -300,7 +288,7 @@ function DetailPanel({
           <Fact label="Couchages" value={beds || 'Aucun lit configuré'} />
           <Fact label="Salles de bain" value={String(p.nb_bathrooms)} />
           {p.address ? <Fact label="Adresse" value={p.address} /> : null}
-          <Fact label="Synchro" value={p.ical_url ? 'Calendrier Airbnb relié' : 'Saisie manuelle'} />
+          <Fact label="Synchro" value={ICAL_PAUSED ? 'Saisie manuelle (iCal en pause)' : p.ical_url ? 'Calendrier Airbnb relié' : 'Saisie manuelle'} />
         </View>
 
         <Text style={styles.panelSection}>Saison {seasonYear}</Text>
@@ -310,7 +298,19 @@ function DetailPanel({
           </View>
           <Text style={styles.percent}>{Math.round(occupancy * 100)} %</Text>
         </View>
-        <Text style={[styles.muted, { marginTop: 4 }]}>{bookedNights} nuit{bookedNights > 1 ? 's' : ''} réservée{bookedNights > 1 ? 's' : ''}</Text>
+        <Text style={[styles.muted, { marginTop: 4 }]}>
+          {bookedNights} nuit{bookedNights > 1 ? 's' : ''} louée{bookedNights > 1 ? 's' : ''}
+          {blockedNights > 0 ? ` · ${blockedNights} bloquée${blockedNights > 1 ? 's' : ''}, hors calcul` : ''}
+        </Text>
+
+        {currentBlock ? (
+          <View style={styles.blockNow}>
+            <MaterialCommunityIcons name="lock" size={16} color="#6E6457" />
+            <Text style={styles.blockNowText}>
+              Bloqué aujourd’hui · {blockReasonLabel(currentBlock.block_reason)} jusqu’au {dayMonth(currentBlock.check_out)}
+            </Text>
+          </View>
+        ) : null}
 
         <Text style={styles.panelSection}>{current ? 'En séjour' : 'Prochains séjours'}</Text>
         {[...(current ? [current] : []), ...upcoming].slice(0, 6).map((r) => (
@@ -324,12 +324,30 @@ function DetailPanel({
         ))}
         {!current && upcoming.length === 0 && <Text style={styles.muted}>Aucune réservation à venir.</Text>}
 
+        {upcomingBlocks.length > 0 ? (
+          <>
+            <Text style={styles.panelSection}>Dates bloquées</Text>
+            {upcomingBlocks.slice(0, 4).map((r) => (
+              <Pressable key={r.id} onPress={() => onOpenResa(r)} style={({ hovered }: any) => [styles.resaLine, hovered && { backgroundColor: CAL.brumeClair }]}>
+                <MaterialCommunityIcons name="lock-outline" size={18} color="#6E6457" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.value} numberOfLines={1}>{blockReasonLabel(r.block_reason)}</Text>
+                  <Text style={styles.meta}>{dayMonth(r.check_in)} → {dayMonth(r.check_out)}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </>
+        ) : null}
+
         <View style={styles.actions}>
           <Pressable onPress={onOpen} style={({ hovered }: any) => [styles.primaryBtn, hovered && { backgroundColor: CAL.nuitSoft }]}>
             <Text style={styles.primaryText}>Ouvrir la fiche</Text>
           </Pressable>
           <Pressable onPress={onNewResa} style={({ hovered }: any) => [styles.ghostBtn, hovered && { backgroundColor: CAL.brumeClair }]}>
             <Text style={styles.ghostText}>Nouvelle réservation</Text>
+          </Pressable>
+          <Pressable onPress={onNewBlock} style={({ hovered }: any) => [styles.ghostBtn, hovered && { backgroundColor: CAL.brumeClair }]}>
+            <Text style={styles.ghostText}>Bloquer des dates</Text>
           </Pressable>
           <Pressable onPress={onCalendar} style={({ hovered }: any) => [styles.ghostBtn, hovered && { backgroundColor: CAL.brumeClair }]}>
             <Text style={styles.ghostText}>Voir le site au calendrier</Text>
@@ -368,11 +386,6 @@ const styles = StyleSheet.create({
   sortLabel: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux },
   sortItem: { paddingVertical: 4, paddingHorizontal: 6, borderRadius: 4 },
   sortText: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux },
-  viewSwitch: { flexDirection: 'row', backgroundColor: CAL.brumeClair, borderRadius: 6, padding: 2 },
-  viewItem: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 4 },
-  viewItemOn: { backgroundColor: CAL.blanc, borderWidth: 1, borderColor: CAL.brume },
-  viewText: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux },
-  viewTextOn: { fontFamily: CAL.fontBold, color: CAL.texte },
   sortTextOn: { fontFamily: CAL.fontBold, color: CAL.texte, textDecorationLine: 'underline', textDecorationColor: CAL.or },
   main: { flex: 1, flexDirection: 'row', minHeight: 0 },
   headRow: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: CAL.brume, backgroundColor: CAL.blanc },
@@ -411,6 +424,8 @@ const styles = StyleSheet.create({
   fact: { flexDirection: 'row', gap: 12 },
   factLabel: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux, width: 100 },
   factValue: { fontFamily: CAL.font, fontSize: 14, color: CAL.texte, flex: 1 },
+  blockNow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, backgroundColor: '#F3F0EA', borderRadius: 5, paddingVertical: 8, paddingHorizontal: 10 },
+  blockNowText: { fontFamily: CAL.fontBold, fontSize: 13, color: '#6E6457', flex: 1 },
   panelSection: { fontFamily: CAL.fontBold, fontSize: 14, color: CAL.texte, marginTop: 20, marginBottom: 8 },
   resaLine: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7, paddingHorizontal: 6, marginHorizontal: -6, borderRadius: 4 },
   actions: { marginTop: 24, gap: 8 },

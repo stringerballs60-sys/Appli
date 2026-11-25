@@ -27,7 +27,7 @@ export default function NewTaskScreen() {
   const { mutateAsync: applyTemplate } = useApplyTemplate();
 
   const { data: properties } = useActiveProperties();
-  const { data: allReservations } = useReservations();
+  const { data: allReservations } = useReservations({ kind: 'stay' });
 
   const [type, setType] = useState<TaskType>(TaskType.CLEANING);
   const [propertyId, setPropertyId] = useState('');

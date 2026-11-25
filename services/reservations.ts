@@ -1,11 +1,12 @@
 import { supabase } from './supabase';
-import { Reservation, ReservationFormData, Property } from '@/types';
+import { Reservation, ReservationFormData, Property, BlockReason, ReservationCategory, ReservationStatus } from '@/types';
+import { blockReasonLabel } from '@/constants/blocks';
 import { calculateLinen } from '@/utils/linenCalculator';
 
 export const reservationsService = {
   async getAll(
     userId: string,
-    filters?: { propertyId?: string; from?: string; to?: string; status?: string; category?: string; channel?: string }
+    filters?: { propertyId?: string; from?: string; to?: string; status?: string; category?: string; channel?: string; kind?: 'stay' | 'block' }
   ): Promise<Reservation[]> {
     let query = supabase
       .from('reservations')
@@ -18,6 +19,7 @@ export const reservationsService = {
     if (filters?.to) query = query.lte('check_out', filters.to);
     if (filters?.status) query = query.eq('status', filters.status);
     if (filters?.category) query = query.eq('category', filters.category);
+    if (filters?.kind) query = query.eq('kind', filters.kind);
     if (filters?.channel === 'airbnb') query = query.or('source.eq.airbnb,category.like.AIRBNB%');
     else if (filters?.channel === 'manual') query = query.eq('source', 'manual').not('category', 'like', 'AIRBNB%');
     else if (filters?.channel) query = query.eq('source', filters.channel);
@@ -46,7 +48,8 @@ export const reservationsService = {
       .eq('user_id', userId)
       .lte('check_in', date)
       .gt('check_out', date)
-      .neq('status', 'cancelled');
+      .neq('status', 'cancelled')
+      .eq('kind', 'stay');
     if (error) throw error;
     return data;
   },
@@ -62,6 +65,7 @@ export const reservationsService = {
       .lte('check_out', today)
       .gte('check_out', from.toISOString().slice(0, 10))
       .neq('status', 'cancelled')
+      .eq('kind', 'stay')
       .order('check_out', { ascending: false });
     if (error) throw error;
     return data ?? [];
@@ -75,6 +79,7 @@ export const reservationsService = {
       .eq('user_id', userId)
       .gte('check_in', today)
       .neq('status', 'cancelled')
+      .eq('kind', 'stay')
       .order('check_in')
       .limit(limit);
     if (error) throw error;
@@ -92,13 +97,15 @@ export const reservationsService = {
         .select('*, property:properties(*)')
         .eq('user_id', userId)
         .eq('check_in', today)
-        .neq('status', 'cancelled'),
+        .neq('status', 'cancelled')
+      .eq('kind', 'stay'),
       supabase
         .from('reservations')
         .select('*, property:properties(*)')
         .eq('user_id', userId)
         .eq('check_out', today)
-        .neq('status', 'cancelled'),
+        .neq('status', 'cancelled')
+      .eq('kind', 'stay'),
     ]);
     if (checkInsRes.error) throw checkInsRes.error;
     if (checkOutsRes.error) throw checkOutsRes.error;
@@ -118,6 +125,7 @@ export const reservationsService = {
       .lte('check_in', cutoffStr)
       .eq('check_in_time_confirmed', false)
       .neq('status', 'cancelled')
+      .eq('kind', 'stay')
       .order('check_in');
     if (error) throw error;
     return data;
@@ -215,6 +223,73 @@ export const reservationsService = {
     if (error) throw error;
   },
 
+  async createBlocks(
+    userId: string,
+    input: { propertyIds: string[]; checkIn: string; checkOut: string; reason: BlockReason; notes?: string }
+  ): Promise<Reservation[]> {
+    const rows = input.propertyIds.map((property_id) => ({
+      user_id: userId,
+      property_id,
+      kind: 'block',
+      block_reason: input.reason,
+      category: ReservationCategory.DIRECT_OWN,
+      status: ReservationStatus.CONFIRMED,
+      source: 'manual',
+      check_in: input.checkIn,
+      check_out: input.checkOut,
+      guest_name: blockReasonLabel(input.reason),
+      nb_couples: 0,
+      nb_solo_adults: 0,
+      nb_children: 0,
+      nb_babies: 0,
+      beds_double_used: 0,
+      beds_single_used: 0,
+      beds_sofa_used: 0,
+      beds_crib_used: 0,
+      linen_calculation: null,
+      notes: input.notes?.trim() || null,
+    }));
+    const { data, error } = await supabase.from('reservations').insert(rows).select();
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async updateBlock(
+    id: string,
+    input: { checkIn: string; checkOut: string; reason: BlockReason; notes?: string }
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('reservations')
+      .update({
+        check_in: input.checkIn,
+        check_out: input.checkOut,
+        block_reason: input.reason,
+        guest_name: blockReasonLabel(input.reason),
+        notes: input.notes?.trim() || null,
+      })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async findOverlaps(
+    propertyIds: string[],
+    checkIn: string,
+    checkOut: string,
+    excludeId?: string
+  ): Promise<Pick<Reservation, 'id' | 'property_id' | 'kind' | 'guest_name' | 'check_in' | 'check_out'>[]> {
+    let query = supabase
+      .from('reservations')
+      .select('id, property_id, kind, guest_name, check_in, check_out')
+      .in('property_id', propertyIds)
+      .neq('status', 'cancelled')
+      .lt('check_in', checkOut)
+      .gt('check_out', checkIn);
+    if (excludeId) query = query.neq('id', excludeId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data ?? [];
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('reservations').delete().eq('id', id);
     if (error) throw error;
@@ -231,6 +306,7 @@ export const reservationsService = {
       .eq('user_id', userId)
       .gte('check_out', today)
       .neq('status', 'cancelled')
+      .eq('kind', 'stay')
       .order('check_out');
     if (error) throw error;
 
@@ -266,6 +342,7 @@ export const reservationsService = {
         .eq('user_id', userId)
         .gt('check_in', today)
         .neq('status', 'cancelled')
+      .eq('kind', 'stay')
         .order('check_in')
         .limit(limit),
       supabase
@@ -274,6 +351,7 @@ export const reservationsService = {
         .eq('user_id', userId)
         .gt('check_out', today)
         .neq('status', 'cancelled')
+      .eq('kind', 'stay')
         .order('check_out')
         .limit(limit),
     ]);

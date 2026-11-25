@@ -1,8 +1,10 @@
 import { View, Text, Pressable, ScrollView, StyleSheet, Image } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { blockReasonLabel } from '@/constants/blocks';
 import { channelOf } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { CAL } from '@/components/calendar/web/tokens';
-import { CLEANING, Row, Thumb, dayMonth, initials } from './shared';
+import { CLEANING, Row, TodayTag, dayMonth, hourLabel, initials } from './shared';
 
 export interface Section {
   title: string;
@@ -34,7 +36,31 @@ const KEY = {
   sauge: '#7E9688',
   tuile: '#FFFFFF',
   trait: '#D3DAD3',
+  cadenas: '#6E6457',
+  verrou: '#F3F0EA',
+  ficelle: '#B9A98C',
 };
+
+const TAG_TEXT: Record<TodayTag['kind'], string> = {
+  turnover: 'Ménage entre deux séjours',
+  departure: 'Part aujourd’hui',
+  arrival: 'Arrive aujourd’hui',
+};
+
+function DayTag({ tag }: { tag: TodayTag }) {
+  const time = tag.kind !== 'departure' ? hourLabel(tag.time) : null;
+  const strong = tag.kind === 'turnover';
+  return (
+    <View style={k.dayTagWrap} pointerEvents="none">
+      <View style={[k.dayTag, strong && k.dayTagStrong, tag.kind === 'departure' && k.dayTagDeparture]}>
+        <View style={[k.dayTagHole, strong && { backgroundColor: CAL.changement }]} />
+        <Text style={[k.dayTagText, strong && { color: CAL.blanc }]} numberOfLines={1}>
+          {TAG_TEXT[tag.kind]}{time ? ` · ${time}` : ''}
+        </Text>
+      </View>
+    </View>
+  );
+}
 
 export function KeyBoardView({ sections, selectedId, resaLoading, onSelect, onOpen }: ViewProps) {
   return (
@@ -44,7 +70,11 @@ export function KeyBoardView({ sections, selectedId, resaLoading, onSelect, onOp
           <View style={k.boardHead}>
             <Text style={[k.boardTitle, { marginRight: 24 }]}>{section.title}</Text>
             <Text style={k.boardMeta}>
-              {section.rows.filter((r) => !r.current).length} clé{section.rows.filter((r) => !r.current).length > 1 ? 's' : ''} au tableau sur {section.rows.length}
+              {(() => {
+                const onBoard = section.rows.filter((r) => !r.current).length;
+                const locked = section.rows.filter((r) => r.currentBlock).length;
+                return `${onBoard} clé${onBoard > 1 ? 's' : ''} au tableau sur ${section.rows.length}${locked ? ` · ${locked} sous cadenas` : ''}`;
+              })()}
             </Text>
           </View>
           <View style={k.rail} />
@@ -58,7 +88,7 @@ export function KeyBoardView({ sections, selectedId, resaLoading, onSelect, onOp
                   key={p.id}
                   onPress={() => onSelect(p.id)}
                   {...dbl(() => onOpen(p.id))}
-                  style={({ hovered }: any) => [k.tile, hovered && k.tileHover, sel && k.tileSel, !p.is_active && { opacity: 0.5 }]}
+                  style={({ hovered }: any) => [k.tile, row.currentBlock && k.tileLocked, hovered && k.tileHover, sel && k.tileSel, !p.is_active && { opacity: 0.5 }]}
                 >
                   <View style={k.hookZone}>
                     <View style={k.hook} />
@@ -70,6 +100,11 @@ export function KeyBoardView({ sections, selectedId, resaLoading, onSelect, onOp
                     ) : (
                       <View style={k.keyWrap}>
                         <View style={k.string} />
+                        {row.currentBlock ? (
+                          <View style={k.padlock}>
+                            <MaterialCommunityIcons name="lock" size={13} color={CAL.blanc} />
+                          </View>
+                        ) : null}
                         {p.photo_url ? (
                           <View style={[k.tagPhotoWrap, { borderColor: p.color }]}>
                             <Image source={{ uri: p.photo_url }} style={k.tagPhoto} />
@@ -83,8 +118,17 @@ export function KeyBoardView({ sections, selectedId, resaLoading, onSelect, onOp
                       </View>
                     )}
                   </View>
+                  {row.today ? <DayTag tag={row.today} /> : null}
                   <Text style={k.name} numberOfLines={1}>{p.name}</Text>
-                  <View style={k.line}>
+                  {row.currentBlock ? (
+                    <View style={k.line}>
+                      <MaterialCommunityIcons name="lock-outline" size={13} color={KEY.cadenas} />
+                      <Text style={[k.small, { color: KEY.cadenas, fontFamily: CAL.fontBold }]} numberOfLines={1}>
+                        {blockReasonLabel(row.currentBlock.block_reason)} · jusqu’au {dayMonth(row.currentBlock.check_out)}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <View style={[k.line, row.currentBlock && { display: 'none' }]}>
                     <View style={[k.dot, { backgroundColor: c.color }]} />
                     <Text style={[k.small, c.strong && { color: CAL.changement, fontFamily: CAL.fontBold }]}>{c.label}</Text>
                   </View>
@@ -114,9 +158,17 @@ const k = StyleSheet.create({
   boardMeta: { fontFamily: CAL.font, fontSize: 13, color: '#5C6B61' },
   rail: { height: 3, borderRadius: 2, backgroundColor: KEY.trait, marginBottom: -2, marginHorizontal: 4 },
   hooks: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  tile: { width: 188, height: 188, backgroundColor: KEY.tuile, borderRadius: 10, padding: 12, paddingTop: 0, cursor: 'pointer' as any, borderWidth: 1, borderColor: 'transparent' },
+  tile: { width: 188, minHeight: 188, backgroundColor: KEY.tuile, borderRadius: 10, padding: 12, paddingTop: 0, cursor: 'pointer' as any, borderWidth: 1, borderColor: 'transparent' },
   tileHover: { borderColor: KEY.trait },
   tileSel: { borderColor: CAL.or, borderWidth: 2 },
+  tileLocked: { backgroundColor: KEY.verrou, backgroundImage: 'repeating-linear-gradient(135deg, rgba(110,100,87,0.07) 0 6px, transparent 6px 12px)' } as any,
+  padlock: { position: 'absolute', top: 2, right: -18, zIndex: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: KEY.cadenas, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: KEY.tuile },
+  dayTagWrap: { alignSelf: 'flex-start', marginTop: -2, marginBottom: 5 },
+  dayTag: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FBF6E9', borderWidth: 1, borderColor: '#E4D8B8', borderRadius: 3, paddingVertical: 2, paddingLeft: 5, paddingRight: 7, maxWidth: 164, transform: [{ rotate: '-1.5deg' }] },
+  dayTagStrong: { backgroundColor: CAL.changement, borderColor: CAL.changement },
+  dayTagDeparture: { backgroundColor: '#EEF1F4', borderColor: '#D5DCE3' },
+  dayTagHole: { width: 4, height: 4, borderRadius: 2, backgroundColor: KEY.ficelle },
+  dayTagText: { fontFamily: CAL.fontBold, fontSize: 10.5, color: CAL.texte },
   hookZone: { height: 78, alignItems: 'center' },
   hook: { width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: KEY.sauge, backgroundColor: KEY.fond, marginTop: 8 },
   keyWrap: { alignItems: 'center' },
@@ -134,165 +186,4 @@ const k = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 4 },
   small: { fontFamily: CAL.font, fontSize: 12, color: CAL.texteDoux, flexShrink: 1 },
   pct: { fontFamily: CAL.fontBold, fontSize: 12, color: CAL.texte, width: 36, textAlign: 'right' },
-});
-
-const BR = { fond: '#F6F7F5', encre: '#1E2A38' };
-
-export function BristolView({ sections, selectedId, resaLoading, onSelect, onOpen }: ViewProps) {
-  return (
-    <ScrollView style={{ flex: 1, backgroundColor: BR.fond }} contentContainerStyle={b.wrap}>
-      {sections.map((section) => (
-        <View key={section.title}>
-          <View style={b.head}>
-            <Text style={b.title}>{section.title}</Text>
-            <View style={b.headRule} />
-          </View>
-          <View style={b.grid}>
-            {section.rows.map((row) => {
-              const p = row.property;
-              const c = CLEANING[p.cleaning_status] ?? CLEANING.to_do;
-              const sel = p.id === selectedId;
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => onSelect(p.id)}
-                  {...dbl(() => onOpen(p.id))}
-                  style={({ hovered }: any) => [b.card, { backgroundColor: `${p.color}1F` }, hovered && b.cardHover, sel && b.cardSel, !p.is_active && { opacity: 0.5 }]}
-                >
-                  {c.strong && <View style={b.fold} />}
-                  <View style={b.top}>
-                    <Thumb property={p} size={52} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={b.name} numberOfLines={2}>{p.name}</Text>
-                      <Text style={b.meta}>{p.max_guests} pers.</Text>
-                    </View>
-                  </View>
-                  <View style={b.rule} />
-                  <Text style={[b.status, c.strong && { color: CAL.changement }]}>{c.label}</Text>
-                  <Text style={b.line} numberOfLines={1}>
-                    {resaLoading ? '…' : row.current ? `${row.current.guest_name} jusqu'au ${dayMonth(row.current.check_out)}` : 'Libre ce soir'}
-                  </Text>
-                  <View style={b.nextRow}>
-                    {row.next ? <ChannelBadge channel={channelOf(row.next)} size={14} /> : null}
-                    <Text style={b.line} numberOfLines={1}>{row.next ? `Prochaine : ${dayMonth(row.next.check_in)}` : 'Pas d’arrivée prévue'}</Text>
-                  </View>
-                  <View style={{ flex: 1 }} />
-                  <View style={b.nextRow}>
-                    <Meter value={row.occupancy} color={p.color} track="rgba(30,42,56,0.08)" />
-                    <Text style={b.pct}>{pct(row)}</Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
-}
-
-const b = StyleSheet.create({
-  wrap: { padding: 28, gap: 26 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  title: { fontFamily: CAL.fontBold, fontSize: 16, color: BR.encre },
-  headRule: { flex: 1, height: 1, backgroundColor: 'rgba(30,42,56,0.12)' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  card: { width: 200, height: 200, borderRadius: 4, padding: 14, cursor: 'pointer' as any, borderWidth: 1, borderColor: 'rgba(30,42,56,0.06)', overflow: 'hidden' },
-  cardHover: { borderColor: 'rgba(30,42,56,0.22)' },
-  cardSel: { borderColor: CAL.or, borderWidth: 2 },
-  fold: { position: 'absolute', top: 0, right: 0, width: 0, height: 0, borderTopWidth: 26, borderLeftWidth: 26, borderTopColor: BR.fond, borderLeftColor: CAL.changement },
-  top: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  name: { fontFamily: CAL.fontBold, fontSize: 15, color: BR.encre },
-  meta: { fontFamily: CAL.font, fontSize: 12, color: CAL.texteDoux, marginTop: 2 },
-  rule: { height: 1, backgroundColor: 'rgba(30,42,56,0.1)', marginVertical: 10 },
-  status: { fontFamily: CAL.fontBold, fontSize: 13, color: BR.encre, marginBottom: 3 },
-  line: { fontFamily: CAL.font, fontSize: 12, color: CAL.texteDoux, flexShrink: 1 },
-  nextRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
-  pct: { fontFamily: CAL.fontBold, fontSize: 12, color: BR.encre, width: 36, textAlign: 'right' },
-});
-
-const PL = { fond: '#EEF0EE', olive: '#8A9A84', mur: '#FFFFFF', bord: '#D5DBD3' };
-
-export function VillageMapView({ sections, selectedId, onSelect, onOpen }: ViewProps) {
-  return (
-    <ScrollView style={{ flex: 1, backgroundColor: PL.fond }} contentContainerStyle={m.wrap}>
-      <View style={m.legend}>
-        <LegendHouse filled label="occupé ce soir" />
-        <LegendHouse label="libre" />
-        <View style={m.legendItem}>
-          <View style={[m.flag, { position: 'relative', top: 0, right: 0 }]} />
-          <Text style={m.legendText}>ménage à faire</Text>
-        </View>
-        <Text style={m.legendText}>Double-clic : ouvrir la fiche</Text>
-      </View>
-      <View style={m.map}>
-        {sections.map((section) => (
-          <View key={section.title} style={m.quarter}>
-            <Text style={m.quarterTitle}>{section.title}</Text>
-            <View style={m.houses}>
-              {section.rows.map((row) => {
-                const p = row.property;
-                const sel = p.id === selectedId;
-                const occupied = !!row.current;
-                const todo = p.cleaning_status === 'to_do';
-                return (
-                  <Pressable
-                    key={p.id}
-                    onPress={() => onSelect(p.id)}
-                    {...dbl(() => onOpen(p.id))}
-                    style={({ hovered }: any) => [m.house, hovered && { transform: [{ translateY: -2 }] }, !p.is_active && { opacity: 0.45 }]}
-                  >
-                    <View style={[m.roof, { borderBottomColor: `${p.color}B3` }]} />
-                    <View
-                      style={[
-                        m.body,
-                        { borderColor: `${p.color}B3`, backgroundColor: occupied ? `${p.color}4D` : PL.mur },
-                        sel && m.bodySel,
-                      ]}
-                    >
-                      <Text style={m.houseName} numberOfLines={2}>{p.name}</Text>
-                      <Text style={m.houseSub} numberOfLines={1}>
-                        {occupied ? `jusqu'au ${dayMonth(row.current!.check_out)}` : row.next ? `→ ${dayMonth(row.next.check_in)}` : 'libre'}
-                      </Text>
-                      {todo && <View style={m.flag} />}
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        ))}
-      </View>
-    </ScrollView>
-  );
-}
-
-function LegendHouse({ filled, label }: { filled?: boolean; label: string }) {
-  return (
-    <View style={m.legendItem}>
-      <View style={{ alignItems: 'center' }}>
-        <View style={[m.roof, { borderBottomColor: PL.olive, borderLeftWidth: 9, borderRightWidth: 9, borderBottomWidth: 7 }]} />
-        <View style={{ width: 16, height: 12, borderWidth: 1.5, borderColor: PL.olive, backgroundColor: filled ? PL.olive : PL.mur }} />
-      </View>
-      <Text style={m.legendText}>{label}</Text>
-    </View>
-  );
-}
-
-const m = StyleSheet.create({
-  wrap: { padding: 24 },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 18 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  legendText: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux },
-  map: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' },
-  quarter: { borderWidth: 1.5, borderColor: PL.bord, borderStyle: 'dashed', borderRadius: 18, padding: 16, paddingTop: 12, backgroundColor: 'rgba(255,255,255,0.35)' },
-  quarterTitle: { fontFamily: CAL.fontBold, fontSize: 14, color: '#4E5C4B', marginBottom: 10 },
-  houses: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  house: { width: 112, alignItems: 'center', cursor: 'pointer' as any },
-  roof: { width: 0, height: 0, borderLeftWidth: 60, borderRightWidth: 60, borderBottomWidth: 26, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
-  body: { width: 104, height: 92, borderWidth: 2, borderTopWidth: 0, padding: 8, justifyContent: 'space-between' },
-  bodySel: { outlineWidth: 2, outlineStyle: 'solid', outlineColor: CAL.or, outlineOffset: 2 } as any,
-  houseName: { fontFamily: CAL.fontBold, fontSize: 13, color: CAL.texte },
-  houseSub: { fontFamily: CAL.font, fontSize: 11, color: CAL.texte },
-  flag: { position: 'absolute', top: 6, right: 6, width: 10, height: 10, borderRadius: 5, backgroundColor: CAL.changement, borderWidth: 2, borderColor: '#FFFFFF' },
 });

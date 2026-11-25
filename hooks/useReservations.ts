@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reservationsService } from '@/services/reservations';
 import { useAuthStore } from '@/stores/authStore';
 import { getCurrentSeason } from '@/constants/season';
-import { ReservationFormData, Property } from '@/types';
+import { ReservationFormData, Property, BlockReason, Reservation } from '@/types';
 
 export const RESERVATIONS_KEY = 'reservations';
 
@@ -13,6 +13,7 @@ export function useReservations(filters?: {
   status?: string;
   category?: string;
   channel?: string;
+  kind?: 'stay' | 'block';
 }) {
   const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
@@ -22,12 +23,13 @@ export function useReservations(filters?: {
   });
 }
 
-export function useReservationsForMonth(from: string, to: string) {
+export function useReservationsForMonth(from: string, to: string, opts?: { staysOnly?: boolean }) {
   const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
   return useQuery({
     queryKey: [RESERVATIONS_KEY, userId, 'month', from, to],
     queryFn: () => reservationsService.getForMonth(userId!, from, to),
     enabled: !!userId && !!from && !!to,
+    select: opts?.staysOnly ? (rows: Reservation[]) => rows.filter((r) => r.kind !== 'block') : undefined,
   });
 }
 
@@ -150,6 +152,25 @@ export function useDeleteReservation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => reservationsService.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [RESERVATIONS_KEY] }),
+  });
+}
+
+export function useCreateBlocks() {
+  const qc = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id);
+  return useMutation({
+    mutationFn: (input: { propertyIds: string[]; checkIn: string; checkOut: string; reason: BlockReason; notes?: string }) =>
+      reservationsService.createBlocks(userId!, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [RESERVATIONS_KEY] }),
+  });
+}
+
+export function useUpdateBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: string; checkIn: string; checkOut: string; reason: BlockReason; notes?: string }) =>
+      reservationsService.updateBlock(id, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: [RESERVATIONS_KEY] }),
   });
 }

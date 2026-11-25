@@ -1,3 +1,4 @@
+import { ICAL_PAUSED } from '@/constants/ical';
 import { useState } from 'react';
 import { ScrollView, View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text, Button, ActivityIndicator, Switch, Snackbar, TextInput } from 'react-native-paper';
@@ -24,7 +25,7 @@ export default function PropertyDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { data: property, isLoading } = useProperty(id);
-  const { data: reservations } = useReservations({ propertyId: id, from: todayISO() });
+  const { data: reservations } = useReservations({ propertyId: id, from: todayISO(), kind: 'stay' });
   const { mutateAsync: updateProperty, isPending: updating } = useUpdateProperty();
   const { mutateAsync: toggleActive } = useTogglePropertyActive();
   const { mutate: syncIcal, isPending: syncing } = useSyncIcal();
@@ -235,7 +236,15 @@ export default function PropertyDetailScreen() {
               <Text style={styles.sectionLabelText}>SYNCHRONISATION CALENDRIER</Text>
             </View>
             <View style={[styles.card, SHADOWS.sm, { padding: 16, gap: 12 }]}>
-              {property.ical_url ? (
+              {ICAL_PAUSED ? (
+                <View style={styles.icalEmpty}>
+                  <MaterialCommunityIcons name="pause-circle-outline" size={28} color={APP_COLORS.textTertiary} />
+                  <Text style={styles.icalEmptyText}>Synchronisation en pause</Text>
+                  <Text style={styles.icalEmptyHint}>
+                    Les réservations se saisissent à la main pour l’instant.{property.ical_url ? ' Le lien iCal reste enregistré.' : ''}
+                  </Text>
+                </View>
+              ) : property.ical_url ? (
                 <>
                   <View style={styles.icalUrlRow}>
                     <MaterialCommunityIcons name="calendar-sync" size={14} color={APP_COLORS.primary} />

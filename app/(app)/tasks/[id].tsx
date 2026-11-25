@@ -75,7 +75,7 @@ export default function TaskDetailScreen() {
   const { mutateAsync: removeTemplate } = useDeleteTemplate();
   const { data: cleaners } = useCleaners();
 
-  const { data: allReservations } = useReservations();
+  const { data: allReservations } = useReservations({ kind: 'stay' });
   const linkedReservation = task?.reservation_id
     ? allReservations?.find((r) => r.id === task.reservation_id)
     : null;

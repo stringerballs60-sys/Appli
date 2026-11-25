@@ -41,6 +41,7 @@ export default function ReservationsScreen() {
     propertyId: selectedPropertyId ?? undefined,
     status: selectedStatus ?? undefined,
     channel: selectedChannel ?? undefined,
+    kind: 'stay',
   });
 
   return (

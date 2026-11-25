@@ -1,5 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import '@/i18n';
+import '@/utils/calendarLocale';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Stack } from 'expo-router';

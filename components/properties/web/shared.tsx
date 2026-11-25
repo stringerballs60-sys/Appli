@@ -13,14 +13,25 @@ export const CLEANING: Record<Property['cleaning_status'], { label: string; colo
   occupied: { label: 'Occupé', color: CAL.nuit },
 };
 
+export type TodayTag =
+  | { kind: 'turnover'; time: string | null }
+  | { kind: 'departure' }
+  | { kind: 'arrival'; time: string | null };
+
 export interface Row {
   property: Property;
   current: Reservation | null;
+  currentBlock: Reservation | null;
   next: Reservation | null;
   upcoming: Reservation[];
+  upcomingBlocks: Reservation[];
+  today: TodayTag | null;
   bookedNights: number;
+  blockedNights: number;
   occupancy: number;
 }
+
+export const hourLabel = (t: string | null | undefined) => (t ? t.slice(0, 5).replace(':', 'h').replace(/h00$/, 'h') : null);
 
 export function groupKey(p: Property) {
   return p.group_name?.trim() || 'Autres logements';

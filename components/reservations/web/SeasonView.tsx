@@ -11,10 +11,11 @@ import { initials } from '@/components/properties/web/shared';
 import { Property, Reservation } from '@/types';
 import { isBlockRow, isCancelled, toISO } from './model';
 import { STUB } from './StubsView';
+import { formatPrice } from '@/utils/price';
 
 const ROW_H = 58;
 const LEFT_W = 210;
-const STATS_W = 260;
+const STATS_W = 350;
 const MONTHS = [3, 4, 5, 6, 7, 8, 9, 10, 11];
 
 interface Props {
@@ -66,7 +67,9 @@ function SeasonBlock({ year, rows, all, properties, selectedId, onSelect, onOpen
       const myBlocks = blocks.filter((r) => r.property_id === p.id);
       const occ = computeOccupancy([...mine, ...myBlocks], season.start, season.end);
       const byChannel = CHANNELS.map((c) => ({ c, n: mine.filter((r) => channelOf(r) === c).length })).filter((x) => x.n > 0);
-      return { p, stays: mine, blocks: myBlocks, occ, byChannel };
+      const priced = mine.filter((r) => r.price != null);
+      const revenue = priced.reduce((n, r) => n + (r.price ?? 0), 0);
+      return { p, stays: mine, blocks: myBlocks, occ, byChannel, revenue, priced: priced.length };
     });
   }, [rows, all, properties, year, season.start, season.end, endExISO]);
 
@@ -75,13 +78,14 @@ function SeasonBlock({ year, rows, all, properties, selectedId, onSelect, onOpen
   const available = lines.reduce((n, l) => n + l.occ.availableNights, 0);
   const avg = available ? totalNights / available : 0;
   const best = Math.max(0, ...lines.map((l) => l.occ.rate));
+  const totalRevenue = lines.reduce((n, l) => n + l.revenue, 0);
 
   return (
     <View style={s.block}>
       <View style={s.head}>
         <Text style={s.title}>Saison {year}</Text>
         <Text style={s.headMeta}>
-          {format(start, 'd MMMM', { locale: fr })} → {format(parseISO(season.end), 'd MMMM', { locale: fr })} · {totalStays} séjour{totalStays > 1 ? 's' : ''} · {totalNights} nuits louées · remplissage moyen {Math.round(avg * 100)} %
+          {format(start, 'd MMMM', { locale: fr })} → {format(parseISO(season.end), 'd MMMM', { locale: fr })} · {totalStays} séjour{totalStays > 1 ? 's' : ''} · {totalNights} nuits louées · remplissage moyen {Math.round(avg * 100)} %{totalRevenue > 0 ? ` · ${formatPrice(totalRevenue)} de recettes` : ''}
         </Text>
       </View>
 
@@ -101,11 +105,12 @@ function SeasonBlock({ year, rows, all, properties, selectedId, onSelect, onOpen
         <View style={[s.statsHead, { width: STATS_W }]}>
           <Text style={[s.statsHeadText, { width: 70 }]}>Séjours</Text>
           <Text style={[s.statsHeadText, { width: 56 }]}>Nuits</Text>
+          <Text style={[s.statsHeadText, { width: 90 }]}>Recettes</Text>
           <Text style={[s.statsHeadText, { flex: 1 }]}>Remplissage</Text>
         </View>
       </View>
 
-      {lines.map(({ p, stays, blocks, occ, byChannel }) => (
+      {lines.map(({ p, stays, blocks, occ, byChannel, revenue, priced }) => (
         <View key={p.id} style={s.line}>
           <View style={[s.left, { width: LEFT_W }]}>
             <View style={s.timbre}>
@@ -157,6 +162,10 @@ function SeasonBlock({ year, rows, all, properties, selectedId, onSelect, onOpen
           <View style={[s.stats, { width: STATS_W }]}>
             <Text style={[s.num, { width: 70 }]}>{stays.length}</Text>
             <Text style={[s.num, { width: 56 }]}>{occ.bookedNights}</Text>
+            <View style={{ width: 90 }}>
+              <Text style={[s.num, { color: revenue > 0 ? STUB.tampon : '#B7AE9C' }]}>{revenue > 0 ? formatPrice(revenue) : '—'}</Text>
+              {stays.length > 0 && priced < stays.length ? <Text style={s.small}>{priced}/{stays.length} prix saisis</Text> : null}
+            </View>
             <View style={{ flex: 1 }}>
               <View style={s.inline}>
                 <View style={s.meter}>

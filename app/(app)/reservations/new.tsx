@@ -21,6 +21,7 @@ import { toISODateString, calcNights } from '@/utils/dateHelpers';
 import { reservationsService } from '@/services/reservations';
 import { CHANNELS, CHANNEL_LABELS, categoryForChannel } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
+import { PriceInput } from '@/components/reservation/PriceInput';
 
 const emptyForm = (): ReservationFormData => ({
   property_id: '',
@@ -43,6 +44,7 @@ const emptyForm = (): ReservationFormData => ({
   beds_sofa_used: 0,
   beds_crib_used: 0,
   notes: '',
+  price: null,
 });
 
 export default function NewReservationScreen() {
@@ -267,6 +269,14 @@ export default function NewReservationScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        <View style={styles.sectionLabel}>
+          <View style={styles.sectionAccent} />
+          <Text style={styles.sectionLabelText}>PRIX</Text>
+        </View>
+        <View style={[styles.section, SHADOWS.sm]}>
+          <PriceInput key={'new'} value={form.price} nights={nights} onChange={(v) => set('price', v)} />
+        </View>
 
         <View style={styles.sectionLabel}>
           <View style={styles.sectionAccent} />

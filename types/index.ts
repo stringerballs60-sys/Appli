@@ -108,6 +108,7 @@ export interface Reservation {
   source: ReservationSource;
   kind: ReservationKind;
   block_reason: BlockReason | null;
+  price: number | null;
   ical_uid: string | null;
   created_at: string;
   updated_at: string;
@@ -194,6 +195,7 @@ export type ReservationFormData = {
   beds_crib_used: number;
   notes: string;
   source?: ReservationSource;
+  price?: number | null;
 };
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────────────────────

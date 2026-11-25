@@ -20,6 +20,7 @@ import { suggestBedAllocation, calculateLinen } from '@/utils/linenCalculator';
 import { toISODateString, calcNights } from '@/utils/dateHelpers';
 import { CHANNELS, CHANNEL_LABELS, categoryForChannel, channelOf } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
+import { PriceInput } from '@/components/reservation/PriceInput';
 
 export default function EditReservationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -68,6 +69,7 @@ export default function EditReservationScreen() {
       beds_sofa_used: reservation.beds_sofa_used,
       beds_crib_used: reservation.beds_crib_used,
       notes: reservation.notes ?? '',
+      price: reservation.price ?? null,
     });
     setSelectedProperty((reservation.property as any) ?? null);
   }, [reservation]);
@@ -263,6 +265,14 @@ export default function EditReservationScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        <View style={styles.sectionLabel}>
+          <View style={styles.sectionAccent} />
+          <Text style={styles.sectionLabelText}>PRIX</Text>
+        </View>
+        <View style={[styles.section, SHADOWS.sm]}>
+          <PriceInput key={reservation?.id ?? 'edit'} value={form.price} nights={nights} onChange={(v) => set('price', v)} />
+        </View>
 
         <View style={styles.sectionLabel}>
           <View style={styles.sectionAccent} />

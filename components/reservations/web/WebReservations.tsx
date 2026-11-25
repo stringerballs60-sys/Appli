@@ -12,6 +12,7 @@ import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { blockReasonLabel } from '@/constants/blocks';
 import { CAL, PANEL_WIDTH } from '@/components/calendar/web/tokens';
 import { linenFor } from '@/components/calendar/web/dayModel';
+import { formatPrice } from '@/utils/price';
 import { TABS, TabKey, tabOf, sortForTab, todayISO, turnoverKeys, guestsDetail, isBlockRow, isCancelled, timeLabel } from './model';
 import { StubsView } from './StubsView';
 import { SeasonView } from './SeasonView';
@@ -257,6 +258,7 @@ function DetailPanel({ resa, property, onOpen, router }: { resa: Reservation; pr
                 <Text style={styles.factLabel}>Provenance</Text>
                 <ChannelBadge channel={channelOf(resa)} size={18} withLabel labelColor={CAL.texte} />
               </View>
+              <Fact label="Prix" value={resa.price != null ? `${formatPrice(resa.price, true)}${resa.nb_nights > 0 ? ` · ${formatPrice(Math.round((resa.price / resa.nb_nights) * 100) / 100, true)} / nuit` : ''}` : 'Non renseigné'} />
               <Fact label="Statut" value={resa.status === 'cancelled' ? 'Annulée' : resa.status === 'pending' ? 'En attente' : resa.status === 'completed' ? 'Terminée' : 'Confirmée'} />
               {resa.guest_phone ? <Fact label="Téléphone" value={resa.guest_phone} /> : null}
               {resa.guest_email ? <Fact label="E-mail" value={resa.guest_email} /> : null}

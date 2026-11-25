@@ -1,10 +1,11 @@
 import { useEffect, useCallback, useState } from 'react';
-import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { ScrollView, View, StyleSheet, Image, TouchableOpacity, Modal, Pressable, useWindowDimensions, Platform } from 'react-native';
 import { Alert } from '@/utils/alert';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { WebToday } from '@/components/today/web/WebToday';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -630,6 +631,9 @@ export default function DashboardScreen() {
     },
     [today, updateCleaningStatus]
   );
+
+  const { width: screenWidth } = useWindowDimensions();
+  if (Platform.OS === 'web' && screenWidth >= 900) return <WebToday />;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>

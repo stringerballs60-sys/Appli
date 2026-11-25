@@ -93,6 +93,31 @@ export const tasksService = {
     if (error) throw error;
   },
 
+  /** Ménages du jour + ménages restés à faire des 30 derniers jours. */
+  async getCleaningDay(userId: string, date: string): Promise<Task[]> {
+    const from = new Date(date);
+    from.setDate(from.getDate() - 30);
+    const fromStr = from.toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*, property:properties(id, name, color)')
+      .eq('user_id', userId)
+      .eq('type', TaskType.CLEANING)
+      .gte('scheduled_date', fromStr)
+      .lte('scheduled_date', date)
+      .order('scheduled_date', { ascending: true });
+    if (error) throw error;
+    return (data ?? []).filter((t) => t.scheduled_date === date || t.status !== TaskStatus.DONE);
+  },
+
+  async reopen(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ status: TaskStatus.PENDING, completed_at: null, started_at: null, paused_at: null })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
   async start(id: string): Promise<void> {
     const { error } = await supabase
       .from('tasks')

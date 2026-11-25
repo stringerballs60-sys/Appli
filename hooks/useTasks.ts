@@ -175,3 +175,24 @@ export function useApplyTemplate() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [TASKS_KEY] }),
   });
 }
+
+export function useCleaningDay(date: string) {
+  const userId = useAuthStore((s) => s.effectiveUserId ?? s.user?.id);
+  return useQuery({
+    queryKey: [TASKS_KEY, userId, 'cleaning-day', date],
+    queryFn: () => tasksService.getCleaningDay(userId!, date),
+    enabled: !!userId && !!date,
+    refetchInterval: 2 * 60 * 1000,
+  });
+}
+
+export function useSetCleaningDone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, done }: { id: string; done: boolean }) => (done ? tasksService.finish(id) : tasksService.reopen(id)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [TASKS_KEY] });
+      qc.invalidateQueries({ queryKey: ['properties'] });
+    },
+  });
+}

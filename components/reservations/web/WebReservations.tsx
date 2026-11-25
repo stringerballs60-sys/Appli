@@ -261,7 +261,7 @@ function DetailPanel({ resa, property, onOpen, router }: { resa: Reservation; pr
                 <Text style={styles.factLabel}>Provenance</Text>
                 <ChannelBadge channel={channelOf(resa)} size={18} withLabel labelColor={CAL.texte} />
               </View>
-              <Fact label={amountLabel(channelOf(resa))} value={resa.price != null ? `${formatPrice(resa.price)}${resa.nb_nights > 0 ? ` · ${formatPrice(Math.round((resa.price / resa.nb_nights) * 100) / 100)} / nuit` : ''}` : 'Non renseignée'} />
+              <Fact label={amountLabel(channelOf(resa))} value={resa.price != null ? formatPrice(resa.price) : 'Non renseignée'} />
               <Fact label="Statut" value={resa.status === 'cancelled' ? 'Annulée' : resa.status === 'pending' ? 'En attente' : resa.status === 'completed' ? 'Terminée' : 'Confirmée'} />
               {resa.guest_phone ? <Fact label="Téléphone" value={resa.guest_phone} /> : null}
               {resa.guest_email ? <Fact label="E-mail" value={resa.guest_email} /> : null}

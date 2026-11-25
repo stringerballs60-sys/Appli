@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
 import { APP_COLORS } from '@/constants/colors';
 import { FONTS } from '@/constants/typography';
-import { parsePrice, formatPrice } from '@/utils/price';
+import { parsePrice } from '@/utils/price';
 
 interface Props {
   label: string;
@@ -34,9 +34,7 @@ export function PriceInput({ label, value, nights, onChange }: Props) {
       <Text style={[styles.hint, invalid && { color: APP_COLORS.danger }]}>
         {invalid
           ? 'Écris seulement un nombre, par exemple 650 ou 650,50.'
-          : parsed != null && nights && nights > 0
-            ? `Ce que tu gagnes sur cette résa, soit ${formatPrice(Math.round((parsed / nights) * 100) / 100)} par nuit`
-            : 'Ce que tu gagnes sur cette résa. Facultatif : laisse vide si tu ne le connais pas encore.'}
+          : 'Ce que tu gagnes sur cette résa. Facultatif : laisse vide si tu ne le connais pas encore.'}
       </Text>
     </View>
   );

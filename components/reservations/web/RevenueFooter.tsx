@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { format, parseISO } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { FONTS } from '@/constants/typography';
 import { channelOf, CHANNEL_LABELS } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
@@ -22,9 +25,21 @@ export function RevenueFooter({ reservations, filtered }: { reservations: Reserv
   useEffect(() => {
     if (year === undefined || !years.includes(year)) setYear(defaultYear);
   }, [years, year, defaultYear]);
+  const [month, setMonth] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => { setMonth(null); setMenuOpen(false); }, [year]);
+
+  const months = useMemo(
+    () => Array.from(new Set(stays.filter((r) => Number(r.check_in.slice(0, 4)) === year).map((r) => r.check_in.slice(0, 7)))).sort(),
+    [stays, year]
+  );
+  const monthLabel = (key: string) => {
+    const t = format(parseISO(`${key}-01`), 'MMMM yyyy', { locale: fr });
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  };
 
   const t = useMemo(() => {
-    const list = stays.filter((r) => Number(r.check_in.slice(0, 4)) === year);
+    const list = stays.filter((r) => Number(r.check_in.slice(0, 4)) === year && (!month || r.check_in.startsWith(month)));
     const sum = (rows: Reservation[]) => rows.reduce((n, r) => n + (r.price ?? 0), 0);
     const presta = list.filter((r) => channelOf(r) === 'presta');
     const commissions = list.filter((r) => channelOf(r) !== 'presta');
@@ -40,7 +55,7 @@ export function RevenueFooter({ reservations, filtered }: { reservations: Reserv
       missing: list.filter((r) => r.price == null).length,
       count: list.length,
     };
-  }, [stays, year]);
+  }, [stays, year, month]);
 
   if (years.length === 0) return null;
 
@@ -52,6 +67,26 @@ export function RevenueFooter({ reservations, filtered }: { reservations: Reserv
             <Text style={[s.yearText, y === year && s.yearTextOn]}>{y}</Text>
           </Pressable>
         ))}
+      </View>
+
+      <View style={{ position: 'relative', zIndex: 20 }}>
+        <Pressable onPress={() => setMenuOpen((v) => !v)} style={({ hovered }: any) => [s.select, hovered && { borderColor: STUB.carbone }]} accessibilityLabel="Choisir la période">
+          <Text style={s.selectText}>{month ? monthLabel(month) : `Toute la saison ${year}`}</Text>
+          <MaterialCommunityIcons name={menuOpen ? 'chevron-down' : 'chevron-up'} size={16} color={STUB.carbone} />
+        </Pressable>
+        {menuOpen && (
+          <View style={s.menu}>
+            {[null, ...months].map((m) => (
+              <Pressable
+                key={m ?? 'all'}
+                onPress={() => { setMonth(m); setMenuOpen(false); }}
+                style={({ hovered }: any) => [s.menuItem, m === month && s.menuItemOn, hovered && m !== month && { backgroundColor: '#F3EDE2' }]}
+              >
+                <Text style={[s.menuText, m === month && { fontFamily: FONTS.readableBold }]}>{m ? monthLabel(m) : `Toute la saison ${year}`}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={s.block}>
@@ -83,7 +118,7 @@ export function RevenueFooter({ reservations, filtered }: { reservations: Reserv
       <View style={{ flex: 1 }} />
 
       <View style={s.totalBlock}>
-        <Text style={s.label}>Total gagné · saison {year}</Text>
+        <Text style={s.label}>Total gagné · {month ? monthLabel(month).toLowerCase() : `saison ${year}`}</Text>
         <Text style={s.total}>{formatPrice(t.commission + t.presta)}</Text>
         <Text style={s.small}>
           {t.missing > 0 ? `${t.missing} résa${t.missing > 1 ? 's' : ''} sur ${t.count} sans montant` : `${t.count} résa${t.count > 1 ? 's' : ''}, toutes renseignées`}
@@ -95,12 +130,18 @@ export function RevenueFooter({ reservations, filtered }: { reservations: Reserv
 }
 
 const s = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', gap: 28, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: STUB.kraft, borderTopWidth: 1, borderTopColor: STUB.trait },
+  bar: { zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 28, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: STUB.kraft, borderTopWidth: 1, borderTopColor: STUB.trait },
   years: { gap: 4 },
   year: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 4 },
   yearOn: { backgroundColor: STUB.nuit },
   yearText: { fontFamily: FONTS.readableBold, fontSize: 12, color: STUB.carbone },
   yearTextOn: { color: '#FFFFFF' },
+  select: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: STUB.trait, backgroundColor: STUB.papier, borderRadius: 5, paddingVertical: 6, paddingHorizontal: 10, minWidth: 170 },
+  selectText: { fontFamily: FONTS.readableBold, fontSize: 13, color: STUB.nuit, flex: 1 },
+  menu: { position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, minWidth: 190, backgroundColor: STUB.papier, borderWidth: 1, borderColor: STUB.trait, borderRadius: 6, paddingVertical: 4, boxShadow: '0 6px 18px rgba(15,34,64,0.15)' } as any,
+  menuItem: { paddingVertical: 7, paddingHorizontal: 12 },
+  menuItemOn: { backgroundColor: '#EDE5D6' },
+  menuText: { fontFamily: FONTS.readable, fontSize: 13, color: STUB.nuit },
   block: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   label: { fontFamily: FONTS.readable, fontSize: 11, color: STUB.carbone, textTransform: 'uppercase', letterSpacing: 0.8 },
   stamp: { borderWidth: 2, borderRadius: 3, paddingVertical: 2, paddingHorizontal: 10, opacity: 0.9, backgroundColor: STUB.papier },

@@ -18,9 +18,9 @@ import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
 import { suggestBedAllocation, calculateLinen } from '@/utils/linenCalculator';
 import { toISODateString, calcNights } from '@/utils/dateHelpers';
-import { CHANNELS, CHANNEL_LABELS, categoryForChannel, channelOf, defaultChannelFor, amountLabel } from '@/constants/channels';
+import { CHANNELS, CHANNEL_LABELS, categoryForChannel, channelOf, defaultChannelFor } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
-import { PriceInput } from '@/components/reservation/PriceInput';
+import { EarningsInput } from '@/components/reservation/EarningsInput';
 
 export default function EditReservationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -69,7 +69,9 @@ export default function EditReservationScreen() {
       beds_sofa_used: reservation.beds_sofa_used,
       beds_crib_used: reservation.beds_crib_used,
       notes: reservation.notes ?? '',
-      price: reservation.price ?? null,
+      cleaning_amount: reservation.cleaning_amount ?? null,
+      beds_amount: reservation.beds_amount ?? null,
+      commission_amount: reservation.commission_amount ?? null,
     });
     setSelectedProperty((reservation.property as any) ?? null);
   }, [reservation]);
@@ -272,10 +274,19 @@ export default function EditReservationScreen() {
 
         <View style={styles.sectionLabel}>
           <View style={styles.sectionAccent} />
-          <Text style={styles.sectionLabelText}>{amountLabel(form.source ?? 'manual').toUpperCase()}</Text>
+          <Text style={styles.sectionLabelText}>CE QUE TU GAGNES</Text>
         </View>
         <View style={[styles.section, SHADOWS.sm]}>
-          <PriceInput key={reservation?.id ?? 'edit'} label={amountLabel(form.source ?? 'manual')} value={form.price} nights={nights} onChange={(v) => set('price', v)} />
+          <EarningsInput
+            key={reservation?.id ?? 'edit'}
+            property={selectedProperty}
+            channel={form.source ?? 'manual'}
+            checkOut={form.check_out}
+            beds={form}
+            keepStored
+            value={{ cleaning_amount: form.cleaning_amount ?? null, beds_amount: form.beds_amount ?? null, commission_amount: form.commission_amount ?? null }}
+            onChange={(patch) => setForm((prev) => (prev ? { ...prev, ...patch } : prev))}
+          />
         </View>
 
         <View style={styles.sectionLabel}>

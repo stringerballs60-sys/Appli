@@ -7,7 +7,8 @@ import { fr } from 'date-fns/locale';
 import { useReservations } from '@/hooks/useReservations';
 import { useProperties } from '@/hooks/useProperties';
 import { Property, Reservation, ReservationSource } from '@/types';
-import { CHANNELS, CHANNEL_LABELS, channelOf, amountLabel } from '@/constants/channels';
+import { CHANNELS, CHANNEL_LABELS, channelOf } from '@/constants/channels';
+import { isPrestaProperty, payerFor, payerLabel } from '@/constants/tariffs';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { blockReasonLabel } from '@/constants/blocks';
 import { CAL, PANEL_WIDTH } from '@/components/calendar/web/tokens';
@@ -183,7 +184,7 @@ export function WebReservations() {
         {selected && <DetailPanel resa={selected} property={propertiesById.get(selected.property_id)} onOpen={() => openResa(selected)} router={router} />}
       </View>
 
-      {!isLoading && !isError ? <RevenueFooter reservations={filtered} filtered={!!(query.trim() || site || channel)} /> : null}
+      {!isLoading && !isError ? <RevenueFooter reservations={filtered} propertiesById={propertiesById} filtered={!!(query.trim() || site || channel)} /> : null}
     </View>
   );
 }
@@ -260,8 +261,8 @@ function DetailPanel({ resa, property, onOpen, router }: { resa: Reservation; pr
               <View style={styles.fact}>
                 <Text style={styles.factLabel}>Provenance</Text>
                 <ChannelBadge channel={channelOf(resa)} size={18} withLabel labelColor={CAL.texte} />
+                {isPrestaProperty(property) ? <ChannelBadge channel="presta" size={18} withLabel labelColor={CAL.texte} /> : null}
               </View>
-              <Fact label={amountLabel(channelOf(resa))} value={resa.price != null ? formatPrice(resa.price) : 'Non renseignée'} />
               <Fact label="Statut" value={resa.status === 'cancelled' ? 'Annulée' : resa.status === 'pending' ? 'En attente' : resa.status === 'completed' ? 'Terminée' : 'Confirmée'} />
               {resa.guest_phone ? <Fact label="Téléphone" value={resa.guest_phone} /> : null}
               {resa.guest_email ? <Fact label="E-mail" value={resa.guest_email} /> : null}
@@ -269,6 +270,8 @@ function DetailPanel({ resa, property, onOpen, router }: { resa: Reservation; pr
           )}
           {resa.notes ? <Fact label="Notes" value={resa.notes} /> : null}
         </View>
+
+        {!block ? <EarningsFacts resa={resa} property={property} /> : null}
 
         {linen && !isCancelled(resa) ? (
           <>
@@ -304,6 +307,39 @@ function DetailPanel({ resa, property, onOpen, router }: { resa: Reservation; pr
         </View>
       </ScrollView>
     </View>
+  );
+}
+
+function EarningsFacts({ resa, property }: { resa: Reservation; property?: Property }) {
+  const ch = channelOf(resa);
+  const presta = isPrestaProperty(property);
+  const lines = [
+    { label: presta ? 'Presta ménage' : 'Ménage', v: resa.cleaning_amount, payer: payerLabel(payerFor(property?.cleaning_payer, ch), ch) },
+    { label: 'Lits', v: resa.beds_amount, payer: payerLabel(payerFor(property?.beds_payer, ch), ch) },
+    { label: 'Commission', v: resa.commission_amount, payer: payerLabel('platform', ch) },
+  ].filter((l) => l.v != null);
+  return (
+    <>
+      <Text style={styles.panelSection}>Ce que tu gagnes</Text>
+      {lines.length === 0 ? (
+        <Text style={styles.factValue}>Pas encore de montant. « Ouvrir la fiche » puis « Modifier » pour le saisir.</Text>
+      ) : (
+        <View style={styles.earnings}>
+          {lines.map((l) => (
+            <View key={l.label} style={styles.earnLine}>
+              <Text style={styles.earnLabel}>{l.label}</Text>
+              <Text style={styles.earnPayer}>{l.payer}</Text>
+              <Text style={styles.earnValue}>{formatPrice(l.v)}</Text>
+            </View>
+          ))}
+          <View style={[styles.earnLine, styles.earnTotal]}>
+            <Text style={[styles.earnLabel, { fontFamily: CAL.fontBold }]}>Total</Text>
+            <Text style={styles.earnPayer} />
+            <Text style={[styles.earnValue, { color: presta ? '#1E7A78' : '#B4453A' }]}>{formatPrice(resa.price)}</Text>
+          </View>
+        </View>
+      )}
+    </>
   );
 }
 
@@ -362,6 +398,12 @@ const styles = StyleSheet.create({
   factLabel: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux, width: 96 },
   factValue: { fontFamily: CAL.font, fontSize: 14, color: CAL.texte, flex: 1 },
   panelSection: { fontFamily: CAL.fontBold, fontSize: 14, color: CAL.texte, marginTop: 20, marginBottom: 8 },
+  earnings: { borderWidth: 1, borderColor: CAL.brume, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  earnLine: { flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingVertical: 5 },
+  earnTotal: { borderTopWidth: 1, borderTopColor: CAL.brume, marginTop: 2 },
+  earnLabel: { fontFamily: CAL.font, fontSize: 14, color: CAL.texte, width: 104 },
+  earnPayer: { fontFamily: CAL.font, fontSize: 12, color: CAL.texteDoux, flex: 1 },
+  earnValue: { fontFamily: CAL.fontBold, fontSize: 14, color: CAL.texte },
   linen: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   linenItem: { flexDirection: 'row', alignItems: 'baseline', gap: 6, backgroundColor: CAL.brumeClair, borderRadius: 5, paddingVertical: 5, paddingHorizontal: 9 },
   linenNum: { fontFamily: CAL.fontBold, fontSize: 15, color: CAL.texte },

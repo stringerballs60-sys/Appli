@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Image } from 'react-nati
 import { initials } from '@/components/properties/web/shared';
 import { Property } from '@/types';
 import { formatPrice } from '@/utils/price';
+import { isPrestaProperty } from '@/constants/tariffs';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FONTS } from '@/constants/typography';
@@ -69,8 +70,8 @@ export function StubsView({ rows, tab, today, selectedId, propertiesById, turnov
                   <View style={s.body}>
                     <Stamp property={p} dim={block || cancelled} />
                     {!block && !cancelled && r.price != null ? (
-                      <View style={[s.price, channelOf(r) === 'presta' && s.pricePresta]} pointerEvents="none">
-                        <Text style={[s.priceText, channelOf(r) === 'presta' && { color: STUB.presta }]}>{formatPrice(r.price)}</Text>
+                      <View style={[s.price, isPrestaProperty(p) && s.pricePresta]} pointerEvents="none">
+                        <Text style={[s.priceText, isPrestaProperty(p) && { color: STUB.presta }]}>{formatPrice(r.price)}</Text>
                       </View>
                     ) : null}
                     <View style={[s.inline, { paddingRight: 70 }]}>
@@ -92,6 +93,12 @@ export function StubsView({ rows, tab, today, selectedId, propertiesById, turnov
                         <View style={s.inline}>
                           <ChannelBadge channel={channelOf(r)} size={15} />
                           <Text style={s.carbone}>{CHANNEL_LABELS[channelOf(r)]}</Text>
+                          {isPrestaProperty(p) ? (
+                            <>
+                              <ChannelBadge channel="presta" size={15} />
+                              <Text style={s.carbone}>Presta</Text>
+                            </>
+                          ) : null}
                         </View>
                       )}
                       {!block && (

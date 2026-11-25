@@ -1,3 +1,4 @@
+import { TariffEditor } from '@/components/properties/TariffEditor';
 import { ICAL_PAUSED } from '@/constants/ical';
 import { useState } from 'react';
 import { ScrollView, View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
@@ -190,6 +191,14 @@ export default function PropertyDetailScreen() {
                   <Text style={styles.bedLabel}>{label}</Text>
                 </View>
               ))}
+            </View>
+
+            <View style={styles.sectionLabel}>
+              <View style={styles.sectionAccent} />
+              <Text style={styles.sectionLabelText}>TARIF</Text>
+            </View>
+            <View style={[styles.card, SHADOWS.sm, { padding: 16 }]}>
+              <TariffEditor property={property} />
             </View>
 
             {/* Inventory shortcuts */}

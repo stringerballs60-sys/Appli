@@ -26,6 +26,7 @@ export enum ReservationStatus {
 
 export type ReservationSource = 'airbnb' | 'booking' | 'abritel' | 'manual' | 'presta';
 export type ReservationKind = 'stay' | 'block';
+export type Payer = 'platform' | 'owner' | 'onsite';
 export type BlockReason = 'personal' | 'owner' | 'works' | 'other';
 
 export enum LinenType {
@@ -65,6 +66,14 @@ export interface Property {
   cleaning_status: 'ready' | 'to_do' | 'in_progress' | 'occupied';
   cleaning_status_date: string | null;
   photo_url?: string | null;
+  cleaning_fee: number | null;
+  cleaning_fee_peak: number | null;
+  peak_months: number[];
+  bed_double_fee: number | null;
+  bed_single_fee: number | null;
+  commission_rate: number | null;
+  cleaning_payer: Payer;
+  beds_payer: Payer;
   ical_url: string | null;
   group_name: string | null;
   created_at: string;
@@ -109,6 +118,9 @@ export interface Reservation {
   kind: ReservationKind;
   block_reason: BlockReason | null;
   price: number | null;
+  cleaning_amount: number | null;
+  beds_amount: number | null;
+  commission_amount: number | null;
   ical_uid: string | null;
   created_at: string;
   updated_at: string;
@@ -172,6 +184,14 @@ export type PropertyFormData = {
   color: string;
   ical_url: string;
   group_name: string;
+  cleaning_fee?: number | null;
+  cleaning_fee_peak?: number | null;
+  peak_months?: number[];
+  bed_double_fee?: number | null;
+  bed_single_fee?: number | null;
+  commission_rate?: number | null;
+  cleaning_payer?: Payer;
+  beds_payer?: Payer;
 };
 
 export type ReservationFormData = {
@@ -195,7 +215,9 @@ export type ReservationFormData = {
   beds_crib_used: number;
   notes: string;
   source?: ReservationSource;
-  price?: number | null;
+  cleaning_amount?: number | null;
+  beds_amount?: number | null;
+  commission_amount?: number | null;
 };
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────────────────────

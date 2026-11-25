@@ -7,14 +7,15 @@ import { FONTS } from '@/constants/typography';
 import { channelOf, CHANNEL_LABELS } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { formatPrice } from '@/utils/price';
-import { Reservation, ReservationSource } from '@/types';
+import { Property, Reservation, ReservationSource } from '@/types';
+import { payerFor } from '@/constants/tariffs';
 import { isBlockRow, isCancelled } from './model';
 import { STUB } from './StubsView';
 
 const COMMISSION_CHANNELS: ReservationSource[] = ['airbnb', 'manual', 'booking', 'abritel'];
 
 /** Récap des gains en bas de la page Réservations, par saison, avec les mêmes tampons que les tickets. */
-export function RevenueFooter({ reservations, filtered }: { reservations: Reservation[]; filtered: boolean }) {
+export function RevenueFooter({ reservations, filtered, propertiesById }: { reservations: Reservation[]; filtered: boolean; propertiesById: Map<string, Property> }) {
   const stays = useMemo(() => reservations.filter((r) => !isBlockRow(r) && !isCancelled(r)), [reservations]);
   const years = useMemo(() => Array.from(new Set(stays.map((r) => Number(r.check_in.slice(0, 4))))).sort((a, b) => b - a), [stays]);
   const defaultYear = useMemo(() => {
@@ -40,22 +41,35 @@ export function RevenueFooter({ reservations, filtered }: { reservations: Reserv
 
   const t = useMemo(() => {
     const list = stays.filter((r) => Number(r.check_in.slice(0, 4)) === year && (!month || r.check_in.startsWith(month)));
-    const sum = (rows: Reservation[]) => rows.reduce((n, r) => n + (r.price ?? 0), 0);
-    const presta = list.filter((r) => channelOf(r) === 'presta');
-    const commissions = list.filter((r) => channelOf(r) !== 'presta');
+    const n = (v: number | null | undefined) => (v == null ? 0 : Number(v));
     const byChannel = COMMISSION_CHANNELS.map((c) => {
-      const rows = commissions.filter((r) => channelOf(r) === c);
-      return { c, total: sum(rows), n: rows.filter((r) => r.price != null).length };
+      const rows = list.filter((r) => channelOf(r) === c && r.commission_amount != null);
+      return { c, total: rows.reduce((sum, r) => sum + n(r.commission_amount), 0), n: rows.length };
     }).filter((x) => x.n > 0);
+    const payers = { platform: 0, owner: 0, onsite: 0 };
+    let commission = 0;
+    let cleaning = 0;
+    let cleaningCount = 0;
+    list.forEach((r) => {
+      const p = propertiesById.get(r.property_id);
+      const ch = channelOf(r);
+      commission += n(r.commission_amount);
+      if (r.commission_amount != null) payers[payerFor('platform', ch)] += n(r.commission_amount);
+      if (r.cleaning_amount != null || r.beds_amount != null) cleaningCount += 1;
+      cleaning += n(r.cleaning_amount) + n(r.beds_amount);
+      payers[payerFor(p?.cleaning_payer, ch)] += n(r.cleaning_amount);
+      payers[payerFor(p?.beds_payer, ch)] += n(r.beds_amount);
+    });
     return {
-      commission: sum(commissions),
-      presta: sum(presta),
-      prestaCount: presta.filter((r) => r.price != null).length,
+      commission,
+      cleaning,
+      cleaningCount,
       byChannel,
+      payers,
       missing: list.filter((r) => r.price == null).length,
       count: list.length,
     };
-  }, [stays, year, month]);
+  }, [stays, year, month, propertiesById]);
 
   if (years.length === 0) return null;
 
@@ -105,21 +119,27 @@ export function RevenueFooter({ reservations, filtered }: { reservations: Reserv
       </View>
 
       <View style={s.block}>
-        <Text style={s.label}>Presta ménage</Text>
+        <Text style={s.label}>Ménages</Text>
         <View style={[s.stamp, { borderColor: STUB.presta, transform: [{ rotate: '3deg' }] }]}>
-          <Text style={[s.stampText, { color: STUB.presta }]}>{formatPrice(t.presta)}</Text>
+          <Text style={[s.stampText, { color: STUB.presta }]}>{formatPrice(t.cleaning)}</Text>
         </View>
         <View style={s.channel}>
           <ChannelBadge channel="presta" size={14} />
-          <Text style={s.small}>{t.prestaCount} presta{t.prestaCount > 1 ? 's' : ''}</Text>
+          <Text style={s.small}>{t.cleaningCount} ménage{t.cleaningCount > 1 ? 's' : ''}</Text>
         </View>
+      </View>
+
+      <View style={s.payers}>
+        <Text style={s.small}>Via plateformes <Text style={s.payerValue}>{formatPrice(t.payers.platform)}</Text></Text>
+        <Text style={s.small}>Propriétaires <Text style={s.payerValue}>{formatPrice(t.payers.owner)}</Text></Text>
+        <Text style={s.small}>Sur place <Text style={s.payerValue}>{formatPrice(t.payers.onsite)}</Text></Text>
       </View>
 
       <View style={{ flex: 1 }} />
 
       <View style={s.totalBlock}>
         <Text style={s.label}>Total gagné · {month ? monthLabel(month).toLowerCase() : `saison ${year}`}</Text>
-        <Text style={s.total}>{formatPrice(t.commission + t.presta)}</Text>
+        <Text style={s.total}>{formatPrice(t.commission + t.cleaning)}</Text>
         <Text style={s.small}>
           {t.missing > 0 ? `${t.missing} résa${t.missing > 1 ? 's' : ''} sur ${t.count} sans montant` : `${t.count} résa${t.count > 1 ? 's' : ''}, toutes renseignées`}
           {filtered ? ' · filtres appliqués' : ''}
@@ -149,6 +169,8 @@ const s = StyleSheet.create({
   channels: { flexDirection: 'row', gap: 10 },
   channel: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   small: { fontFamily: FONTS.readable, fontSize: 12, color: STUB.carbone },
+  payers: { gap: 1, borderLeftWidth: 1, borderLeftColor: STUB.trait, paddingLeft: 14 },
+  payerValue: { fontFamily: FONTS.readableBold, color: STUB.nuit },
   totalBlock: { alignItems: 'flex-end' },
   total: { fontFamily: FONTS.stubSerif, fontSize: 30, lineHeight: 32, color: STUB.nuit },
 });

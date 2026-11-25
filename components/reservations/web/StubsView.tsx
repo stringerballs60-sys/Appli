@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Image } from 'react-native';
+import { initials } from '@/components/properties/web/shared';
+import { Property } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FONTS } from '@/constants/typography';
@@ -63,16 +65,17 @@ export function StubsView({ rows, tab, today, selectedId, propertiesById, turnov
                     <View style={[s.notch, { bottom: -7 }]} />
                   </View>
                   <View style={s.body}>
-                    <View style={s.inline}>
+                    <Stamp property={p} dim={block || cancelled} />
+                    <View style={[s.inline, { paddingRight: 70 }]}>
                       <View style={[s.dot, { backgroundColor: p?.color ?? STUB.trait }]} />
                       <Text style={s.property} numberOfLines={1}>{p?.name ?? 'Logement'}</Text>
                     </View>
                     {block ? (
-                      <Text style={[s.guest, { color: STUB.cadenas }]} numberOfLines={1}>{blockReasonLabel(r.block_reason)}</Text>
+                      <Text style={[s.guest, { color: STUB.cadenas, paddingRight: 64 }]} numberOfLines={1}>{blockReasonLabel(r.block_reason)}</Text>
                     ) : (
-                      <Text style={[s.guest, cancelled && { color: STUB.cadenas }]} numberOfLines={1}>{r.guest_name}</Text>
+                      <Text style={[s.guest, { paddingRight: 64 }, cancelled && { color: STUB.cadenas }]} numberOfLines={1}>{r.guest_name}</Text>
                     )}
-                    <Text style={s.meta} numberOfLines={1}>
+                    <Text style={[s.meta, { paddingRight: 64 }]} numberOfLines={1}>
                       {r.nb_nights} nuit{r.nb_nights > 1 ? 's' : ''}{!block && guestsDetail(r) ? ` · ${guestsDetail(r)}` : ''}
                     </Text>
                     <View style={[s.inline, { marginTop: 8, justifyContent: 'space-between' }]}>
@@ -111,6 +114,21 @@ export function StubsView({ rows, tab, today, selectedId, propertiesById, turnov
   );
 }
 
+/** Photo du logement collée en coin du ticket, comme un timbre. */
+function Stamp({ property, dim }: { property?: Property; dim?: boolean }) {
+  return (
+    <View style={[s.timbre, dim && { opacity: 0.55 }]} pointerEvents="none">
+      {property?.photo_url ? (
+        <Image source={{ uri: property.photo_url }} style={s.timbreImg} />
+      ) : (
+        <View style={[s.timbreImg, { backgroundColor: property ? `${property.color}55` : STUB.trait, alignItems: 'center', justifyContent: 'center' }]}>
+          <Text style={s.timbreInit}>{property ? initials(property.name) : '?'}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   wrap: { padding: 24, paddingBottom: 48 },
   monthRow: { flexDirection: 'row', alignItems: 'baseline', gap: 12, marginBottom: 12 },
@@ -118,7 +136,7 @@ const s = StyleSheet.create({
   monthCount: { fontFamily: FONTS.readable, fontSize: 13, color: STUB.carbone },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   ticket: {
-    width: 430, minHeight: 124, flexDirection: 'row', backgroundColor: STUB.papier, borderRadius: 6, cursor: 'pointer' as any,
+    width: 440, minHeight: 128, flexDirection: 'row', backgroundColor: STUB.papier, borderRadius: 6, cursor: 'pointer' as any,
     borderWidth: 1, borderColor: STUB.trait, boxShadow: '0 1px 0 rgba(47,74,120,0.10)',
   } as any,
   ticketHover: { borderColor: '#C9BCA4' },
@@ -141,6 +159,9 @@ const s = StyleSheet.create({
   meta: { fontFamily: FONTS.readable, fontSize: 13, color: '#4A5568', marginTop: 2 },
   carbone: { fontFamily: FONTS.readable, fontSize: 12, color: STUB.carbone },
   turn: { fontFamily: FONTS.readableBold, fontSize: 11, color: STUB.carbone, marginTop: 6, textDecorationLine: 'underline' },
-  stamp: { position: 'absolute', right: 10, top: 14, borderWidth: 2, borderRadius: 4, paddingVertical: 2, paddingHorizontal: 8, transform: [{ rotate: '-9deg' }], opacity: 0.85 },
+  timbre: { position: 'absolute', top: 10, right: 10, padding: 3, backgroundColor: '#FFFFFF', borderWidth: 1, borderStyle: 'dashed', borderColor: STUB.trait, transform: [{ rotate: '2.5deg' }], boxShadow: '0 1px 2px rgba(47,74,120,0.18)' } as any,
+  timbreImg: { width: 54, height: 54 },
+  timbreInit: { fontFamily: FONTS.readableBold, fontSize: 16, color: STUB.nuit },
+  stamp: { position: 'absolute', right: 78, top: 34, borderWidth: 2, borderRadius: 4, paddingVertical: 2, paddingHorizontal: 8, transform: [{ rotate: '-9deg' }], opacity: 0.85 },
   stampText: { fontFamily: FONTS.readableBold, fontSize: 13, letterSpacing: 2 },
 });

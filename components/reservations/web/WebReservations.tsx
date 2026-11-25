@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useReservations } from '@/hooks/useReservations';
@@ -13,12 +12,10 @@ import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { blockReasonLabel } from '@/constants/blocks';
 import { CAL, PANEL_WIDTH } from '@/components/calendar/web/tokens';
 import { linenFor } from '@/components/calendar/web/dayModel';
-import { TABS, VIEWS, TabKey, ViewKey, tabOf, sortForTab, todayISO, turnoverKeys, guestsDetail, isBlockRow, isCancelled, timeLabel } from './model';
-import { RegisterView } from './RegisterView';
+import { TABS, TabKey, tabOf, sortForTab, todayISO, turnoverKeys, guestsDetail, isBlockRow, isCancelled, timeLabel } from './model';
 import { StubsView } from './StubsView';
-import { BoardView } from './BoardView';
+import { SeasonView } from './SeasonView';
 
-const VIEW_STORE = 'kaza_reservations_view';
 const longDay = (iso: string) => {
   const s = format(parseISO(iso), 'EEEE d MMMM yyyy', { locale: fr });
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -31,21 +28,10 @@ export function WebReservations() {
   const { data: properties } = useProperties();
 
   const [tab, setTab] = useState<TabKey>('upcoming');
-  const [view, setView] = useState<ViewKey>('register');
   const [query, setQuery] = useState('');
   const [site, setSite] = useState<string | null>(null);
   const [channel, setChannel] = useState<ReservationSource | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  useEffect(() => {
-    AsyncStorage.getItem(VIEW_STORE).then((v) => {
-      if (v === 'register' || v === 'stubs' || v === 'board') setView(v);
-    }).catch(() => {});
-  }, []);
-  const chooseView = (v: ViewKey) => {
-    setView(v);
-    AsyncStorage.setItem(VIEW_STORE, v).catch(() => {});
-  };
 
   const propertiesById = useMemo(() => new Map((properties ?? []).map((p) => [p.id, p])), [properties]);
   const sites = useMemo(
@@ -148,14 +134,6 @@ export function WebReservations() {
           </Pressable>
         ))}
         <View style={{ flex: 1 }} />
-        <Text style={styles.viewLabel}>Vue à tester :</Text>
-        <View style={styles.viewSwitch}>
-          {VIEWS.map((v) => (
-            <Pressable key={v.key} onPress={() => chooseView(v.key)} style={({ hovered }: any) => [styles.viewItem, view === v.key && styles.viewItemOn, hovered && view !== v.key && { backgroundColor: CAL.blanc }]}>
-              <Text style={[styles.viewText, view === v.key && styles.viewTextOn]}>{v.label}</Text>
-            </Pressable>
-          ))}
-        </View>
       </View>
 
       <View style={styles.filters}>
@@ -189,9 +167,16 @@ export function WebReservations() {
               <Text style={styles.centerTitle}>{EMPTY[tab]}</Text>
               <Text style={styles.centerText}>{query || site || channel ? 'Change la recherche ou retire un filtre.' : tab === 'blocks' ? 'Utilise « Blocage » pour fermer des dates.' : ' '}</Text>
             </View>
-          ) : view === 'stubs' ? <StubsView {...viewProps} />
-            : view === 'board' ? <BoardView {...viewProps} />
-            : <RegisterView {...viewProps} />}
+          ) : tab === 'past' ? (
+            <SeasonView
+              rows={rows}
+              all={filtered}
+              properties={(properties ?? []).filter((p) => !site || (p.group_name?.trim() || 'Autres logements') === site)}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onOpen={openResa}
+            />
+          ) : <StubsView {...viewProps} />}
         </View>
         {selected && <DetailPanel resa={selected} property={propertiesById.get(selected.property_id)} onOpen={() => openResa(selected)} router={router} />}
       </View>
@@ -344,12 +329,6 @@ const styles = StyleSheet.create({
   tabTextOn: { fontFamily: CAL.fontBold, color: CAL.texte },
   tabCount: { fontFamily: CAL.fontBold, fontSize: 11, color: CAL.texteDoux, backgroundColor: CAL.brumeClair, borderRadius: 9, paddingHorizontal: 6, paddingVertical: 1, overflow: 'hidden' },
   tabCountOn: { backgroundColor: CAL.nuit, color: CAL.blanc },
-  viewLabel: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux, marginRight: 6 },
-  viewSwitch: { flexDirection: 'row', backgroundColor: CAL.brumeClair, borderRadius: 6, padding: 2, marginBottom: 6 },
-  viewItem: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 4 },
-  viewItemOn: { backgroundColor: CAL.blanc, borderWidth: 1, borderColor: CAL.brume },
-  viewText: { fontFamily: CAL.font, fontSize: 13, color: CAL.texteDoux },
-  viewTextOn: { fontFamily: CAL.fontBold, color: CAL.texte },
   filters: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingHorizontal: 20, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: CAL.brume },
   sep: { width: 1, height: 18, backgroundColor: CAL.brume, marginHorizontal: 4 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 14, borderWidth: 1, borderColor: CAL.brume },

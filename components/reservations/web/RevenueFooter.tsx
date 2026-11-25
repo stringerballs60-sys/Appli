@@ -1,0 +1,113 @@
+import { useEffect, useMemo, useState } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { FONTS } from '@/constants/typography';
+import { channelOf, CHANNEL_LABELS } from '@/constants/channels';
+import { ChannelBadge } from '@/components/ui/ChannelBadge';
+import { formatPrice } from '@/utils/price';
+import { Reservation, ReservationSource } from '@/types';
+import { isBlockRow, isCancelled } from './model';
+import { STUB } from './StubsView';
+
+const COMMISSION_CHANNELS: ReservationSource[] = ['airbnb', 'manual', 'booking', 'abritel'];
+
+/** Récap des gains en bas de la page Réservations, par saison, avec les mêmes tampons que les tickets. */
+export function RevenueFooter({ reservations, filtered }: { reservations: Reservation[]; filtered: boolean }) {
+  const stays = useMemo(() => reservations.filter((r) => !isBlockRow(r) && !isCancelled(r)), [reservations]);
+  const years = useMemo(() => Array.from(new Set(stays.map((r) => Number(r.check_in.slice(0, 4))))).sort((a, b) => b - a), [stays]);
+  const defaultYear = useMemo(() => {
+    const withGains = stays.filter((r) => r.price != null).map((r) => Number(r.check_in.slice(0, 4)));
+    return withGains.length ? Math.max(...withGains) : years[0];
+  }, [stays, years]);
+  const [year, setYear] = useState<number | undefined>(defaultYear);
+  useEffect(() => {
+    if (year === undefined || !years.includes(year)) setYear(defaultYear);
+  }, [years, year, defaultYear]);
+
+  const t = useMemo(() => {
+    const list = stays.filter((r) => Number(r.check_in.slice(0, 4)) === year);
+    const sum = (rows: Reservation[]) => rows.reduce((n, r) => n + (r.price ?? 0), 0);
+    const presta = list.filter((r) => channelOf(r) === 'presta');
+    const commissions = list.filter((r) => channelOf(r) !== 'presta');
+    const byChannel = COMMISSION_CHANNELS.map((c) => {
+      const rows = commissions.filter((r) => channelOf(r) === c);
+      return { c, total: sum(rows), n: rows.filter((r) => r.price != null).length };
+    }).filter((x) => x.n > 0);
+    return {
+      commission: sum(commissions),
+      presta: sum(presta),
+      prestaCount: presta.filter((r) => r.price != null).length,
+      byChannel,
+      missing: list.filter((r) => r.price == null).length,
+      count: list.length,
+    };
+  }, [stays, year]);
+
+  if (years.length === 0) return null;
+
+  return (
+    <View style={s.bar}>
+      <View style={s.years}>
+        {years.map((y) => (
+          <Pressable key={y} onPress={() => setYear(y)} style={({ hovered }: any) => [s.year, y === year && s.yearOn, hovered && y !== year && { backgroundColor: '#EDE5D6' }]}>
+            <Text style={[s.yearText, y === year && s.yearTextOn]}>{y}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <View style={s.block}>
+        <Text style={s.label}>Commissions</Text>
+        <View style={[s.stamp, { borderColor: STUB.tampon, transform: [{ rotate: '-4deg' }] }]}>
+          <Text style={[s.stampText, { color: STUB.tampon }]}>{formatPrice(t.commission)}</Text>
+        </View>
+        <View style={s.channels}>
+          {t.byChannel.map(({ c, total }) => (
+            <View key={c} style={s.channel} accessibilityLabel={`${CHANNEL_LABELS[c]} ${formatPrice(total)}`}>
+              <ChannelBadge channel={c} size={14} />
+              <Text style={s.small}>{formatPrice(total)}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={s.block}>
+        <Text style={s.label}>Presta ménage</Text>
+        <View style={[s.stamp, { borderColor: STUB.presta, transform: [{ rotate: '3deg' }] }]}>
+          <Text style={[s.stampText, { color: STUB.presta }]}>{formatPrice(t.presta)}</Text>
+        </View>
+        <View style={s.channel}>
+          <ChannelBadge channel="presta" size={14} />
+          <Text style={s.small}>{t.prestaCount} presta{t.prestaCount > 1 ? 's' : ''}</Text>
+        </View>
+      </View>
+
+      <View style={{ flex: 1 }} />
+
+      <View style={s.totalBlock}>
+        <Text style={s.label}>Total gagné · saison {year}</Text>
+        <Text style={s.total}>{formatPrice(t.commission + t.presta)}</Text>
+        <Text style={s.small}>
+          {t.missing > 0 ? `${t.missing} résa${t.missing > 1 ? 's' : ''} sur ${t.count} sans montant` : `${t.count} résa${t.count > 1 ? 's' : ''}, toutes renseignées`}
+          {filtered ? ' · filtres appliqués' : ''}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 28, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: STUB.kraft, borderTopWidth: 1, borderTopColor: STUB.trait },
+  years: { gap: 4 },
+  year: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 4 },
+  yearOn: { backgroundColor: STUB.nuit },
+  yearText: { fontFamily: FONTS.readableBold, fontSize: 12, color: STUB.carbone },
+  yearTextOn: { color: '#FFFFFF' },
+  block: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  label: { fontFamily: FONTS.readable, fontSize: 11, color: STUB.carbone, textTransform: 'uppercase', letterSpacing: 0.8 },
+  stamp: { borderWidth: 2, borderRadius: 3, paddingVertical: 2, paddingHorizontal: 10, opacity: 0.9, backgroundColor: STUB.papier },
+  stampText: { fontFamily: FONTS.readableBold, fontSize: 18, letterSpacing: 0.6 },
+  channels: { flexDirection: 'row', gap: 10 },
+  channel: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  small: { fontFamily: FONTS.readable, fontSize: 12, color: STUB.carbone },
+  totalBlock: { alignItems: 'flex-end' },
+  total: { fontFamily: FONTS.stubSerif, fontSize: 30, lineHeight: 32, color: STUB.nuit },
+});

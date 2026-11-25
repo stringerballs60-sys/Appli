@@ -16,6 +16,7 @@ import { formatPrice } from '@/utils/price';
 import { TABS, TabKey, tabOf, sortForTab, todayISO, turnoverKeys, guestsDetail, isBlockRow, isCancelled, timeLabel } from './model';
 import { StubsView } from './StubsView';
 import { SeasonView } from './SeasonView';
+import { RevenueFooter } from './RevenueFooter';
 
 const longDay = (iso: string) => {
   const s = format(parseISO(iso), 'EEEE d MMMM yyyy', { locale: fr });
@@ -181,6 +182,8 @@ export function WebReservations() {
         </View>
         {selected && <DetailPanel resa={selected} property={propertiesById.get(selected.property_id)} onOpen={() => openResa(selected)} router={router} />}
       </View>
+
+      {!isLoading && !isError ? <RevenueFooter reservations={filtered} filtered={!!(query.trim() || site || channel)} /> : null}
     </View>
   );
 }

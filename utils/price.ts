@@ -8,5 +8,6 @@ export function parsePrice(text: string): number | null {
 export function formatPrice(value: number | null | undefined, _withCents = false): string {
   if (value == null) return '';
   const digits = Math.round(value * 100) % 100 !== 0 ? 2 : 0;
-  return `${value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits })} €`;
+  const text = value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits }).replace(/[\u202F\u2009]/g, '\u00A0');
+  return `${text}\u00A0€`;
 }

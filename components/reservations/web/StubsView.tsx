@@ -3,7 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Image } from 'react-nati
 import { initials } from '@/components/properties/web/shared';
 import { Property } from '@/types';
 import { formatPrice } from '@/utils/price';
-import { isPrestaProperty } from '@/constants/tariffs';
+import { isPrestaProperty, splitByPayer } from '@/constants/tariffs';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FONTS } from '@/constants/typography';
@@ -20,6 +20,7 @@ export const STUB = {
   nuit: '#0F2240',
   tampon: '#B4453A',
   presta: '#1E7A78',
+  surPlace: '#9A6B12',
   cadenas: '#6E6457',
   trait: '#DCD2C0',
   or: '#C9A227',
@@ -54,7 +55,7 @@ export function StubsView({ rows, tab, today, selectedId, propertiesById, turnov
                   key={r.id}
                   onPress={() => onSelect(r.id)}
                   {...dbl(() => onOpen(r))}
-                  style={({ hovered }: any) => [s.ticket, hovered && s.ticketHover, sel && s.ticketSel]}
+                  style={({ hovered }: any) => [s.ticket, !block && !cancelled && splitByPayer(r, p, channelOf(r)).onsite > 0 && splitByPayer(r, p, channelOf(r)).platform + splitByPayer(r, p, channelOf(r)).owner > 0 && { minHeight: 166 }, hovered && s.ticketHover, sel && s.ticketSel]}
                 >
                   <View style={[s.stub, todayStub && s.stubToday, block && s.stubBlock]}>
                     <Text style={[s.stubLabel, todayStub && { color: '#DCE4F2' }]}>{tab === 'current' ? 'départ' : block ? 'du' : 'arrivée'}</Text>
@@ -69,11 +70,25 @@ export function StubsView({ rows, tab, today, selectedId, propertiesById, turnov
                   </View>
                   <View style={s.body}>
                     <Stamp property={p} dim={block || cancelled} />
-                    {!block && !cancelled && r.price != null ? (
-                      <View style={[s.price, isPrestaProperty(p) && s.pricePresta]} pointerEvents="none">
-                        <Text style={[s.priceText, isPrestaProperty(p) && { color: STUB.presta }]}>{formatPrice(r.price)}</Text>
-                      </View>
-                    ) : null}
+                    {!block && !cancelled && r.price != null ? (() => {
+                      const split = splitByPayer(r, p, channelOf(r));
+                      const main = split.platform + split.owner;
+                      return (
+                        <>
+                          {main > 0 ? (
+                            <View style={[s.price, isPrestaProperty(p) && s.pricePresta]} pointerEvents="none">
+                              <Text style={[s.priceText, isPrestaProperty(p) && { color: STUB.presta }]}>{formatPrice(main)}</Text>
+                            </View>
+                          ) : null}
+                          {split.onsite > 0 ? (
+                            <View style={[s.price, s.priceOnsite, main > 0 && { top: 106, right: 4 }]} pointerEvents="none">
+                              <Text style={[s.priceText, { color: STUB.surPlace, fontSize: 12.5 }]}>{formatPrice(split.onsite)}</Text>
+                              <Text style={s.onsiteLabel}>sur place</Text>
+                            </View>
+                          ) : null}
+                        </>
+                      );
+                    })() : null}
                     <View style={[s.inline, { paddingRight: 70 }]}>
                       <View style={[s.dot, { backgroundColor: p?.color ?? STUB.trait }]} />
                       <Text style={s.property} numberOfLines={1}>{p?.name ?? 'Logement'}</Text>
@@ -180,6 +195,8 @@ const s = StyleSheet.create({
     transform: [{ rotate: '-7deg' }], opacity: 0.88, boxShadow: `inset 0 0 0 1px ${STUB.papier}, inset 0 0 0 2px ${STUB.tampon}55`,
   } as any,
   pricePresta: { borderColor: STUB.presta, boxShadow: `inset 0 0 0 1px ${STUB.papier}, inset 0 0 0 2px ${STUB.presta}55` } as any,
+  priceOnsite: { borderColor: STUB.surPlace, transform: [{ rotate: '4deg' }], alignItems: 'center', boxShadow: `inset 0 0 0 1px ${STUB.papier}, inset 0 0 0 2px ${STUB.surPlace}55` } as any,
+  onsiteLabel: { fontFamily: FONTS.readableBold, fontSize: 8.5, color: STUB.surPlace, letterSpacing: 1, textTransform: 'uppercase', marginTop: -2 },
   priceText: { fontFamily: FONTS.readableBold, fontSize: 14, color: STUB.tampon, letterSpacing: 0.6 },
   timbreInit: { fontFamily: FONTS.readableBold, fontSize: 16, color: STUB.nuit },
   stamp: { position: 'absolute', right: 78, top: 34, borderWidth: 2, borderRadius: 4, paddingVertical: 2, paddingHorizontal: 8, transform: [{ rotate: '-9deg' }], opacity: 0.85 },

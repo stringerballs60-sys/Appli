@@ -8,7 +8,7 @@ import { channelOf, CHANNEL_LABELS } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { formatPrice } from '@/utils/price';
 import { Property, Reservation, ReservationSource } from '@/types';
-import { payerFor } from '@/constants/tariffs';
+import { payerFor, splitByPayer } from '@/constants/tariffs';
 import { isBlockRow, isCancelled } from './model';
 import { STUB } from './StubsView';
 
@@ -43,9 +43,10 @@ export function RevenueFooter({ reservations, filtered, propertiesById }: { rese
     const list = stays.filter((r) => Number(r.check_in.slice(0, 4)) === year && (!month || r.check_in.startsWith(month)));
     const n = (v: number | null | undefined) => (v == null ? 0 : Number(v));
     const byChannel = COMMISSION_CHANNELS.map((c) => {
-      const rows = list.filter((r) => channelOf(r) === c && r.commission_amount != null);
-      return { c, total: rows.reduce((sum, r) => sum + n(r.commission_amount), 0), n: rows.length };
-    }).filter((x) => x.n > 0);
+      const rows = list.filter((r) => channelOf(r) === c);
+      const total = rows.reduce((sum, r) => sum + splitByPayer(r, propertiesById.get(r.property_id), c).platform, 0);
+      return { c, total };
+    }).filter((x) => x.total > 0);
     const payers = { platform: 0, owner: 0, onsite: 0 };
     let commission = 0;
     let cleaning = 0;
@@ -104,9 +105,9 @@ export function RevenueFooter({ reservations, filtered, propertiesById }: { rese
       </View>
 
       <View style={s.block}>
-        <Text style={s.label}>Commissions</Text>
+        <Text style={s.label}>Via plateformes</Text>
         <View style={[s.stamp, { borderColor: STUB.tampon, transform: [{ rotate: '-4deg' }] }]}>
-          <Text style={[s.stampText, { color: STUB.tampon }]}>{formatPrice(t.commission)}</Text>
+          <Text style={[s.stampText, { color: STUB.tampon }]}>{formatPrice(t.payers.platform)}</Text>
         </View>
         <View style={s.channels}>
           {t.byChannel.map(({ c, total }) => (
@@ -119,20 +120,17 @@ export function RevenueFooter({ reservations, filtered, propertiesById }: { rese
       </View>
 
       <View style={s.block}>
-        <Text style={s.label}>Ménages</Text>
+        <Text style={s.label}>Propriétaires</Text>
         <View style={[s.stamp, { borderColor: STUB.presta, transform: [{ rotate: '3deg' }] }]}>
-          <Text style={[s.stampText, { color: STUB.presta }]}>{formatPrice(t.cleaning)}</Text>
-        </View>
-        <View style={s.channel}>
-          <ChannelBadge channel="presta" size={14} />
-          <Text style={s.small}>{t.cleaningCount} ménage{t.cleaningCount > 1 ? 's' : ''}</Text>
+          <Text style={[s.stampText, { color: STUB.presta }]}>{formatPrice(t.payers.owner)}</Text>
         </View>
       </View>
 
-      <View style={s.payers}>
-        <Text style={s.small}>Via plateformes <Text style={s.payerValue}>{formatPrice(t.payers.platform)}</Text></Text>
-        <Text style={s.small}>Propriétaires <Text style={s.payerValue}>{formatPrice(t.payers.owner)}</Text></Text>
-        <Text style={s.small}>Sur place <Text style={s.payerValue}>{formatPrice(t.payers.onsite)}</Text></Text>
+      <View style={s.block}>
+        <Text style={s.label}>Sur place</Text>
+        <View style={[s.stamp, { borderColor: STUB.surPlace, transform: [{ rotate: '-2deg' }] }]}>
+          <Text style={[s.stampText, { color: STUB.surPlace }]}>{formatPrice(t.payers.onsite)}</Text>
+        </View>
       </View>
 
       <View style={{ flex: 1 }} />
@@ -140,6 +138,7 @@ export function RevenueFooter({ reservations, filtered, propertiesById }: { rese
       <View style={s.totalBlock}>
         <Text style={s.label}>Total gagné · {month ? monthLabel(month).toLowerCase() : `saison ${year}`}</Text>
         <Text style={s.total}>{formatPrice(t.commission + t.cleaning)}</Text>
+        <Text style={s.small}>Commissions {formatPrice(t.commission)} · ménages {formatPrice(t.cleaning)}</Text>
         <Text style={s.small}>
           {t.missing > 0 ? `${t.missing} résa${t.missing > 1 ? 's' : ''} sur ${t.count} sans montant` : `${t.count} résa${t.count > 1 ? 's' : ''}, toutes renseignées`}
           {filtered ? ' · filtres appliqués' : ''}

@@ -78,3 +78,17 @@ export function tariffSummary(p: TariffProperty): string {
   if (rate) parts.push(`${rate} % de commission sur les plateformes`);
   return parts.length ? parts.join(' · ') : 'Aucun tarif réglé';
 }
+
+/** Répartit les gains d'une résa selon qui les verse : plateforme, propriétaire, sur place. */
+export function splitByPayer(
+  r: Pick<Reservation, 'cleaning_amount' | 'beds_amount' | 'commission_amount'>,
+  p: Pick<Property, 'cleaning_payer' | 'beds_payer'> | null | undefined,
+  channel: ReservationSource
+): Record<Payer, number> {
+  const out: Record<Payer, number> = { platform: 0, owner: 0, onsite: 0 };
+  const n = (v: number | null | undefined) => (v == null ? 0 : Number(v));
+  out[payerFor(p?.cleaning_payer, channel)] += n(r.cleaning_amount);
+  out[payerFor(p?.beds_payer, channel)] += n(r.beds_amount);
+  out[payerFor('platform', channel)] += n(r.commission_amount);
+  return out;
+}

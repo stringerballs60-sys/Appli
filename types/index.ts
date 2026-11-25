@@ -24,7 +24,7 @@ export enum ReservationStatus {
   COMPLETED = 'completed',
 }
 
-export type ReservationSource = 'airbnb' | 'booking' | 'abritel' | 'manual';
+export type ReservationSource = 'airbnb' | 'booking' | 'abritel' | 'manual' | 'presta';
 export type ReservationKind = 'stay' | 'block';
 export type BlockReason = 'personal' | 'owner' | 'works' | 'other';
 

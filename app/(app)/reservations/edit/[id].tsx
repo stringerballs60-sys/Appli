@@ -18,7 +18,7 @@ import { SHADOWS, GRADIENTS, RADII } from '@/constants/theme';
 import { FONTS } from '@/constants/typography';
 import { suggestBedAllocation, calculateLinen } from '@/utils/linenCalculator';
 import { toISODateString, calcNights } from '@/utils/dateHelpers';
-import { CHANNELS, CHANNEL_LABELS, categoryForChannel, channelOf } from '@/constants/channels';
+import { CHANNELS, CHANNEL_LABELS, categoryForChannel, channelOf, defaultChannelFor, amountLabel } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { PriceInput } from '@/components/reservation/PriceInput';
 
@@ -79,7 +79,11 @@ export default function EditReservationScreen() {
 
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
-    setForm((prev) => prev ? { ...prev, property_id: property.id, category: categoryForChannel(prev.source ?? 'manual', property.property_type) } : prev);
+    setForm((prev) => {
+      if (!prev) return prev;
+      const source = defaultChannelFor(property.property_type, prev.source ?? 'manual');
+      return { ...prev, property_id: property.id, source, category: categoryForChannel(source, property.property_type) };
+    });
   };
 
   const selectChannel = (ch: NonNullable<ReservationFormData['source']>) => {
@@ -268,10 +272,10 @@ export default function EditReservationScreen() {
 
         <View style={styles.sectionLabel}>
           <View style={styles.sectionAccent} />
-          <Text style={styles.sectionLabelText}>PRIX</Text>
+          <Text style={styles.sectionLabelText}>{amountLabel(form.source ?? 'manual').toUpperCase()}</Text>
         </View>
         <View style={[styles.section, SHADOWS.sm]}>
-          <PriceInput key={reservation?.id ?? 'edit'} value={form.price} nights={nights} onChange={(v) => set('price', v)} />
+          <PriceInput key={reservation?.id ?? 'edit'} label={amountLabel(form.source ?? 'manual')} value={form.price} nights={nights} onChange={(v) => set('price', v)} />
         </View>
 
         <View style={styles.sectionLabel}>

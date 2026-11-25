@@ -1,13 +1,14 @@
 import { PropertyType, ReservationCategory, ReservationSource } from '@/types';
 import { PROPERTY_TYPE_DEFAULT_CATEGORY } from '@/constants/labels';
 
-export const CHANNELS: ReservationSource[] = ['manual', 'airbnb', 'booking', 'abritel'];
+export const CHANNELS: ReservationSource[] = ['manual', 'airbnb', 'booking', 'abritel', 'presta'];
 
 export const CHANNEL_LABELS: Record<ReservationSource, string> = {
   manual: 'Direct',
   airbnb: 'Airbnb',
   booking: 'Booking',
   abritel: 'Abritel',
+  presta: 'Presta',
 };
 
 export const CHANNEL_COLORS: Record<ReservationSource, string> = {
@@ -15,7 +16,18 @@ export const CHANNEL_COLORS: Record<ReservationSource, string> = {
   airbnb: '#FF5A5F',
   booking: '#003580',
   abritel: '#E8731E',
+  presta: '#5F7A5C',
 };
+
+/** Nom du montant saisi sur la résa : ce que Charles gagne dessus. */
+export const amountLabel = (channel: ReservationSource) => (channel === 'presta' ? 'Presta ménage' : 'Commission');
+
+export const isExternalProperty = (type?: PropertyType) =>
+  type === PropertyType.EXTERNAL_CLEANING || type === PropertyType.EXTERNAL_CLEANING_CHECKIN;
+
+/** Provenance proposée par défaut : Presta pour les logements où Charles fait seulement le ménage. */
+export const defaultChannelFor = (type: PropertyType | undefined, current: ReservationSource): ReservationSource =>
+  isExternalProperty(type) ? 'presta' : current === 'presta' ? 'airbnb' : current;
 
 const isExternal = (type?: PropertyType) =>
   type === PropertyType.EXTERNAL_CLEANING || type === PropertyType.EXTERNAL_CLEANING_CHECKIN;

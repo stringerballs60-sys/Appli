@@ -19,7 +19,7 @@ import { FONTS } from '@/constants/typography';
 import { suggestBedAllocation, calculateLinen } from '@/utils/linenCalculator';
 import { toISODateString, calcNights } from '@/utils/dateHelpers';
 import { reservationsService } from '@/services/reservations';
-import { CHANNELS, CHANNEL_LABELS, categoryForChannel } from '@/constants/channels';
+import { CHANNELS, CHANNEL_LABELS, categoryForChannel, defaultChannelFor, amountLabel } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { PriceInput } from '@/components/reservation/PriceInput';
 
@@ -73,7 +73,10 @@ export default function NewReservationScreen() {
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
     set('property_id', property.id);
-    setForm((prev) => ({ ...prev, category: categoryForChannel(prev.source ?? 'manual', property.property_type) }));
+    setForm((prev) => {
+      const source = defaultChannelFor(property.property_type, prev.source ?? 'manual');
+      return { ...prev, source, category: categoryForChannel(source, property.property_type) };
+    });
     set('beds_double_used', 0);
     set('beds_single_used', 0);
     set('beds_sofa_used', 0);
@@ -272,10 +275,10 @@ export default function NewReservationScreen() {
 
         <View style={styles.sectionLabel}>
           <View style={styles.sectionAccent} />
-          <Text style={styles.sectionLabelText}>PRIX</Text>
+          <Text style={styles.sectionLabelText}>{amountLabel(form.source ?? 'manual').toUpperCase()}</Text>
         </View>
         <View style={[styles.section, SHADOWS.sm]}>
-          <PriceInput key={'new'} value={form.price} nights={nights} onChange={(v) => set('price', v)} />
+          <PriceInput key={'new'} label={amountLabel(form.source ?? 'manual')} value={form.price} nights={nights} onChange={(v) => set('price', v)} />
         </View>
 
         <View style={styles.sectionLabel}>

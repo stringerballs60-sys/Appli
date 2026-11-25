@@ -16,6 +16,8 @@ export function ChannelBadge({ channel, size = 16, withLabel = false, labelColor
   const glyph =
     channel === 'airbnb' ? (
       <FontAwesome5 name="airbnb" size={size * 0.62} color="#FFFFFF" brand />
+    ) : channel === 'presta' ? (
+      <MaterialCommunityIcons name="broom" size={size * 0.66} color="#FFFFFF" />
     ) : channel === 'manual' ? (
       <MaterialCommunityIcons name="home-variant" size={size * 0.66} color="#FFFFFF" />
     ) : (

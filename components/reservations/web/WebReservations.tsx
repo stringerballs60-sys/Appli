@@ -7,7 +7,7 @@ import { fr } from 'date-fns/locale';
 import { useReservations } from '@/hooks/useReservations';
 import { useProperties } from '@/hooks/useProperties';
 import { Property, Reservation, ReservationSource } from '@/types';
-import { CHANNELS, CHANNEL_LABELS, channelOf } from '@/constants/channels';
+import { CHANNELS, CHANNEL_LABELS, channelOf, amountLabel } from '@/constants/channels';
 import { ChannelBadge } from '@/components/ui/ChannelBadge';
 import { blockReasonLabel } from '@/constants/blocks';
 import { CAL, PANEL_WIDTH } from '@/components/calendar/web/tokens';
@@ -258,7 +258,7 @@ function DetailPanel({ resa, property, onOpen, router }: { resa: Reservation; pr
                 <Text style={styles.factLabel}>Provenance</Text>
                 <ChannelBadge channel={channelOf(resa)} size={18} withLabel labelColor={CAL.texte} />
               </View>
-              <Fact label="Prix" value={resa.price != null ? `${formatPrice(resa.price, true)}${resa.nb_nights > 0 ? ` · ${formatPrice(Math.round((resa.price / resa.nb_nights) * 100) / 100, true)} / nuit` : ''}` : 'Non renseigné'} />
+              <Fact label={amountLabel(channelOf(resa))} value={resa.price != null ? `${formatPrice(resa.price)}${resa.nb_nights > 0 ? ` · ${formatPrice(Math.round((resa.price / resa.nb_nights) * 100) / 100)} / nuit` : ''}` : 'Non renseignée'} />
               <Fact label="Statut" value={resa.status === 'cancelled' ? 'Annulée' : resa.status === 'pending' ? 'En attente' : resa.status === 'completed' ? 'Terminée' : 'Confirmée'} />
               {resa.guest_phone ? <Fact label="Téléphone" value={resa.guest_phone} /> : null}
               {resa.guest_email ? <Fact label="E-mail" value={resa.guest_email} /> : null}

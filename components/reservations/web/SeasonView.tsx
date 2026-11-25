@@ -85,7 +85,7 @@ function SeasonBlock({ year, rows, all, properties, selectedId, onSelect, onOpen
       <View style={s.head}>
         <Text style={s.title}>Saison {year}</Text>
         <Text style={s.headMeta}>
-          {format(start, 'd MMMM', { locale: fr })} → {format(parseISO(season.end), 'd MMMM', { locale: fr })} · {totalStays} séjour{totalStays > 1 ? 's' : ''} · {totalNights} nuits louées · remplissage moyen {Math.round(avg * 100)} %{totalRevenue > 0 ? ` · ${formatPrice(totalRevenue)} de recettes` : ''}
+          {format(start, 'd MMMM', { locale: fr })} → {format(parseISO(season.end), 'd MMMM', { locale: fr })} · {totalStays} séjour{totalStays > 1 ? 's' : ''} · {totalNights} nuits louées · remplissage moyen {Math.round(avg * 100)} %{totalRevenue > 0 ? ` · ${formatPrice(totalRevenue)} gagnés` : ''}
         </Text>
       </View>
 
@@ -105,7 +105,7 @@ function SeasonBlock({ year, rows, all, properties, selectedId, onSelect, onOpen
         <View style={[s.statsHead, { width: STATS_W }]}>
           <Text style={[s.statsHeadText, { width: 70 }]}>Séjours</Text>
           <Text style={[s.statsHeadText, { width: 56 }]}>Nuits</Text>
-          <Text style={[s.statsHeadText, { width: 90 }]}>Recettes</Text>
+          <Text style={[s.statsHeadText, { width: 90 }]}>Gains</Text>
           <Text style={[s.statsHeadText, { flex: 1 }]}>Remplissage</Text>
         </View>
       </View>
@@ -164,7 +164,7 @@ function SeasonBlock({ year, rows, all, properties, selectedId, onSelect, onOpen
             <Text style={[s.num, { width: 56 }]}>{occ.bookedNights}</Text>
             <View style={{ width: 90 }}>
               <Text style={[s.num, { color: revenue > 0 ? STUB.tampon : '#B7AE9C' }]}>{revenue > 0 ? formatPrice(revenue) : '—'}</Text>
-              {stays.length > 0 && priced < stays.length ? <Text style={s.small}>{priced}/{stays.length} prix saisis</Text> : null}
+              {stays.length > 0 && priced < stays.length ? <Text style={s.small}>{priced}/{stays.length} saisis</Text> : null}
             </View>
             <View style={{ flex: 1 }}>
               <View style={s.inline}>

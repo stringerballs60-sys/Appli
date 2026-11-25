@@ -6,19 +6,20 @@ import { FONTS } from '@/constants/typography';
 import { parsePrice, formatPrice } from '@/utils/price';
 
 interface Props {
+  label: string;
   value: number | null | undefined;
   nights?: number;
   onChange: (value: number | null) => void;
 }
 
-export function PriceInput({ value, nights, onChange }: Props) {
+export function PriceInput({ label, value, nights, onChange }: Props) {
   const [text, setText] = useState(value != null ? String(value).replace('.', ',') : '');
   const parsed = parsePrice(text);
   const invalid = text.trim() !== '' && parsed === null;
   return (
     <View>
       <TextInput
-        label="Prix total du séjour (€)"
+        label={`${label} (€)`}
         value={text}
         onChangeText={(v) => { setText(v); onChange(parsePrice(v)); }}
         keyboardType="decimal-pad"
@@ -34,8 +35,8 @@ export function PriceInput({ value, nights, onChange }: Props) {
         {invalid
           ? 'Écris seulement un nombre, par exemple 650 ou 650,50.'
           : parsed != null && nights && nights > 0
-            ? `Soit ${formatPrice(Math.round((parsed / nights) * 100) / 100, true)} par nuit`
-            : 'Facultatif. Laisse vide si tu ne le connais pas encore.'}
+            ? `Ce que tu gagnes sur cette résa, soit ${formatPrice(Math.round((parsed / nights) * 100) / 100)} par nuit`
+            : 'Ce que tu gagnes sur cette résa. Facultatif : laisse vide si tu ne le connais pas encore.'}
       </Text>
     </View>
   );

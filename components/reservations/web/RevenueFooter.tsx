@@ -120,17 +120,15 @@ export function RevenueFooter({ reservations, filtered, propertiesById }: { rese
       </View>
 
       <View style={s.block}>
-        <Text style={s.label}>Propriétaires</Text>
+        <Text style={s.label}>Directs</Text>
         <View style={[s.stamp, { borderColor: STUB.presta, transform: [{ rotate: '3deg' }] }]}>
           <Text style={[s.stampText, { color: STUB.presta }]}>{formatPrice(t.payers.owner)}</Text>
         </View>
       </View>
 
-      <View style={s.block}>
+      <View style={s.onsite}>
         <Text style={s.label}>Sur place</Text>
-        <View style={[s.stamp, { borderColor: STUB.surPlace, transform: [{ rotate: '-2deg' }] }]}>
-          <Text style={[s.stampText, { color: STUB.surPlace }]}>{formatPrice(t.payers.onsite)}</Text>
-        </View>
+        <Text style={s.onsiteValue}>{formatPrice(t.payers.onsite)}</Text>
       </View>
 
       <View style={{ flex: 1 }} />
@@ -168,8 +166,8 @@ const s = StyleSheet.create({
   channels: { flexDirection: 'row', gap: 10 },
   channel: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   small: { fontFamily: FONTS.readable, fontSize: 12, color: STUB.carbone },
-  payers: { gap: 1, borderLeftWidth: 1, borderLeftColor: STUB.trait, paddingLeft: 14 },
-  payerValue: { fontFamily: FONTS.readableBold, color: STUB.nuit },
+  onsite: { gap: 2, borderLeftWidth: 1, borderLeftColor: STUB.trait, paddingLeft: 14 },
+  onsiteValue: { fontFamily: FONTS.readableBold, fontSize: 16, color: STUB.surPlace },
   totalBlock: { alignItems: 'flex-end' },
   total: { fontFamily: FONTS.stubSerif, fontSize: 30, lineHeight: 32, color: STUB.nuit },
 });
